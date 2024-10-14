@@ -75,9 +75,11 @@ set(Boost_USE_MULTITHREADED     ON)
 set(Boost_USE_STATIC_RUNTIME    OFF)
 set(BOOST_ROOT                  "${BOOST_SEARCH_PATH}")
 #set(Boost_DEBUG                 ON)
-set(Boost_MINIMUM_VERSION       "1.44.0")
+set(Boost_MINIMUM_VERSION       "1.72.0")
 
 set(Boost_ADDITIONAL_VERSIONS "1.47.0" "1.46.1" "1.46" "1.46.0" "1.45" "1.45.0" "1.44" "1.44.0")
+
+MESSAGE(STATUS "FINDING BOOST AT" ${BOOST_ROOT} "WITH MIN VERSION" ${Boost_MINIMUM_VERSION})
 
 set(LUXRAYS_BOOST_COMPONENTS thread program_options filesystem serialization iostreams regex system python chrono)
 find_package(Boost ${Boost_MINIMUM_VERSION} COMPONENTS ${LUXRAYS_BOOST_COMPONENTS})

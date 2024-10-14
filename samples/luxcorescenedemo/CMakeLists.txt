@@ -29,4 +29,5 @@ set(LUXCORESCENEDEMO_SRCS
 add_executable(luxcorescenedemo ${LUXCORESCENEDEMO_SRCS})
 add_definitions(${VISIBILITY_FLAGS})
 
+TARGET_LINK_LIBRARIES(luxcorescenedemo libembree3.so.3 libOpenImageDenoise.so.1 libtbb.so.2)
 TARGET_LINK_LIBRARIES(luxcorescenedemo ${LUXCORE_LIBRARY} ${Boost_LIBRARIES})

@@ -29,4 +29,5 @@ set(LUXCORELIBDEMO_SRCS
 add_executable(luxcoredemo ${LUXCORELIBDEMO_SRCS})
 add_definitions(${VISIBILITY_FLAGS})
 
+TARGET_LINK_LIBRARIES(luxcoredemo libembree3.so.3 libOpenImageDenoise.so.1 libtbb.so.2)
 TARGET_LINK_LIBRARIES(luxcoredemo ${LUXCORE_LIBRARY} ${Boost_LIBRARIES} ${OPENCL_LIBRARIES} ${CUDA_ALL_LIBRARIES})

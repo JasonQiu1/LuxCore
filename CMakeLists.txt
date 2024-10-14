@@ -209,9 +209,9 @@ if (NOT WIN32 OR WIN_BUILD_DEMOS)
 	add_subdirectory(samples/luxcoreconsole)
 endif()
 
-if(OPENGL_FOUND)
-	add_subdirectory(samples/luxcoreui)
-endif(OPENGL_FOUND)
+#if(OPENGL_FOUND)
+#	add_subdirectory(samples/luxcoreui)
+#endif(OPENGL_FOUND)
 
 
 ################################################################################

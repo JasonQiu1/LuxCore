@@ -28,6 +28,8 @@ set(LUXCORECONSOLE_SRCS
 
 add_executable(luxcoreconsole ${LUXCORECONSOLE_SRCS})
 
+TARGET_LINK_LIBRARIES(luxcoreconsole libembree3.so.3 libOpenImageDenoise.so.1 libtbb.so.2)
+
 if(APPLE)
 TARGET_LINK_LIBRARIES(luxcoreconsole expat "-framework Carbon" "-framework IOKit" ${LUXCORE_LIBRARY} ${Boost_LIBRARIES})
 else()
