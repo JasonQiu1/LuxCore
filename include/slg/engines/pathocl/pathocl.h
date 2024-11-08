@@ -46,6 +46,26 @@ protected:
 	virtual void RenderThreadImpl();
 };
 
+class PathOCLRespirOCLRenderThread : public PathOCLOpenCLRenderThread {
+public:
+	PathOCLRespirOCLRenderThread(const u_int index, luxrays::HardwareIntersectionDevice *device,
+			PathOCLRenderEngine *re);
+	~PathOCLRespirOCLRenderThread();
+
+	void StartRenderThread() override;
+
+	friend class PathOCLRenderEngine;
+
+protected:
+	void GetThreadFilmSize(u_int *filmWidth, u_int *filmHeight, u_int *filmSubRegion);
+	void RenderThreadImpl();
+    void InitKernels() override;
+    void SetInitKernelArgs(const u_int filmIndex) override;
+    void SetAdvancePathsKernelArgs(luxrays::HardwareDeviceKernel *advancePathsKernel, const u_int filmIndex) override;
+    void SetAllAdvancePathsKernelArgs(const u_int filmIndex) override;
+    void EnqueueAdvancePathsKernel() override;
+};
+
 //------------------------------------------------------------------------------
 // Path Tracing native render threads
 //------------------------------------------------------------------------------

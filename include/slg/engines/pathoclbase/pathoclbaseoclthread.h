@@ -153,6 +153,7 @@ protected:
 
 	void InitRender();
 
+    // Make kernel execution overridable
 	void InitFilm();
 	void InitCamera();
 	void InitGeometry();
@@ -162,30 +163,31 @@ protected:
 	void InitSceneObjects();
 	void InitLights();
 	void InitPhotonGI();
-	void InitKernels();
+	virtual void InitKernels();
 	void InitGPUTaskBuffer();
 	void InitSamplerSharedDataBuffer();
 	void InitSamplesBuffer();
 	void InitSampleDataBuffer();
 	void InitSampleResultsBuffer();
 
-	void SetInitKernelArgs(const u_int filmIndex);
-	void SetAdvancePathsKernelArgs(luxrays::HardwareDeviceKernel *advancePathsKernel, const u_int filmIndex);
-	void SetAllAdvancePathsKernelArgs(const u_int filmIndex);
-	void SetKernelArgs();
+	virtual void SetInitKernelArgs(const u_int filmIndex);
+	virtual void SetAdvancePathsKernelArgs(luxrays::HardwareDeviceKernel *advancePathsKernel, const u_int filmIndex);
+	virtual void SetAllAdvancePathsKernelArgs(const u_int filmIndex);
+	virtual void SetKernelArgs();
 
 	void CompileKernel(luxrays::HardwareIntersectionDevice *device,
 			luxrays::HardwareDeviceProgram *program,
 			luxrays::HardwareDeviceKernel **kernel,
 			size_t *workGroupSize, const std::string &name);
 
-	void EnqueueAdvancePathsKernel();
+	virtual void EnqueueAdvancePathsKernel();
 
 	static luxrays::oclKernelCache *AllocKernelCache(const std::string &type);
 	static void GetKernelParamters(std::vector<std::string> &params,
 			luxrays::HardwareIntersectionDevice *intersectionDevice,
 			const std::string renderEngineType,
 			const float epsilonMin, const float epsilonMax);
+    // TODO: Refactor to make this non-static so that derived classes can specify their own set of kernel sources.
 	static std::string GetKernelSources();
 
 	u_int threadIndex;
