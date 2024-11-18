@@ -857,8 +857,7 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 		// Initialize the trough a shadow transparency flag used by Scene_Intersect()
 		taskState->throughShadowTransparency = false;
 
-		// TODO: Add sampleresult to reservoir using throughputfactor as contribution weight
-
+		// TODO: Add sampleresult to reservoir using throughputfactor and totalconnectionthroughput as contribution weight
 
 		pathState = MK_RT_NEXT_VERTEX;
 	} else

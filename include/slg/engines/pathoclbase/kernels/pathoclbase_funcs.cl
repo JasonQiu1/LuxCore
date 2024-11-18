@@ -160,14 +160,15 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 
 OPENCL_FORCE_INLINE void SampleResultReservoir_Add(__global SampleResultReservoir* reservoir, 
 		const __global SampleResult *newSampleResult, const float confidenceWeight, Seed* seed) {
-	reservoir->sumConfidence += confidenceWeight;
+	reservoir->sumConfidence = reservoir->sumConfidence + confidenceWeight;
 	if (Rnd_FloatValue(seed) > (confidenceWeight / reservoir->sumConfidence)) {
 		reservoir->selectedSample = *newSampleResult;
 	}
 }
 
 // Copy resampled sample to another spot in memory 
-OPENCL_FORCE_INLINE void SampleResultReservoir_Load(__global SampleResultReservoir* reservoir, __global SampleResult* destinationSampleResult) {
+OPENCL_FORCE_INLINE void SampleResultReservoir_Load(__global SampleResultReservoir* reservoir, 
+		__global SampleResult* destinationSampleResult) {
 	*destinationSampleResult = reservoir->selectedSample;
 }
 
