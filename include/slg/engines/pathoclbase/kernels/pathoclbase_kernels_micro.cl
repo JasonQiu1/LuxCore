@@ -162,7 +162,7 @@ __kernel void AdvancePaths_MK_HIT_NOTHING(
 		DirectHitInfiniteLight(
 				&taskConfig->film,
 				pathInfo,
-				&taskState->throughput,
+				taskState,
 				&rays[gid],
 				sampleResult->firstPathVertex ? NULL : &taskState->bsdf,
 				sampleResult
@@ -190,6 +190,11 @@ __kernel void AdvancePaths_MK_HIT_NOTHING(
 		// I set to 0.0 also the alpha all purely transmitted paths hitting nothing
 		sampleResult->alpha = 0.f;
 	}
+
+#if defined(OCL_THREAD_RESPIR) 
+	// Add BSDF-importance sampled environment sample to reservoir
+	SampleResultReservoir_Update(taskConfig, taskState, sampleResult);
+#endif
 
 	taskState->state = MK_SPLAT_SAMPLE;
 }
@@ -300,13 +305,18 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 		DirectHitFiniteLight(
 				&taskConfig->film,
 				pathInfo,
-				&taskState->throughput,
+				taskState,
 				&rays[gid],
 				rayHits[gid].t,
 				bsdf,
 				sampleResult
 				LIGHTS_PARAM);
 	}
+
+#if defined(OCL_THREAD_RESPIR) 
+	// Add BSDF importance sampled light sample into the reservoir.
+	SampleResultReservoir_Update(taskConfig, taskState, sampleResult);
+#endif
 
 	//----------------------------------------------------------------------
 	// Check if I can use the photon cache
@@ -537,15 +547,22 @@ __kernel void AdvancePaths_MK_RT_DL(
 				}
 			}
 
+#if defined(OCL_THREAD_RESPIR) 
+			// Add NEE-illuminated sample into the reservoir.
+			SampleResultReservoir_Update(taskConfig, taskState, sampleResult);
+#endif
+
 			taskDirectLight->directLightResult = ILLUMINATED;
 		} else
+			// Do not need to add shadowed vertices to the reservoir, since the weight will be zero anyways as the average radiance is 0.
 			taskDirectLight->directLightResult = SHADOWED;
 
 		// Check if this is the last path vertex
 		if (sampleResult->lastPathVertex)
 			pathState = MK_SPLAT_SAMPLE;
-		else
+		else {
 			pathState = MK_GENERATE_NEXT_VERTEX_RAY;
+		}
 
 		// Save the state
 		taskState->state = pathState;
@@ -623,8 +640,12 @@ __kernel void AdvancePaths_MK_DL_ILLUMINATE(
 		taskState->state = MK_DL_SAMPLE_BSDF;
 	} else {
 		// No shadow ray to trace, move to the next vertex ray
-		// however, I have to Check if this is the last path vertex
-		taskState->state = (sampleResult->lastPathVertex) ? MK_SPLAT_SAMPLE : MK_GENERATE_NEXT_VERTEX_RAY;
+		// however, I have to check if this is the last path vertex
+		if (sampleResult->lastPathVertex) {
+			taskState->state = MK_SPLAT_SAMPLE;
+		} else {
+			taskState->state = MK_GENERATE_NEXT_VERTEX_RAY;
+		}
 	}
 
 	//--------------------------------------------------------------------------
@@ -680,7 +701,7 @@ __kernel void AdvancePaths_MK_DL_SAMPLE_BSDF(
 			rays[gid].time, sampleResult->lastPathVertex,
 			pathInfo,
 			&task->tmpPathDepthInfo,
-			&taskState->bsdf,
+			taskState,
 			VLOAD3F(&rays[gid].d.x)
 			LIGHTS_PARAM)) {
 		__global GPUTask *task = &tasks[gid];
@@ -706,10 +727,14 @@ __kernel void AdvancePaths_MK_DL_SAMPLE_BSDF(
 
 		// I have to trace the shadow ray
 		taskState->state = MK_RT_DL;
-	} else {
+	} else { 
 		// No shadow ray to trace, move to the next vertex ray
 		// however, I have to check if this is the last path vertex
-		taskState->state = (sampleResult->lastPathVertex) ? MK_SPLAT_SAMPLE : MK_GENERATE_NEXT_VERTEX_RAY;
+		if (sampleResult->lastPathVertex) {
+			taskState->state = MK_SPLAT_SAMPLE;
+		} else {
+			taskState->state = MK_GENERATE_NEXT_VERTEX_RAY;
+		}
 	}
 }
 
@@ -857,7 +882,6 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 		// Initialize the trough a shadow transparency flag used by Scene_Intersect()
 		taskState->throughShadowTransparency = false;
 
-
 		pathState = MK_RT_NEXT_VERTEX;
 	} else
 		pathState = MK_SPLAT_SAMPLE;
@@ -911,6 +935,11 @@ __kernel void AdvancePaths_MK_SPLAT_SAMPLE(
 	//--------------------------------------------------------------------------
 	// End of variables setup
 	//--------------------------------------------------------------------------
+
+#if defined(OCL_THREAD_RESPIR) 
+	// Copy resampled sample from reservoir to sampleResultsBuff[gid] to be splatted like normal
+	*sampleResult = taskState->initialPathReservoir.selectedSample;
+#endif
 
 	// Initialize Film radiance group pointer table
 	__global float *filmRadianceGroup[FILM_MAX_RADIANCE_GROUP_COUNT];

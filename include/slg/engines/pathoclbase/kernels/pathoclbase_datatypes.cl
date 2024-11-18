@@ -85,7 +85,34 @@ typedef struct {
 	unsigned int lightID;
 } DirectLightIlluminateInfo;
 
+typedef struct {
+	// stream length is stored implicitly in selectedSample->depth
+	SampleResult selectedSample; // Actual resampled value is stored in the sampleResult buffer at index gid
+	float sumWeight; // Sum of all stored samples' confidence weights (path contribution / path PDF)
+} SampleResultReservoir;
+
 // The state used to keep track of the rendered path
+typedef struct {
+	PathState state;
+
+	Spectrum throughput;
+	BSDF bsdf; // Variable size structure
+
+	Seed seedPassThroughEvent;
+	Seed seedReservoirSampling;
+
+	// keep track of the MIS weights of the most recent direct lighting event
+	float lastWeight;
+
+	// Reservoir data structure for initial path resampling using RIS
+	SampleResultReservoir initialPathReservoir;
+	
+	int albedoToDo, photonGICacheEnabledOnLastHit,
+			photonGICausticCacheUsed, photonGIShowIndirectPathMixUsed,
+			// The shadow transparency lag used by Scene_Intersect()
+			throughShadowTransparency;
+} RespirGPUTaskState;
+
 typedef struct {
 	PathState state;
 
@@ -98,7 +125,13 @@ typedef struct {
 			photonGICausticCacheUsed, photonGIShowIndirectPathMixUsed,
 			// The shadow transparency lag used by Scene_Intersect()
 			throughShadowTransparency;
-} GPUTaskState;
+} VanillaGPUTaskState;
+
+#if defined(OCL_THREAD_RESPIR) 
+typedef RespirGPUTaskState GPUTaskState;
+#else
+typedef VanillaGPUTaskState GPUTaskState;
+#endif
 
 typedef enum {
 	ILLUMINATED, SHADOWED, NOT_VISIBLE

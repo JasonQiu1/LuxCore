@@ -158,3 +158,13 @@ OPENCL_FORCE_INLINE float SampleResult_GetRadianceY(__constant const Film* restr
 
 	return y;
 }
+
+OPENCL_FORCE_INLINE float3 SampleResult_GetRadiance(__constant const Film* restrict film,
+		__global SampleResult *sampleResult) {
+	float3 radiance = BLACK;
+	
+	for (uint i = 0; i < film->radianceGroupCount; ++i)
+		radiance += VLOAD3F(sampleResult->radiancePerPixelNormalized[i].c);
+
+	return radiance;
+}

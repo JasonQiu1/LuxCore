@@ -146,15 +146,49 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 	// Initialize the pass-through event seed
 	//
 	// Note: using the IDX_PASSTHROUGH of path depth 0
-	const float passThroughEvent = Sampler_GetSample(taskConfig, IDX_BSDF_OFFSET + IDX_PASSTHROUGH SAMPLER_PARAM);
-	Seed seedPassThroughEvent;
-	Rnd_InitFloat(passThroughEvent, &seedPassThroughEvent);
-	taskState->seedPassThroughEvent = seedPassThroughEvent;
+	float seedValue = Sampler_GetSample(taskConfig, IDX_BSDF_OFFSET + IDX_PASSTHROUGH SAMPLER_PARAM);
+	Seed initSeed;
+	Rnd_InitFloat(seedValue, &initSeed);
+	taskState->seedPassThroughEvent = initSeed;
+
+#if defined(OCL_THREAD_RESPIR) 
+	taskState->lastWeight = 0.0f;
+	taskState->initialPathReservoir.sumWeight = 0.0f;
+
+	// Initialize reservoir sampling seed
+	// TODO: Not sure the correct way to get an initial seed here. I just copied the above code for now.
+	seedValue = Sampler_GetSample(taskConfig, IDX_BSDF_OFFSET + IDX_PASSTHROUGH SAMPLER_PARAM);
+	Rnd_InitFloat(seedValue, &initSeed);
+	taskState->seedReservoirSampling = initSeed;
+#endif
 }
 
 //------------------------------------------------------------------------------
 // Utility functions
 //------------------------------------------------------------------------------
+
+#if defined(OCL_THREAD_RESPIR) 
+// Add a sample to the streaming reservoir.
+// Simply replace based on the new sample's weight and the reservoir's current sum weight.
+OPENCL_FORCE_INLINE void SampleResultReservoir_Update(const __global GPUTaskConfiguration* restrict taskConfig, __global GPUTaskState* restrict taskState, 
+		__global SampleResult* restrict newSample) {
+	__global SampleResultReservoir* reservoir = &taskState->initialPathReservoir;
+
+	const float3 pathPdf = VLOAD3F(taskState->throughput.c) * taskState->lastWeight;
+
+	const float random = Rnd_FloatValue(&taskState->seedReservoirSampling);
+
+	const float3 pathContribution = SampleResult_GetRadiance(&taskConfig->film, newSample);
+
+	// Weight of the sample is path contribution / path PDF 
+	// TODO: verify that averaging weight from each color together to get the sample weight is unbiased
+	const float weight = Spectrum_Filter(pathContribution / pathPdf);
+	reservoir->sumWeight += weight;
+	if (random < (weight / reservoir->sumWeight)) {
+		reservoir->selectedSample = *newSample;
+	}
+}
+#endif
 
 OPENCL_FORCE_INLINE bool CheckDirectHitVisibilityFlags(__global const LightSource* restrict lightSource,
 		__global PathDepthInfo *depthInfo,
@@ -173,7 +207,7 @@ OPENCL_FORCE_INLINE bool CheckDirectHitVisibilityFlags(__global const LightSourc
 }
 
 OPENCL_FORCE_INLINE void DirectHitInfiniteLight(__constant const Film* restrict film,
-		__global EyePathInfo *pathInfo, __global const Spectrum* restrict pathThroughput,
+		__global EyePathInfo *pathInfo, __global GPUTaskState* restrict taskState,
 		const __global Ray *ray, __global const BSDF *bsdf, __global SampleResult *sampleResult
 		LIGHTS_PARAM_DECL) {
 	// If the material is shadow transparent, Direct Light sampling
@@ -181,7 +215,7 @@ OPENCL_FORCE_INLINE void DirectHitInfiniteLight(__constant const Film* restrict 
 	if (bsdf && bsdf->hitPoint.throughShadowTransparency)
 		return;
 
-	const float3 throughput = VLOAD3F(pathThroughput->c);
+	const float3 throughput = VLOAD3F(taskState->throughput.c);
 
 	for (uint i = 0; i < envLightCount; ++i) {
 		__global const LightSource* restrict light = &lights[envLightIndices[i]];
@@ -210,16 +244,18 @@ OPENCL_FORCE_INLINE void DirectHitInfiniteLight(__constant const Film* restrict 
 				weight = PowerHeuristic(pathInfo->lastBSDFPdfW, directPdfW * lightPickProb);
 			} else
 				weight = 1.f;
-			
+#if defined(OCL_THREAD_RESPIR) 
+			taskState->lastWeight *= weight;
+#endif
+
 			SampleResult_AddEmission(film, sampleResult, light->lightID, throughput, weight * envRadiance);
 		}
 	}
 }
 
 OPENCL_FORCE_INLINE void DirectHitFiniteLight(__constant const Film* restrict film,
-		__global EyePathInfo *pathInfo,
-		__global const Spectrum* restrict pathThroughput, const __global Ray *ray,
-		const float distance, __global const BSDF *bsdf,
+		__global EyePathInfo *pathInfo, __global GPUTaskState* restrict taskState,
+		const __global Ray *ray, const float distance, __global const BSDF *bsdf,
 		__global SampleResult *sampleResult
 		LIGHTS_PARAM_DECL) {
 	__global const LightSource* restrict light = &lights[bsdf->triangleLightSourceIndex];
@@ -261,9 +297,11 @@ OPENCL_FORCE_INLINE void DirectHitFiniteLight(__constant const Film* restrict fi
 			// Note: mats[bsdf->materialIndex].avgPassThroughTransparency = lightSource->GetAvgPassThroughTransparency()
 			weight = PowerHeuristic(pathInfo->lastBSDFPdfW * Light_GetAvgPassThroughTransparency(light LIGHTS_PARAM), directPdfW * lightPickProb);
 		}
-
+#if defined(OCL_THREAD_RESPIR) 
+		taskState->lastWeight *= weight;
+#endif
 		SampleResult_AddEmission(film, sampleResult, BSDF_GetLightID(bsdf
-				MATERIALS_PARAM), VLOAD3F(pathThroughput->c), weight * emittedRadiance);
+				MATERIALS_PARAM), VLOAD3F(taskState->throughput.c), weight * emittedRadiance);
 	}
 }
 
@@ -334,9 +372,10 @@ OPENCL_FORCE_INLINE bool DirectLight_BSDFSampling(
 		const bool lastPathVertex,
 		__global EyePathInfo *pathInfo,
 		__global PathDepthInfo *tmpDepthInfo,
-		__global const BSDF *bsdf,
+		__global GPUTaskState* restrict taskState,
 		const float3 shadowRayDir
 		LIGHTS_PARAM_DECL) {
+	__global const BSDF* bsdf = &taskState->bsdf;
 	// Sample the BSDF
 	BSDFEvent event;
 	float bsdfPdfW;
@@ -372,7 +411,7 @@ OPENCL_FORCE_INLINE bool DirectLight_BSDFSampling(
 	bsdfPdfW *= Light_GetAvgPassThroughTransparency(light
 			LIGHTS_PARAM);
 	
-	// MIS between direct light sampling and BSDF sampling
+	// MIS between direct light sampling adnd BSDF sampling
 	//
 	// Note: I have to avoiding MIS on the last path vertex
 
@@ -382,6 +421,9 @@ OPENCL_FORCE_INLINE bool DirectLight_BSDFSampling(
 			!bsdf->hitPoint.throughShadowTransparency;
 
 	const float weight = misEnabled ? PowerHeuristic(directLightSamplingPdfW, bsdfPdfW) : 1.f;
+#if defined(OCL_THREAD_RESPIR) 
+	taskState->lastWeight *= weight;
+#endif
 
 	const float3 lightRadiance = VLOAD3F(info->lightRadiance.c);
 	VSTORE3F(bsdfEval * (weight * factor) * lightRadiance, info->lightRadiance.c);

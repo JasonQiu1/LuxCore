@@ -39,6 +39,19 @@ using namespace slg;
 // PathOCLRespirOCLRenderThread kernel functions
 //------------------------------------------------------------------------------
 
+void PathOCLRespirOCLRenderThread::GetKernelParameters(
+		vector<string> &params,
+		HardwareIntersectionDevice *intersectionDevice,
+		const string renderEngineType,
+		const float epsilonMin, const float epsilonMax) {
+	params.push_back("-D OCL_THREAD_RESPIR");
+	PathOCLOpenCLRenderThread::GetKernelParameters(params, intersectionDevice, renderEngineType, epsilonMin, epsilonMax);
+}
+
+void PathOCLRespirOCLRenderThread::InitGPUTaskStateBuffer(const u_int taskCount) {
+	intersectionDevice->AllocBufferRW(&tasksStateBuff, nullptr, sizeof(slg::ocl::pathoclbase::RespirGPUTaskState) * taskCount, "ReSPIR GPUTaskState");
+}
+
 void PathOCLRespirOCLRenderThread::InitKernels() {
     PathOCLOpenCLRenderThread::InitKernels();
 }
