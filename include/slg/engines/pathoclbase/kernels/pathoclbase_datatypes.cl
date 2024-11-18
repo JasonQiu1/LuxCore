@@ -89,7 +89,8 @@ typedef struct {
 	// stream length is stored implicitly in selectedSample->depth
 	SampleResult selectedSample; // Actual resampled value is stored in the sampleResult buffer at index gid
 	// TODO: SampleResult is extremely large and makes GPUTaskState much larger. Try to find another way to store this.
-	float sumConfidence; // Sum of all stored samples' confidence weights (throughput factor)
+	float sumConfidence; // Sum of all stored samples' confidence weights (throughput factor * connection throughputs)
+	Seed seed;
 } SampleResultReservoir;
 
 // The state used to keep track of the rendered path

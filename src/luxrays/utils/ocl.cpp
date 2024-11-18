@@ -165,7 +165,8 @@ cl_program oclKernelCache::ForcedCompile(cl_context context, cl_device_id device
 		*errorStr = "";
 
 	const char *kernelSources[1] = { kernelSource.c_str() };
-	const size_t sourceSizes[1] = { kernelSource.length() };
+	// const size_t sourceSizes[1] = { kernelSource.length() };
+	const size_t sourceSizes[1] = { 0 };
 	cl_int error;
 	cl_program program = clCreateProgramWithSource(context, 1, kernelSources, sourceSizes, &error);
 	CHECK_OCL_ERROR(error);
