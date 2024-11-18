@@ -857,6 +857,8 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 		// Initialize the trough a shadow transparency flag used by Scene_Intersect()
 		taskState->throughShadowTransparency = false;
 
+		// TODO: Add sampleresult to reservoir using throughputfactor as contribution weight
+
 
 		pathState = MK_RT_NEXT_VERTEX;
 	} else
@@ -906,6 +908,7 @@ __kernel void AdvancePaths_MK_SPLAT_SAMPLE(
 	Seed *seed = &seedValue;
 
 	__constant const Film* restrict film = &taskConfig->film;
+	// TODO: USE RESERVOIR TO COPY RESAMPLED SAMPLERESULT TO sampleResultsBuff[gid]
 	__global SampleResult *sampleResult = &sampleResultsBuff[gid];
 
 	//--------------------------------------------------------------------------

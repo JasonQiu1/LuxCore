@@ -85,6 +85,12 @@ typedef struct {
 	unsigned int lightID;
 } DirectLightIlluminateInfo;
 
+typedef struct {
+	// stream length is stored implicitly in selectedSample->depth
+	SampleResult selectedSample; // Actual resampled value is stored in the sampleResult buffer at index gid
+	float sumConfidence; // Sum of all stored samples' confidence weights (throughput factor)
+} SampleResultReservoir;
+
 // The state used to keep track of the rendered path
 typedef struct {
 	PathState state;
@@ -93,6 +99,9 @@ typedef struct {
 	BSDF bsdf; // Variable size structure
 
 	Seed seedPassThroughEvent;
+
+	// Reservoir data structure for initial path resampling using RIS
+	SampleResultReservoir initialPathSampleReservoir;
 	
 	int albedoToDo, photonGICacheEnabledOnLastHit,
 			photonGICausticCacheUsed, photonGIShowIndirectPathMixUsed,
