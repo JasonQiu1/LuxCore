@@ -140,7 +140,7 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 	taskState->photonGICacheEnabledOnLastHit = false;
 	taskState->photonGICausticCacheUsed = false;
 	taskState->photonGIShowIndirectPathMixUsed = false;
-	taskState->initialPathReservoir.sumThroughput = 0.0f;
+	taskState->initialPathReservoir.sumConfidence = 0.0f;
 	// Initialize the trough a shadow transparency flag used by Scene_Intersect()
 	taskState->throughShadowTransparency = false;
 
