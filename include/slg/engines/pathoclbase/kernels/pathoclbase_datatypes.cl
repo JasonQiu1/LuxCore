@@ -101,7 +101,7 @@ typedef struct {
 	Seed seedPassThroughEvent;
 
 	// Reservoir data structure for initial path resampling using RIS
-	SampleResultReservoir initialPathSampleReservoir;
+	SampleResultReservoir initialPathReservoir;
 	
 	int albedoToDo, photonGICacheEnabledOnLastHit,
 			photonGICausticCacheUsed, photonGIShowIndirectPathMixUsed,
