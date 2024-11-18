@@ -159,9 +159,9 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 //------------------------------------------------------------------------------
 
 OPENCL_FORCE_INLINE void SampleResultReservoir_Add(__global SampleResultReservoir* reservoir, 
-		const __global SampleResult *newSampleResult, const float confidenceWeight) {
-	reservoir->sumConfidence += confidenceWeight;
-	if (Rnd_FloatValue(reservoir->seed) > (confidenceWeight / reservoir->sumConfidence)) {
+		const __global SampleResult *newSampleResult, const float confidenceWeight, Seed* seed) {
+	reservoir->sumConfidence = reservoir->sumConfidence + confidenceWeight;
+	if (Rnd_FloatValue(seed) > (confidenceWeight / reservoir->sumConfidence)) {
 		reservoir->selectedSample = *newSampleResult;
 	}
 }
@@ -561,7 +561,6 @@ __kernel void InitSeed(__global GPUTask *tasks,
 	// Save the seed
 	__global GPUTask *task = &tasks[gid];
 	task->seed = seed;
-	task->initialPathReservoir->seed = seed;
 }
 
 __kernel void Init(

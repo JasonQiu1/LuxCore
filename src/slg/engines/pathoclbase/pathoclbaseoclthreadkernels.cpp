@@ -65,7 +65,6 @@ void PathOCLBaseOCLRenderThread::GetKernelParamters(
 		const float epsilonMin, const float epsilonMax) {
 	params.push_back("-D LUXRAYS_OPENCL_KERNEL");
 	params.push_back("-D SLG_OPENCL_KERNEL");
-	params.push_back("-D DEBUG_PRINTF_KERNEL_NAME");
 	params.push_back("-D RENDER_ENGINE_" + renderEngineType);
 	params.push_back("-D PARAM_RAY_EPSILON_MIN=" + ToString(epsilonMin) + "f");
 	params.push_back("-D PARAM_RAY_EPSILON_MAX=" + ToString(epsilonMax) + "f");

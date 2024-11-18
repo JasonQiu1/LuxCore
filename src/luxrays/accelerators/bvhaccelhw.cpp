@@ -39,8 +39,8 @@ class BVHKernel : public HardwareIntersectionKernel {
 public:
 	BVHKernel(HardwareIntersectionDevice &dev, const BVHAccel &bvh) :
 		HardwareIntersectionKernel(dev), kernel(nullptr) {
-		const Context *deviceContext = device.GetContext();
-		const string &deviceName(device.GetName());
+		//const Context *deviceContext = device.GetContext();
+		//const string &deviceName(device.GetName());
 
 		size_t maxNodeCount = 0;
 		if (bvh.nNodes) {
@@ -168,7 +168,7 @@ public:
 		opts.push_back("-D LUXRAYS_OPENCL_KERNEL");
 		opts.push_back("-D PARAM_RAY_EPSILON_MIN=" + ToString(MachineEpsilon::GetMin()) + "f");
 		opts.push_back("-D PARAM_RAY_EPSILON_MAX=" + ToString(MachineEpsilon::GetMax()) + "f");
-		LR_LOG(deviceContext, "[HardwareIntersectionDevice::" << deviceName << "] BVH compile options: \n" << oclKernelPersistentCache::ToOptsString(opts));
+		//LR_LOG(deviceContext, "[HardwareIntersectionDevice::" << deviceName << "] BVH compile options: \n" << oclKernelPersistentCache::ToOptsString(opts));
 
 		stringstream kernelDefs;
 		kernelDefs << "#define BVH_VERTS_PAGE_COUNT " << vertsBuffs.size() << "\n"
@@ -182,7 +182,7 @@ public:
 			kernelDefs << "#define BVH_VERTS_PAGE" << i << " 1\n";
 		for (u_int i = 0; i < nodeBuffs.size(); ++i)
 			kernelDefs << "#define BVH_NODES_PAGE" << i << " 1\n";
-		LR_LOG(deviceContext, "[HardwareIntersectionDevice::" << deviceName << "] BVH kernel definitions: \n" << kernelDefs.str());
+		//LR_LOG(deviceContext, "[HardwareIntersectionDevice::" << deviceName << "] BVH kernel definitions: \n" << kernelDefs.str());
 
 		stringstream code;
 		code <<
@@ -214,8 +214,8 @@ public:
 			workGroupSize = device.GetDeviceDesc()->GetForceWorkGroupSize();
 		else {
 			workGroupSize = device.GetKernelWorkGroupSize(kernel); 
-			LR_LOG(deviceContext, "[HardwareIntersectionDevice::" << deviceName <<
-				"] BVH kernel work group size: " << workGroupSize);
+			//LR_LOG(deviceContext, "[HardwareIntersectionDevice::" << deviceName <<
+			//	"] BVH kernel work group size: " << workGroupSize);
 		}
 
 		// Set kernel arguments

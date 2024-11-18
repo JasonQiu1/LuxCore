@@ -1,4 +1,4 @@
-doxygen/*.template
+doxygen/*.template$
 doxygen-luxrays.conf
 doxygen-slg.conf
 doxygen-luxcore.conf
