@@ -103,6 +103,8 @@ typedef struct {
 
 	// Reservoir data structure for initial path resampling using RIS
 	SampleResultReservoir initialPathReservoir;
+	// Total throughput for this path so far
+	float totalThroughput;
 	
 	int albedoToDo, photonGICacheEnabledOnLastHit,
 			photonGICausticCacheUsed, photonGIShowIndirectPathMixUsed,

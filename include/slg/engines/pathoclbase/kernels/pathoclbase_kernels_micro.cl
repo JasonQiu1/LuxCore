@@ -86,6 +86,7 @@ __kernel void AdvancePaths_MK_RT_NEXT_VERTEX(
 			MATERIALS_PARAM
 			);
 	taskState->throughShadowTransparency = throughShadowTransparency;
+	taskState->totalThroughput *= connectionThroughput;
 	VSTORE3F(connectionThroughput * VLOAD3F(taskState->throughput.c), taskState->throughput.c);
 
 	// If continueToTrace, there is nothing to do, just keep the same state
@@ -825,6 +826,7 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 		throughputFactor /= rrProb;
 		throughputFactor *= bsdfSample;
 
+		taskState->totalThroughput = taskState->totalThroughput / rrProb * bsdfSample;
 		VSTORE3F(throughputFactor * VLOAD3F(taskState->throughput.c), taskState->throughput.c);
 
 		// This is valid for irradiance AOV only if it is not a SPECULAR material and
@@ -857,7 +859,8 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 		// Initialize the trough a shadow transparency flag used by Scene_Intersect()
 		taskState->throughShadowTransparency = false;
 
-		// TODO: Add sampleresult to reservoir using throughputfactor and totalconnectionthroughput as contribution weight
+		// Add sampleresult to reservoir using throughputfactor and totalconnectionthroughput as contribution weight
+		SampleResultReservoir_Add(taskState->initialPathReservoir, sampleResult, taskState->totalThroughput, task->seed);
 
 		pathState = MK_RT_NEXT_VERTEX;
 	} else
@@ -907,7 +910,8 @@ __kernel void AdvancePaths_MK_SPLAT_SAMPLE(
 	Seed *seed = &seedValue;
 
 	__constant const Film* restrict film = &taskConfig->film;
-	// TODO: USE RESERVOIR TO COPY RESAMPLED SAMPLERESULT TO sampleResultsBuff[gid]
+	// copy resampled sample from reservoir to sampleResultsBuff[gid]
+	SampleResultReservoir_Copy(taskState->initialPathReservoir, &sampleResultsBuff[gid]);
 	__global SampleResult *sampleResult = &sampleResultsBuff[gid];
 
 	//--------------------------------------------------------------------------
