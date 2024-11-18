@@ -159,18 +159,18 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 //------------------------------------------------------------------------------
 
 // Copy resampled sample to another spot in memory 
-// OPENCL_FORCE_INLINE void SampleResultReservoir_Copy(__global SampleResultReservoir* reservoir, 
-// 		__global SampleResult* destinationSampleResult) {
-// 	*destinationSampleResult = reservoir->selectedSample;
-// }
-
-OPENCL_FORCE_INLINE void SampleResultReservoir_Add(__global SampleResultReservoir* reservoir, 
-		const __global SampleResult *newSampleResult, const float confidenceWeight, Seed* seed) {
-	reservoir->sumConfidence += confidenceWeight;
-	if (Rnd_FloatValue(seed) > (confidenceWeight / reservoir->sumConfidence)) {
-		reservoir->selectedSample = *newSampleResult;
-	}
+OPENCL_FORCE_INLINE void SampleResultReservoir_Copy(__global SampleResultReservoir* reservoir, 
+		__global SampleResult* destinationSampleResult) {
+	*destinationSampleResult = reservoir->selectedSample;
 }
+
+// OPENCL_FORCE_INLINE void SampleResultReservoir_Add(__global SampleResultReservoir* reservoir, 
+// 		const __global SampleResult *newSampleResult, const float confidenceWeight, Seed* seed) {
+// 	reservoir->sumConfidence += confidenceWeight;
+// 	if (Rnd_FloatValue(seed) > (confidenceWeight / reservoir->sumConfidence)) {
+// 		reservoir->selectedSample = *newSampleResult;
+// 	}
+// }
 
 OPENCL_FORCE_INLINE bool CheckDirectHitVisibilityFlags(__global const LightSource* restrict lightSource,
 		__global PathDepthInfo *depthInfo,
