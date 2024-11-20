@@ -860,7 +860,7 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 		taskState->throughShadowTransparency = false;
 
 		// Add sampleresult to reservoir using throughputfactor and totalconnectionthroughput as contribution weight
-		SampleResultReservoir_Add(&taskState->initialPathReservoir, sampleResult, taskState->totalThroughput, &task->seed);
+		SampleResultReservoir_Add(&taskState->initialPathReservoir, taskState->totalThroughput, &task->seed);
 
 		pathState = MK_RT_NEXT_VERTEX;
 	} else
@@ -911,7 +911,7 @@ __kernel void AdvancePaths_MK_SPLAT_SAMPLE(
 
 	__constant const Film* restrict film = &taskConfig->film;
 	// copy resampled sample from reservoir to sampleResultsBuff[gid]
-	SampleResultReservoir_Copy(&taskState->initialPathReservoir, &sampleResultsBuff[gid]);
+	SampleResultReservoir_Copy(&taskState->initialPathReservoir);
 	__global SampleResult *sampleResult = &sampleResultsBuff[gid];
 
 	//--------------------------------------------------------------------------
