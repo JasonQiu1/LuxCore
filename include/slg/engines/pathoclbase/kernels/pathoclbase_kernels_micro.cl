@@ -860,7 +860,7 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 		taskState->throughShadowTransparency = false;
 
 		// Add sampleresult to reservoir using throughputfactor and totalconnectionthroughput as contribution weight
-		SampleResultReservoir_Add(&taskState->initialPathReservoir, taskState->totalThroughput, SAMPLER_PARAM);
+		SampleResultReservoir_Add(&taskState->initialPathReservoir, taskState->totalThroughput SAMPLER_PARAM);
 
 		pathState = MK_RT_NEXT_VERTEX;
 	} else
