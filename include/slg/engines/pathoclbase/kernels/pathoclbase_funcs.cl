@@ -168,7 +168,7 @@ OPENCL_FORCE_INLINE void SampleResultReservoir_Copy(__global SampleResultReservo
 }
 
 OPENCL_FORCE_INLINE void SampleResultReservoir_Add(__global SampleResultReservoir* reservoir, 
-		const float confidenceWeight, Seed* seed
+		const float confidenceWeight
 		SAMPLER_PARAM_DECL) {
 	const size_t gid = get_global_id(0);
 	const __global SampleResult *newSampleResult = &sampleResultsBuff[gid];
