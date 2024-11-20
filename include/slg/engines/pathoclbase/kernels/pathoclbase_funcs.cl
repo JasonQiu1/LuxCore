@@ -166,6 +166,7 @@ OPENCL_FORCE_INLINE void SampleResultReservoir_Copy(__global SampleResultReservo
 
 OPENCL_FORCE_INLINE void SampleResultReservoir_Add(__global SampleResultReservoir* reservoir, 
 		const __global SampleResult *newSampleResult, const float confidenceWeight, Seed* seed) {
+	printf("Rnd_FloatValue: %f", Rnd_FloatValue(seed));
 	reservoir->sumConfidence += confidenceWeight;
 	// if (Rnd_FloatValue(seed) > (confidenceWeight / reservoir->sumConfidence)) {
 	if (true) {
