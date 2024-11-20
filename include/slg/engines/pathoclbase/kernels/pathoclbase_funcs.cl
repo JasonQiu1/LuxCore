@@ -165,11 +165,11 @@ OPENCL_FORCE_INLINE void SampleResultReservoir_Copy(__global SampleResultReservo
 }
 
 OPENCL_FORCE_INLINE void SampleResultReservoir_Add(__global SampleResultReservoir* reservoir, 
-		const __global SampleResult *newSampleResult, const float confidenceWeight, Seed* seed) {
+		const __global SampleResult* newSampleResult, const float confidenceWeight, Seed* seed) {
 	reservoir->sumConfidence += confidenceWeight;
-	if (Rnd_FloatValue(seed) < (confidenceWeight / reservoir->sumConfidence)) {
+	// if (Rnd_FloatValue(seed) < (confidenceWeight / reservoir->sumConfidence)) {
 		reservoir->selectedSample = *newSampleResult;
-	}
+	// }
 }
 
 OPENCL_FORCE_INLINE bool CheckDirectHitVisibilityFlags(__global const LightSource* restrict lightSource,
