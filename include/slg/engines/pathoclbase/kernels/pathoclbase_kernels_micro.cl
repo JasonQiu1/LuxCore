@@ -86,7 +86,7 @@ __kernel void AdvancePaths_MK_RT_NEXT_VERTEX(
 			MATERIALS_PARAM
 			);
 	taskState->throughShadowTransparency = throughShadowTransparency;
-	taskState->totalThroughput *= connectionThroughput.x;
+	//taskState->totalThroughput *= connectionThroughput.x;
 	VSTORE3F(connectionThroughput * VLOAD3F(taskState->throughput.c), taskState->throughput.c);
 
 	// If continueToTrace, there is nothing to do, just keep the same state
