@@ -159,13 +159,13 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 //------------------------------------------------------------------------------
 
 // Copy resampled sample to another spot in memory 
-OPENCL_FORCE_INLINE void SampleResultReservoir_Copy(__global SampleResultReservoir* reservoir
-		SAMPLER_PARAM_DECL) {
-	const size_t gid = get_global_id(0);
-	__global SampleResult* destinationSampleResult = &sampleResultsBuff[gid];
+// OPENCL_FORCE_INLINE void SampleResultReservoir_Copy(__global SampleResultReservoir* reservoir
+// 		SAMPLER_PARAM_DECL) {
+// 	const size_t gid = get_global_id(0);
+// 	__global SampleResult* destinationSampleResult = &sampleResultsBuff[gid];
 
-	*destinationSampleResult = reservoir->selectedSample;
-}
+// 	*destinationSampleResult = reservoir->selectedSample;
+// }
 
 OPENCL_FORCE_INLINE void SampleResultReservoir_Add(__global SampleResultReservoir* reservoir, 
 		const float confidenceWeight
