@@ -546,6 +546,8 @@ __kernel void AdvancePaths_MK_RT_DL(
 		if (sampleResult->lastPathVertex)
 			pathState = MK_SPLAT_SAMPLE;
 		else {
+			// Add sampleresult to reservoir using throughputfactor and totalconnectionthroughput as contribution weight
+			SampleResultReservoir_Add(&taskState->initialPathReservoir, taskState->totalThroughput, &taskState->seedReservoirSampling, sampleResult);
 			pathState = MK_GENERATE_NEXT_VERTEX_RAY;
 		}
 
@@ -629,6 +631,8 @@ __kernel void AdvancePaths_MK_DL_ILLUMINATE(
 		if (sampleResult->lastPathVertex) {
 			taskState->state = MK_SPLAT_SAMPLE;
 		} else {
+			// Add sampleresult to reservoir using throughputfactor and totalconnectionthroughput as contribution weight
+			SampleResultReservoir_Add(&taskState->initialPathReservoir, taskState->totalThroughput, &taskState->seedReservoirSampling, sampleResult);
 			taskState->state = MK_GENERATE_NEXT_VERTEX_RAY;
 		}
 	}
@@ -718,6 +722,8 @@ __kernel void AdvancePaths_MK_DL_SAMPLE_BSDF(
 		if (sampleResult->lastPathVertex) {
 			taskState->state = MK_SPLAT_SAMPLE;
 		} else {
+			// Add sampleresult to reservoir using throughputfactor and totalconnectionthroughput as contribution weight
+			SampleResultReservoir_Add(&taskState->initialPathReservoir, taskState->totalThroughput, &taskState->seedReservoirSampling, sampleResult);
 			taskState->state = MK_GENERATE_NEXT_VERTEX_RAY;
 		}
 	}
@@ -923,8 +929,8 @@ __kernel void AdvancePaths_MK_SPLAT_SAMPLE(
 	// End of variables setup
 	//--------------------------------------------------------------------------
 
+	// reservoir sample last sample
 	if (pathInfo->depth.depth != 0) {
-		// reservoir sample last sample
 		SampleResultReservoir_Add(&taskState->initialPathReservoir, taskState->totalThroughput, &taskState->seedReservoirSampling, sampleResult);
 		// copy resampled sample from reservoir to sampleResultsBuff[gid]
 		*sampleResult = taskState->initialPathReservoir.selectedSample;
@@ -1096,10 +1102,6 @@ __kernel void AdvancePaths_MK_GENERATE_CAMERA_RAY(
 	//--------------------------------------------------------------------------
 	// End of variables setup
 	//--------------------------------------------------------------------------
-	if (pathInfo->depth.depth != 0) {
-		// Add sampleresult to reservoir using throughputfactor and totalconnectionthroughput as contribution weight
-		SampleResultReservoir_Add(&taskState->initialPathReservoir, taskState->totalThroughput, &taskState->seedReservoirSampling, sampleResult);
-	}
 
 	// Re-initialize the volume information
 	PathVolumeInfo_Init(&pathInfo->volume);
