@@ -178,11 +178,6 @@ OPENCL_FORCE_INLINE void SampleResultReservoir_Add(__global SampleResultReservoi
 	// }
 }
 
-OPENCL_FORCE_INLINE void SetTaskStateSplatSample(__global GPUTaskState* taskState) {
-	SampleResultReservoir_Add(&taskState->initialPathReservoir, taskState->totalThroughput SAMPLER_PARAM);
-	taskState->state = MK_SPLAT_SAMPLE;
-}
-
 OPENCL_FORCE_INLINE bool CheckDirectHitVisibilityFlags(__global const LightSource* restrict lightSource,
 		__global PathDepthInfo *depthInfo,
 		const BSDFEvent lastBSDFEvent) {
