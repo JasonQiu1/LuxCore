@@ -922,6 +922,8 @@ __kernel void AdvancePaths_MK_SPLAT_SAMPLE(
 	Seed *seed = &seedValue;
 
 	__constant const Film* restrict film = &taskConfig->film;
+	// reservoir sample last sample
+	SampleResultReservoir_Add(&taskState->initialPathReservoir, taskState->totalThroughput, &taskState->seedReservoirSampling, sampleResult);
 	// copy resampled sample from reservoir to sampleResultsBuff[gid]
 	sampleResultsBuff[gid] = taskState->initialPathReservoir.selectedSample;
 	__global SampleResult *sampleResult = &sampleResultsBuff[gid];
