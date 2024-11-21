@@ -547,7 +547,7 @@ __kernel void AdvancePaths_MK_RT_DL(
 			pathState = MK_SPLAT_SAMPLE;
 		else {
 			// Add sampleresult to reservoir using throughputfactor and totalconnectionthroughput as contribution weight
-			SampleResultReservoir_Add(&taskState->initialPathReservoir, taskState->totalThroughput SAMPLER_PARAM);
+			SampleResultReservoir_Add(&taskState->initialPathReservoir, taskState->totalThroughput, taskState->seedReservoirSampling, sampleResult);
 			pathState = MK_GENERATE_NEXT_VERTEX_RAY;
 		}
 
@@ -632,7 +632,7 @@ __kernel void AdvancePaths_MK_DL_ILLUMINATE(
 			taskState->state = MK_SPLAT_SAMPLE;
 		} else {
 			// Add sampleresult to reservoir using throughputfactor and totalconnectionthroughput as contribution weight
-			SampleResultReservoir_Add(&taskState->initialPathReservoir, taskState->totalThroughput SAMPLER_PARAM);
+			SampleResultReservoir_Add(&taskState->initialPathReservoir, taskState->totalThroughput, taskState->seedReservoirSampling, sampleResult);
 			taskState->state = MK_GENERATE_NEXT_VERTEX_RAY
 		}
 	}
@@ -723,7 +723,7 @@ __kernel void AdvancePaths_MK_DL_SAMPLE_BSDF(
 			taskState->state = MK_SPLAT_SAMPLE;
 		} else {
 			// Add sampleresult to reservoir using throughputfactor and totalconnectionthroughput as contribution weight
-			SampleResultReservoir_Add(&taskState->initialPathReservoir, taskState->totalThroughput SAMPLER_PARAM);
+			SampleResultReservoir_Add(&taskState->initialPathReservoir, taskState->totalThroughput, taskState->seedReservoirSampling, sampleResult);
 			taskState->state = MK_GENERATE_NEXT_VERTEX_RAY
 		}
 	}

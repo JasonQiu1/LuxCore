@@ -100,6 +100,7 @@ typedef struct {
 	BSDF bsdf; // Variable size structure
 
 	Seed seedPassThroughEvent;
+	Seed seedReservoirSampling;
 
 	// Reservoir data structure for initial path resampling using RIS
 	SampleResultReservoir initialPathReservoir;

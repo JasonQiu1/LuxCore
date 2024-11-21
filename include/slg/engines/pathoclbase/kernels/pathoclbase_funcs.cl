@@ -152,6 +152,8 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 	Seed seedPassThroughEvent;
 	Rnd_InitFloat(passThroughEvent, &seedPassThroughEvent);
 	taskState->seedPassThroughEvent = seedPassThroughEvent;
+	Rnd_InitFloat(passThroughEvent + 1, &seedPassThroughEvent);
+	taskState->seedReservoirSampling = seedPassThroughEvent;
 }
 
 //------------------------------------------------------------------------------
@@ -168,13 +170,12 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 // }
 
 OPENCL_FORCE_INLINE void SampleResultReservoir_Add(__global SampleResultReservoir* reservoir, 
-		const float confidenceWeight
-		SAMPLER_PARAM_DECL) {
+		const float confidenceWeight, __global SampleResult* newSample, __global Seed* seed) {
 	const size_t gid = get_global_id(0);
 
 	reservoir->sumConfidence += confidenceWeight;
 	// if (Rnd_FloatValue(seed) < (confidenceWeight / reservoir->sumConfidence)) {
-		reservoir->selectedSample = sampleResultsBuff[gid];
+		reservoir->selectedSample = *newSample;
 	// }
 }
 
