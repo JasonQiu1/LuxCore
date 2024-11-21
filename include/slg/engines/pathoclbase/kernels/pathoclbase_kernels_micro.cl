@@ -930,11 +930,9 @@ __kernel void AdvancePaths_MK_SPLAT_SAMPLE(
 	//--------------------------------------------------------------------------
 
 	// reservoir sample last sample
-	if (pathInfo->depth.depth != 0) {
-		SampleResultReservoir_Add(&taskState->initialPathReservoir, taskState->totalThroughput, &taskState->seedReservoirSampling, sampleResult);
-		// copy resampled sample from reservoir to sampleResultsBuff[gid]
-		*sampleResult = taskState->initialPathReservoir.selectedSample;
-	}
+	SampleResultReservoir_Add(&taskState->initialPathReservoir, taskState->totalThroughput, &taskState->seedReservoirSampling, sampleResult);
+	// copy resampled sample from reservoir to sampleResultsBuff[gid]
+	*sampleResult = taskState->initialPathReservoir.selectedSample;
 
 	// Initialize Film radiance group pointer table
 	__global float *filmRadianceGroup[FILM_MAX_RADIANCE_GROUP_COUNT];
