@@ -170,7 +170,7 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 // }
 
 OPENCL_FORCE_INLINE void SampleResultReservoir_Add(__global SampleResultReservoir* reservoir, 
-		const float confidenceWeight, __global SampleResult* newSample, __global Seed* seed) {
+		const float confidenceWeight, __global Seed* seed, __global SampleResult* newSample) {
 	const size_t gid = get_global_id(0);
 
 	reservoir->sumConfidence += confidenceWeight;
