@@ -545,8 +545,11 @@ __kernel void AdvancePaths_MK_RT_DL(
 		// Check if this is the last path vertex
 		if (sampleResult->lastPathVertex)
 			pathState = MK_SPLAT_SAMPLE;
-		else
+		else {
+			// Add sampleresult to reservoir using throughputfactor and totalconnectionthroughput as contribution weight
+			SampleResultReservoir_Add(&taskState->initialPathReservoir, taskState->totalThroughput SAMPLER_PARAM);
 			pathState = MK_GENERATE_NEXT_VERTEX_RAY;
+		}
 
 		// Save the state
 		taskState->state = pathState;
@@ -624,8 +627,14 @@ __kernel void AdvancePaths_MK_DL_ILLUMINATE(
 		taskState->state = MK_DL_SAMPLE_BSDF;
 	} else {
 		// No shadow ray to trace, move to the next vertex ray
-		// however, I have to Check if this is the last path vertex
-		taskState->state = (sampleResult->lastPathVertex) ? MK_SPLAT_SAMPLE : MK_GENERATE_NEXT_VERTEX_RAY;
+		// however, I have to check if this is the last path vertex
+		if (sampleResult->lastPathVertex) {
+			taskState->state = MK_SPLAT_SAMPLE;
+		} else {
+			// Add sampleresult to reservoir using throughputfactor and totalconnectionthroughput as contribution weight
+			SampleResultReservoir_Add(&taskState->initialPathReservoir, taskState->totalThroughput SAMPLER_PARAM);
+			taskState->state = MK_GENERATE_NEXT_VERTEX_RAY
+		}
 	}
 
 	//--------------------------------------------------------------------------
@@ -707,10 +716,16 @@ __kernel void AdvancePaths_MK_DL_SAMPLE_BSDF(
 
 		// I have to trace the shadow ray
 		taskState->state = MK_RT_DL;
-	} else {
+	} else { 
 		// No shadow ray to trace, move to the next vertex ray
 		// however, I have to check if this is the last path vertex
-		taskState->state = (sampleResult->lastPathVertex) ? MK_SPLAT_SAMPLE : MK_GENERATE_NEXT_VERTEX_RAY;
+		if (sampleResult->lastPathVertex) {
+			taskState->state = MK_SPLAT_SAMPLE;
+		} else {
+			// Add sampleresult to reservoir using throughputfactor and totalconnectionthroughput as contribution weight
+			SampleResultReservoir_Add(&taskState->initialPathReservoir, taskState->totalThroughput SAMPLER_PARAM);
+			taskState->state = MK_GENERATE_NEXT_VERTEX_RAY
+		}
 	}
 }
 
@@ -858,9 +873,6 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 
 		// Initialize the trough a shadow transparency flag used by Scene_Intersect()
 		taskState->throughShadowTransparency = false;
-
-		// Add sampleresult to reservoir using throughputfactor and totalconnectionthroughput as contribution weight
-		SampleResultReservoir_Add(&taskState->initialPathReservoir, taskState->totalThroughput SAMPLER_PARAM);
 
 		pathState = MK_RT_NEXT_VERTEX;
 	} else
