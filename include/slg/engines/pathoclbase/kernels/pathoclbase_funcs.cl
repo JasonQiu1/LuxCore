@@ -171,11 +171,10 @@ OPENCL_FORCE_INLINE void SampleResultReservoir_Add(__global SampleResultReservoi
 		const float confidenceWeight
 		SAMPLER_PARAM_DECL) {
 	const size_t gid = get_global_id(0);
-	const __global SampleResult* newSampleResult = &sampleResultsBuff[gid];
 
 	reservoir->sumConfidence += confidenceWeight;
 	// if (Rnd_FloatValue(seed) < (confidenceWeight / reservoir->sumConfidence)) {
-		reservoir->selectedSample = *newSampleResult;
+		reservoir->selectedSample = sampleResultsBuff[gid];
 	// }
 }
 
