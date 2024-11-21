@@ -922,17 +922,19 @@ __kernel void AdvancePaths_MK_SPLAT_SAMPLE(
 	Seed *seed = &seedValue;
 
 	__constant const Film* restrict film = &taskConfig->film;
-		__global SampleResult *sampleResult = &sampleResultsBuff[gid];
+	__global SampleResult *sampleResult = &sampleResultsBuff[gid];
+	__global EyePathInfo *pathInfo = &eyePathInfos[gid];
 
 	//--------------------------------------------------------------------------
 	// End of variables setup
 	//--------------------------------------------------------------------------
 
-	// reservoir sample last sample
-	SampleResultReservoir_Add(&taskState->initialPathReservoir, taskState->totalThroughput, &taskState->seedReservoirSampling, sampleResult);
-	// copy resampled sample from reservoir to sampleResultsBuff[gid]
-	*sampleResult = taskState->initialPathReservoir.selectedSample;
-
+	if (pathInfo->depth.depth != 0) {
+		// reservoir sample last sample
+		SampleResultReservoir_Add(&taskState->initialPathReservoir, taskState->totalThroughput, &taskState->seedReservoirSampling, sampleResult);
+		// copy resampled sample from reservoir to sampleResultsBuff[gid]
+		*sampleResult = taskState->initialPathReservoir.selectedSample;
+	}
 
 	// Initialize Film radiance group pointer table
 	__global float *filmRadianceGroup[FILM_MAX_RADIANCE_GROUP_COUNT];
