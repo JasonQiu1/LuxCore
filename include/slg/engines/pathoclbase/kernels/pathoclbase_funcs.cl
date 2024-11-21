@@ -160,12 +160,22 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 // Utility functions
 //------------------------------------------------------------------------------
 
+// Copy resampled sample to another spot in memory 
+// OPENCL_FORCE_INLINE void SampleResultReservoir_Copy(__global SampleResultReservoir* reservoir
+// 		SAMPLER_PARAM_DECL) {
+// 	const size_t gid = get_global_id(0);
+// 	__global SampleResult* destinationSampleResult = &sampleResultsBuff[gid];
+
+// 	*destinationSampleResult = reservoir->selectedSample;
+// }
+
 OPENCL_FORCE_INLINE void SampleResultReservoir_Add(__global SampleResultReservoir* reservoir, 
 		const float confidenceWeight, __global Seed* seed, __global SampleResult* newSample) {
 	reservoir->sumConfidence += confidenceWeight;
-	if (Rnd_FloatValue(seed) < (confidenceWeight / reservoir->sumConfidence)) {
+	// if (Rnd_FloatValue(seed) < (confidenceWeight / reservoir->sumConfidence)) {
+	if (Rnd_FloatValue(seed) < 1.0f) {
 		reservoir->selectedSample = *newSample;
-	}
+	// }
 }
 
 OPENCL_FORCE_INLINE bool CheckDirectHitVisibilityFlags(__global const LightSource* restrict lightSource,
