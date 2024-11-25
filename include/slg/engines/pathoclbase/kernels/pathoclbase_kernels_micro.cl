@@ -506,7 +506,6 @@ __kernel void AdvancePaths_MK_RT_DL(
 	taskDirectLight->throughShadowTransparency = throughShadowTransparency;
 	VSTORE3F(connectionThroughput * VLOAD3F(taskDirectLight->illumInfo.lightRadiance.c), taskDirectLight->illumInfo.lightRadiance.c);
 	VSTORE3F(connectionThroughput * VLOAD3F(taskDirectLight->illumInfo.lightIrradiance.c), taskDirectLight->illumInfo.lightIrradiance.c);
-	taskState->totalThroughput *= connectionThroughput.x;
 
 	const bool rayMiss = (rayHits[gid].meshIndex == NULL_INDEX);
 
