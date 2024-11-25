@@ -523,7 +523,9 @@ __kernel void AdvancePaths_MK_RT_DL(
 			__global BSDF *bsdf = &taskState->bsdf;
 
 			if (gid == 0) {
-				printf("%f %f %f\n", throughput.c[0], throughput.c[1], throughput.c[2]);
+				printf("%f %f %f\n", taskState->throughput.c[0], taskState->throughput.c[1], taskState->throughput.c[2]);
+				printf("%f %f %f\n", taskState->totalThroughput.c[0], taskState->totalThroughput.c[1], taskState->totalThroughput.c[2]);
+				printf("--------\n");
 			}
 
 			if (!BSDF_IsShadowCatcher(bsdf MATERIALS_PARAM)) {
