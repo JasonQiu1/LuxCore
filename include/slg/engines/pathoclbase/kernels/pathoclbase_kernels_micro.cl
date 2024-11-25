@@ -934,7 +934,7 @@ __kernel void AdvancePaths_MK_SPLAT_SAMPLE(
 	//--------------------------------------------------------------------------
 
 	// reservoir sample last sample
-	SampleResultReservoir_Add(&taskState->initialPathReservoir, SampleResult_GetAverageRadiance(&taskConfig->film, sampleResult) / taskState->throughput.c[0], &taskState->seedReservoirSampling, sampleResult);
+	// SampleResultReservoir_Add(&taskState->initialPathReservoir, SampleResult_GetAverageRadiance(&taskConfig->film, sampleResult) / taskState->throughput.c[0], &taskState->seedReservoirSampling, sampleResult);
 	// copy resampled sample from reservoir to sampleResultsBuff[gid]
 	*sampleResult = taskState->initialPathReservoir.selectedSample;
 
