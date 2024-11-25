@@ -521,8 +521,10 @@ __kernel void AdvancePaths_MK_RT_DL(
 			// Nothing was hit, the light source is visible
 
 			__global BSDF *bsdf = &taskState->bsdf;
-			
-			float confidence = SampleResult_GetAverageRadiance(&taskConfig->film, sampleResult) / taskState->throughput.c[0];
+
+			if (gid == 0) {
+				printf("%f %f %f\n", throughput.c[0], throughput.c[1], throughput.c[2]);
+			}
 
 			if (!BSDF_IsShadowCatcher(bsdf MATERIALS_PARAM)) {
 				const float3 lightRadiance = VLOAD3F(taskDirectLight->illumInfo.lightRadiance.c);
@@ -532,8 +534,6 @@ __kernel void AdvancePaths_MK_RT_DL(
 							MATERIALS_PARAM),
 						VLOAD3F(taskState->throughput.c), lightRadiance,
 						1.f);
-
-				confidence = lightRadiance.x / taskState->throughput.c[0];
 
 				// The first path vertex is not handled by AddDirectLight(). This is valid
 				// for irradiance AOV only if it is not a SPECULAR material.
@@ -547,13 +547,11 @@ __kernel void AdvancePaths_MK_RT_DL(
 								VLOAD3F(&rays[gid].d.x)))) *
 							VLOAD3F(taskDirectLight->illumInfo.lightIrradiance.c);
 					VSTORE3F(irradiance, sampleResult->irradiance.c);
-
-					confidence = irradiance.x;
 				}
 			}
 
 			// Add sampleresult to reservoir using throughputfactor and totalconnectionthroughput as contribution weight
-			SampleResultReservoir_Add(&taskState->initialPathReservoir, confidence, &taskState->seedReservoirSampling, sampleResult);
+			SampleResultReservoir_Add(&taskState->initialPathReservoir, SampleResult_GetAverageRadiance(&taskConfig->film, sampleResult) / taskState->throughput.c[0], &taskState->seedReservoirSampling, sampleResult);
 
 			taskDirectLight->directLightResult = ILLUMINATED;
 		} else
