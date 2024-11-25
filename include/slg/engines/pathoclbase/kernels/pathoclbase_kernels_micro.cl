@@ -312,6 +312,9 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 				bsdf,
 				sampleResult
 				LIGHTS_PARAM);
+
+		// Add sampleresult to reservoir using throughputfactor and totalconnectionthroughput as contribution weight
+		SampleResultReservoir_Add(&taskState->initialPathReservoir, SampleResult_GetAverageRadiance(&taskConfig->film, sampleResult) / taskState->throughput.c[0], &taskState->seedReservoirSampling, sampleResult);
 	}
 
 	//----------------------------------------------------------------------
