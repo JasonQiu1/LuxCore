@@ -172,8 +172,8 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 OPENCL_FORCE_INLINE void SampleResultReservoir_Add(__global SampleResultReservoir* reservoir, 
 		const float confidenceWeight, __global Seed* seed, __global SampleResult* newSample) {
 	reservoir->sumConfidence += confidenceWeight;
-	if (Rnd_FloatValue(seed) < (confidenceWeight / reservoir->sumConfidence)) {
-	// if (Rnd_FloatValue(seed) < 1.0f) {
+	// if (Rnd_FloatValue(seed) < (confidenceWeight / reservoir->sumConfidence)) {
+	if (Rnd_FloatValue(seed) < 1.0f) {
 		reservoir->selectedSample = *newSample;
 	}
 }
@@ -195,7 +195,7 @@ OPENCL_FORCE_INLINE bool CheckDirectHitVisibilityFlags(__global const LightSourc
 }
 
 OPENCL_FORCE_INLINE void DirectHitInfiniteLight(__constant const Film* restrict film,
-		__global EyePathInfo *pathInfo, __global const Spectrum* restrict pathThroughput,
+		__global GPUTaskState* taskState, __global EyePathInfo *pathInfo, __global const Spectrum* restrict pathThroughput,
 		const __global Ray *ray, __global const BSDF *bsdf, __global SampleResult *sampleResult
 		LIGHTS_PARAM_DECL) {
 	// If the material is shadow transparent, Direct Light sampling
@@ -234,12 +234,13 @@ OPENCL_FORCE_INLINE void DirectHitInfiniteLight(__constant const Film* restrict 
 				weight = 1.f;
 			
 			SampleResult_AddEmission(film, sampleResult, light->lightID, throughput, weight * envRadiance);
+			SampleResultReservoir_Add(&taskState->initialPathReservoir, taskState->totalThroughput, &taskState->seedReservoirSampling, sampleResult);
 		}
 	}
 }
 
 OPENCL_FORCE_INLINE void DirectHitFiniteLight(__constant const Film* restrict film,
-		__global EyePathInfo *pathInfo,
+		__global GPUTaskState* taskState, __global EyePathInfo *pathInfo,
 		__global const Spectrum* restrict pathThroughput, const __global Ray *ray,
 		const float distance, __global const BSDF *bsdf,
 		__global SampleResult *sampleResult
@@ -286,6 +287,7 @@ OPENCL_FORCE_INLINE void DirectHitFiniteLight(__constant const Film* restrict fi
 
 		SampleResult_AddEmission(film, sampleResult, BSDF_GetLightID(bsdf
 				MATERIALS_PARAM), VLOAD3F(pathThroughput->c), weight * emittedRadiance);
+		SampleResultReservoir_Add(&taskState->initialPathReservoir, taskState->totalThroughput, &taskState->seedReservoirSampling, sampleResult);
 	}
 }
 

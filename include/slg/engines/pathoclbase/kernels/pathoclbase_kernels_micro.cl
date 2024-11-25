@@ -162,6 +162,7 @@ __kernel void AdvancePaths_MK_HIT_NOTHING(
 	if (checkDirectLightHit) {
 		DirectHitInfiniteLight(
 				&taskConfig->film,
+				taskState,
 				pathInfo,
 				&taskState->throughput,
 				&rays[gid],
@@ -300,6 +301,7 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 	if (BSDF_IsLightSource(bsdf) && checkDirectLightHit) {
 		DirectHitFiniteLight(
 				&taskConfig->film,
+				taskState,
 				pathInfo,
 				&taskState->throughput,
 				&rays[gid],
@@ -836,7 +838,7 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 	const bool continuePath = !Spectrum_IsBlack(bsdfSample) && rrContinuePath && !maxPathDepth;
 	if (continuePath) {
 		// Resample previous sample
-		SampleResultReservoir_Add(&taskState->initialPathReservoir, taskState->totalThroughput, &taskState->seedReservoirSampling, sampleResult);
+		// SampleResultReservoir_Add(&taskState->initialPathReservoir, taskState->totalThroughput, &taskState->seedReservoirSampling, sampleResult);
 
 		float3 throughputFactor = WHITE;
 
@@ -933,7 +935,7 @@ __kernel void AdvancePaths_MK_SPLAT_SAMPLE(
 	//--------------------------------------------------------------------------
 
 	// reservoir sample last sample
-	SampleResultReservoir_Add(&taskState->initialPathReservoir, taskState->totalThroughput, &taskState->seedReservoirSampling, sampleResult);
+	// SampleResultReservoir_Add(&taskState->initialPathReservoir, taskState->totalThroughput, &taskState->seedReservoirSampling, sampleResult);
 	// copy resampled sample from reservoir to sampleResultsBuff[gid]
 	*sampleResult = taskState->initialPathReservoir.selectedSample;
 
