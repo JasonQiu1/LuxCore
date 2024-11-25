@@ -548,7 +548,7 @@ __kernel void AdvancePaths_MK_RT_DL(
 							VLOAD3F(taskDirectLight->illumInfo.lightIrradiance.c);
 					VSTORE3F(irradiance, sampleResult->irradiance.c);
 
-					confidence = irradiance.c[0];
+					confidence = irradiance.x;
 				}
 			}
 
