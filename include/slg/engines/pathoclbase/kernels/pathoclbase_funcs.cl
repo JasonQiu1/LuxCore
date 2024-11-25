@@ -234,7 +234,7 @@ OPENCL_FORCE_INLINE void DirectHitInfiniteLight(__constant const Film* restrict 
 				weight = 1.f;
 			
 			SampleResult_AddEmission(film, sampleResult, light->lightID, throughput, weight * envRadiance);
-			SampleResultReservoir_Add(&taskState->initialPathReservoir, taskState->totalThroughput * weight, &taskState->seedReservoirSampling, sampleResult);
+			// SampleResultReservoir_Add(&taskState->initialPathReservoir, taskState->totalThroughput * weight, &taskState->seedReservoirSampling, sampleResult);
 		}
 	}
 }

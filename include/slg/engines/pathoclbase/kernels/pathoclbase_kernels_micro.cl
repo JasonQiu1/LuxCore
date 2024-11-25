@@ -838,7 +838,7 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 	const bool continuePath = !Spectrum_IsBlack(bsdfSample) && rrContinuePath && !maxPathDepth;
 	if (continuePath) {
 		// Resample previous sample
-		SampleResultReservoir_Add(&taskState->initialPathReservoir, Spectrum_Filter(SampleResult_GetSpectrum(film, sampleResult)) / taskState->throughput.c[0], &taskState->seedReservoirSampling, sampleResult);
+		SampleResultReservoir_Add(&taskState->initialPathReservoir, 1.0f / taskState->throughput.c[0], &taskState->seedReservoirSampling, sampleResult);
 
 		float3 throughputFactor = WHITE;
 
@@ -935,7 +935,7 @@ __kernel void AdvancePaths_MK_SPLAT_SAMPLE(
 	//--------------------------------------------------------------------------
 
 	// reservoir sample last sample
-	SampleResultReservoir_Add(&taskState->initialPathReservoir, Spectrum_Filter(SampleResult_GetSpectrum(film, sampleResult)) / taskState->throughput.c[0], &taskState->seedReservoirSampling, sampleResult);
+	SampleResultReservoir_Add(&taskState->initialPathReservoir, 1.0f / taskState->throughput.c[0], &taskState->seedReservoirSampling, sampleResult);
 	// copy resampled sample from reservoir to sampleResultsBuff[gid]
 	*sampleResult = taskState->initialPathReservoir.selectedSample;
 
