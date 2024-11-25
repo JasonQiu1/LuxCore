@@ -162,6 +162,7 @@ __kernel void AdvancePaths_MK_HIT_NOTHING(
 	if (checkDirectLightHit) {
 		DirectHitInfiniteLight(
 				&taskConfig->film,
+				taskState,
 				pathInfo,
 				&taskState->throughput,
 				&rays[gid],
@@ -300,6 +301,7 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 	if (BSDF_IsLightSource(bsdf) && checkDirectLightHit) {
 		DirectHitFiniteLight(
 				&taskConfig->film,
+				taskState,
 				pathInfo,
 				&taskState->throughput,
 				&rays[gid],
@@ -547,7 +549,7 @@ __kernel void AdvancePaths_MK_RT_DL(
 			pathState = MK_SPLAT_SAMPLE;
 		else {
 			// Add sampleresult to reservoir using throughputfactor and totalconnectionthroughput as contribution weight
-			SampleResultReservoir_Add(&taskState->initialPathReservoir, taskState->totalThroughput, &taskState->seedReservoirSampling, sampleResult);
+			// SampleResultReservoir_Add(&taskState->initialPathReservoir, taskState->totalThroughput, &taskState->seedReservoirSampling, sampleResult);
 			pathState = MK_GENERATE_NEXT_VERTEX_RAY;
 		}
 
@@ -632,7 +634,7 @@ __kernel void AdvancePaths_MK_DL_ILLUMINATE(
 			taskState->state = MK_SPLAT_SAMPLE;
 		} else {
 			// Add sampleresult to reservoir using throughputfactor and totalconnectionthroughput as contribution weight
-			SampleResultReservoir_Add(&taskState->initialPathReservoir, taskState->totalThroughput, &taskState->seedReservoirSampling, sampleResult);
+			// SampleResultReservoir_Add(&taskState->initialPathReservoir, taskState->totalThroughput, &taskState->seedReservoirSampling, sampleResult);
 			taskState->state = MK_GENERATE_NEXT_VERTEX_RAY;
 		}
 	}
@@ -723,7 +725,7 @@ __kernel void AdvancePaths_MK_DL_SAMPLE_BSDF(
 			taskState->state = MK_SPLAT_SAMPLE;
 		} else {
 			// Add sampleresult to reservoir using throughputfactor and totalconnectionthroughput as contribution weight
-			SampleResultReservoir_Add(&taskState->initialPathReservoir, taskState->totalThroughput, &taskState->seedReservoirSampling, sampleResult);
+			// SampleResultReservoir_Add(&taskState->initialPathReservoir, taskState->totalThroughput, &taskState->seedReservoirSampling, sampleResult);
 			taskState->state = MK_GENERATE_NEXT_VERTEX_RAY;
 		}
 	}
@@ -835,6 +837,9 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 
 	const bool continuePath = !Spectrum_IsBlack(bsdfSample) && rrContinuePath && !maxPathDepth;
 	if (continuePath) {
+		// Resample previous sample
+		// SampleResultReservoir_Add(&taskState->initialPathReservoir, taskState->totalThroughput, &taskState->seedReservoirSampling, sampleResult);
+
 		float3 throughputFactor = WHITE;
 
 		// RR increases path contribution
@@ -930,7 +935,7 @@ __kernel void AdvancePaths_MK_SPLAT_SAMPLE(
 	//--------------------------------------------------------------------------
 
 	// reservoir sample last sample
-	SampleResultReservoir_Add(&taskState->initialPathReservoir, taskState->totalThroughput, &taskState->seedReservoirSampling, sampleResult);
+	// SampleResultReservoir_Add(&taskState->initialPathReservoir, taskState->totalThroughput, &taskState->seedReservoirSampling, sampleResult);
 	// copy resampled sample from reservoir to sampleResultsBuff[gid]
 	*sampleResult = taskState->initialPathReservoir.selectedSample;
 
