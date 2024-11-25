@@ -935,6 +935,7 @@ __kernel void AdvancePaths_MK_SPLAT_SAMPLE(
 	//--------------------------------------------------------------------------
 
 	// reservoir sample last sample
+	printf("%f ", taskState->throughput.c[0]);
 	SampleResultReservoir_Add(&taskState->initialPathReservoir, 1.0f / taskState->throughput.c[0], &taskState->seedReservoirSampling, sampleResult);
 	// copy resampled sample from reservoir to sampleResultsBuff[gid]
 	*sampleResult = taskState->initialPathReservoir.selectedSample;
