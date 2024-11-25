@@ -522,7 +522,7 @@ __kernel void AdvancePaths_MK_RT_DL(
 
 			__global BSDF *bsdf = &taskState->bsdf;
 			
-			float3 confidence = SampleResult_GetAverageRadiance(&taskConfig->film, sampleResult) / taskState->throughput.c[0];
+			float3 confidence = SampleResult_GetAverageRadiance(&taskConfig->film, sampleResult) / taskState->throughput.c;
 
 			if (!BSDF_IsShadowCatcher(bsdf MATERIALS_PARAM)) {
 				const float3 lightRadiance = VLOAD3F(taskDirectLight->illumInfo.lightRadiance.c);
@@ -533,7 +533,7 @@ __kernel void AdvancePaths_MK_RT_DL(
 						VLOAD3F(taskState->throughput.c), lightRadiance,
 						1.f);
 
-				confidence = lightRadiance / taskState->throughput.c;
+				confidence = lightRadiance / VLOAD3F(taskState->throughput.c);
 
 				// The first path vertex is not handled by AddDirectLight(). This is valid
 				// for irradiance AOV only if it is not a SPECULAR material.
