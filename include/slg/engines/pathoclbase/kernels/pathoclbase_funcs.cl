@@ -173,10 +173,9 @@ OPENCL_FORCE_INLINE void SampleResultReservoir_Add(__global SampleResultReservoi
 		const float confidenceWeight, __global Seed* seed, __global SampleResult* newSample) {
 	reservoir->sumConfidence += confidenceWeight;
 	// if (Rnd_FloatValue(seed) < (confidenceWeight / reservoir->sumConfidence)) {
-	printf("%f ", Rnd_FloatValue(seed));
-	// if (Rnd_FloatValue(seed) < 1.0f) {
+	if (Rnd_FloatValue(seed) < 1.0f) {
 		reservoir->selectedSample = *newSample;
-	// }
+	}
 }
 
 OPENCL_FORCE_INLINE bool CheckDirectHitVisibilityFlags(__global const LightSource* restrict lightSource,
