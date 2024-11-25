@@ -86,7 +86,7 @@ __kernel void AdvancePaths_MK_RT_NEXT_VERTEX(
 			MATERIALS_PARAM
 			);
 	taskState->throughShadowTransparency = throughShadowTransparency;
-	taskState->totalThroughput *= connectionThroughput.x;
+	taskState->totalThroughput *= connectionThroughput[0];
 	VSTORE3F(connectionThroughput * VLOAD3F(taskState->throughput.c), taskState->throughput.c);
 
 	// If continueToTrace, there is nothing to do, just keep the same state
@@ -838,7 +838,7 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 	const bool continuePath = !Spectrum_IsBlack(bsdfSample) && rrContinuePath && !maxPathDepth;
 	if (continuePath) {
 		// Resample previous sample
-		SampleResultReservoir_Add(&taskState->initialPathReservoir, SampleResult_GetRadianceY(&taskConfig->film, sampleResult) / taskState->totalThroughput, &taskState->seedReservoirSampling, sampleResult);
+		SampleResultReservoir_Add(&taskState->initialPathReservoir, SampleResult_GetAverageRadiance(&taskConfig->film, sampleResult) / taskState->throughput.c[0], &taskState->seedReservoirSampling, sampleResult);
 
 		float3 throughputFactor = WHITE;
 
@@ -846,7 +846,7 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 		throughputFactor /= rrProb;
 		throughputFactor *= bsdfSample;
 
-		taskState->totalThroughput *= throughputFactor.x;
+		taskState->totalThroughput *= throughputFactor[0];
 		VSTORE3F(throughputFactor * VLOAD3F(taskState->throughput.c), taskState->throughput.c);
 
 		// This is valid for irradiance AOV only if it is not a SPECULAR material and
@@ -934,7 +934,7 @@ __kernel void AdvancePaths_MK_SPLAT_SAMPLE(
 	//--------------------------------------------------------------------------
 
 	// reservoir sample last sample
-	SampleResultReservoir_Add(&taskState->initialPathReservoir, SampleResult_GetRadianceY(&taskConfig->film, sampleResult) / taskState->totalThroughput, &taskState->seedReservoirSampling, sampleResult);
+	SampleResultReservoir_Add(&taskState->initialPathReservoir, SampleResult_GetAverageRadiance(&taskConfig->film, sampleResult) / taskState->throughput.c[0], &taskState->seedReservoirSampling, sampleResult);
 	// copy resampled sample from reservoir to sampleResultsBuff[gid]
 	*sampleResult = taskState->initialPathReservoir.selectedSample;
 

@@ -158,3 +158,13 @@ OPENCL_FORCE_INLINE float SampleResult_GetRadianceY(__constant const Film* restr
 
 	return y;
 }
+
+OPENCL_FORCE_INLINE float SampleResult_GetAverageRadiance(__constant const Film* restrict film,
+		__global SampleResult *sampleResult) {
+	float avg = 0.f;
+	
+	for (uint i = 0; i < film->radianceGroupCount; ++i)
+		avg += Spectrum_Filter(VLOAD3F(sampleResult->radiancePerPixelNormalized[i].c));
+
+	return avg;
+}
