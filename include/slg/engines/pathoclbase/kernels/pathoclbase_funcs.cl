@@ -234,7 +234,7 @@ OPENCL_FORCE_INLINE void DirectHitInfiniteLight(__constant const Film* restrict 
 				weight = 1.f;
 			
 			SampleResult_AddEmission(film, sampleResult, light->lightID, throughput, weight * envRadiance);
-			SampleResultReservoir_Add(&taskState->initialPathReservoir, taskState->totalThroughput, &taskState->seedReservoirSampling, sampleResult);
+			SampleResultReservoir_Add(&taskState->initialPathReservoir, weight, &taskState->seedReservoirSampling, sampleResult);
 		}
 	}
 }
@@ -287,7 +287,7 @@ OPENCL_FORCE_INLINE void DirectHitFiniteLight(__constant const Film* restrict fi
 
 		SampleResult_AddEmission(film, sampleResult, BSDF_GetLightID(bsdf
 				MATERIALS_PARAM), VLOAD3F(pathThroughput->c), weight * emittedRadiance);
-		SampleResultReservoir_Add(&taskState->initialPathReservoir, taskState->totalThroughput, &taskState->seedReservoirSampling, sampleResult);
+		SampleResultReservoir_Add(&taskState->initialPathReservoir, weight, &taskState->seedReservoirSampling, sampleResult);
 	}
 }
 
