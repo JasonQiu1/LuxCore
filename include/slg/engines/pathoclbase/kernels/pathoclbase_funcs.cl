@@ -169,6 +169,10 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 // 	*destinationSampleResult = reservoir->selectedSample;
 // }
 
+OPENCL_FORCE_INLINE float average(float3 f) {
+	return (f.x + f.y + f.z) * 0.33333f;
+}
+
 OPENCL_FORCE_INLINE void SampleResultReservoir_Add(__global SampleResultReservoir* reservoir, 
 		const float confidenceWeight, __global Seed* seed, __global SampleResult* newSample) {
 	reservoir->sumConfidence += confidenceWeight;
