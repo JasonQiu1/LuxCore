@@ -169,15 +169,12 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 // 	*destinationSampleResult = reservoir->selectedSample;
 // }
 
-OPENCL_FORCE_INLINE float average(float3 f) {
-	return (f.x + f.y + f.z) * 0.33333f;
-}
-
 OPENCL_FORCE_INLINE void SampleResultReservoir_Add(__global SampleResultReservoir* reservoir, 
 		const float confidenceWeight, __global Seed* seed, __global SampleResult* newSample) {
 	reservoir->sumConfidence += confidenceWeight;
 	if (Rnd_FloatValue(seed) < (confidenceWeight / reservoir->sumConfidence)) {
 	// if (Rnd_FloatValue(seed) < 1.0f) {
+		printf("succeeded replacement chance of %s\n", confidenceWeight / reservoir->sumConfidence);
 		reservoir->selectedSample = *newSample;
 	}
 }

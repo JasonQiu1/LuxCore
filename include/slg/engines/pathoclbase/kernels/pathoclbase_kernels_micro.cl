@@ -522,11 +522,11 @@ __kernel void AdvancePaths_MK_RT_DL(
 
 			__global BSDF *bsdf = &taskState->bsdf;
 
-			if (gid == 0) {
-				printf("%f %f %f\n", taskState->throughput.c[0], taskState->throughput.c[1], taskState->throughput.c[2]);
-				printf("%f\n", taskState->totalThroughput);
-				printf("--------\n");
-			}
+			// if (gid == 0) {
+			// 	printf("%f %f %f\n", taskState->throughput.c[0], taskState->throughput.c[1], taskState->throughput.c[2]);
+			// 	printf("%f\n", taskState->totalThroughput);
+			// 	printf("--------\n");
+			// }
 
 			if (!BSDF_IsShadowCatcher(bsdf MATERIALS_PARAM)) {
 				const float3 lightRadiance = VLOAD3F(taskDirectLight->illumInfo.lightRadiance.c);
