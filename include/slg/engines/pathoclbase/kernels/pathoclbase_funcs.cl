@@ -174,7 +174,7 @@ OPENCL_FORCE_INLINE void SampleResultReservoir_Add(__global SampleResultReservoi
 	reservoir->sumConfidence += confidenceWeight;
 	if (Rnd_FloatValue(seed) < (confidenceWeight / reservoir->sumConfidence)) {
 	// if (Rnd_FloatValue(seed) < 1.0f) {
-		printf("succeeded replacement chance of %s\n", confidenceWeight / reservoir->sumConfidence);
+		printf("succeeded replacement chance of %f\n", confidenceWeight / reservoir->sumConfidence);
 		reservoir->selectedSample = *newSample;
 	}
 }
