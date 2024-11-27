@@ -194,7 +194,7 @@ __kernel void AdvancePaths_MK_HIT_NOTHING(
 	}
 
 	// Add sampleresult to reservoir using throughputfactor and totalconnectionthroughput as contribution weight
-	SampleResultReservoir_Add(&taskState->initialPathReservoir, SampleResult_GetAverageRadiance(&taskConfig->film, sampleResult) / taskState->throughput.c[0], &taskState->seedReservoirSampling, sampleResult);
+	_Add(SampleResultReservoir_Add(&taskState->initialPathReservoir, SampleResult_GetAverageRadiance(&taskConfig->film, sampleResult) / taskState->throughput.c[0], &taskState->seedReservoirSampling, sampleResult);
 
 	taskState->state = MK_SPLAT_SAMPLE;
 }
@@ -314,7 +314,7 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 				LIGHTS_PARAM);
 
 		// Add sampleresult to reservoir using throughputfactor and totalconnectionthroughput as contribution weight
-		SampleResultReservoir_Add(&taskState->initialPathReservoir, SampleResult_GetAverageRadiance(&taskConfig->film, sampleResult) / taskState->throughput.c[0], &taskState->seedReservoirSampling, sampleResult);
+		//SampleResultReservoir_Add(&taskState->initialPathReservoir, SampleResult_GetAverageRadiance(&taskConfig->film, sampleResult) / taskState->throughput.c[0], &taskState->seedReservoirSampling, sampleResult);
 	}
 
 	//----------------------------------------------------------------------
