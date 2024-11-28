@@ -153,6 +153,8 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 	Rnd_InitFloat(seedValue, &initSeed);
 	taskState->seedPassThroughEvent = initSeed;
 
+	// Initialize reservoir sampling seed
+	// TODO: Not sure the correct way to get an initial seed here. I just copied the above code for now.
 	seedValue = Sampler_GetSample(taskConfig, IDX_BSDF_OFFSET + IDX_PASSTHROUGH SAMPLER_PARAM);
 	Rnd_InitFloat(seedValue, &initSeed);
 	taskState->seedReservoirSampling = initSeed;
@@ -175,9 +177,9 @@ OPENCL_FORCE_INLINE void SampleResultReservoir_Add(const __global GPUTaskConfigu
 	const float weight = SampleResult_GetAverageRadiance(&taskConfig->film, newSample) / Spectrum_Filter(VLOAD3F(taskState->throughput.c));
 	reservoir->sumWeight += weight;
 	if (Rnd_FloatValue(&taskState->seedReservoirSampling) < (weight / reservoir->sumWeight)) {
-		// if (weight != reservoir->sumWeight) {
-		// 	printf("succeeded non-guaranteed resample with probability of %f\n", weight / reservoir->sumWeight);
-		// }
+		if (weight != reservoir->sumWeight) {
+			printf("succeeded non-guaranteed resample with probability of %f\n", weight / reservoir->sumWeight);
+		}
 		reservoir->selectedSample = *newSample;
 	}
 
