@@ -163,19 +163,15 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 
 // Add a sample to the streaming reservoir.
 // Simply replace based on the new sample's weight and the reservoir's current sum weight.
-OPENCL_FORCE_INLINE void SampleResultReservoir_Add(const __global GPUTaskConfiguration* taskConfig, __global GPUTaskState* taskState, 
-		__global SampleResult* newSample) {
+OPENCL_FORCE_INLINE void SampleResultReservoir_Add(const __global GPUTaskConfiguration* restrict taskConfig, __global GPUTaskState* restrict taskState, 
+		__global SampleResult* restrict newSample) {
 	__global SampleResultReservoir* reservoir = &taskState->initialPathReservoir; 
-	barrier(CLK_GLOBAL_MEM_FENCE);
 	// Weight of the sample is path contribution / path PDF 
 	// TODO: Verify that averaging the radiance is a good enough target function
 	// TODO: Verify that averaging the throughput on all 3 axes is a good enough target PDF
 	const float weight = SampleResult_GetAverageRadiance(&taskConfig->film, newSample) / Spectrum_Filter(VLOAD3F(taskState->throughput.c));
-	barrier(0);
 	reservoir->sumWeight += weight;
-	barrier(0);
 	if (Rnd_FloatValue(&taskState->seedReservoirSampling) < (weight / reservoir->sumWeight)) {
-		barrier(0);
 		reservoir->selectedSample = *newSample;
 	}
 }
