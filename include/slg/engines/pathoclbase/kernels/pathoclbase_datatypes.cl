@@ -101,7 +101,7 @@ typedef struct {
 	Seed seedPassThroughEvent;
 	Seed seedReservoirSampling;
 
-	uint reservoirMutex = 0;
+	uint reservoirMutex;
 
 	// Reservoir data structure for initial path resampling using RIS
 	SampleResultReservoir initialPathReservoir;
