@@ -173,8 +173,10 @@ OPENCL_FORCE_INLINE void SampleResultReservoir_Add(const __global GPUTaskConfigu
 	// TODO: Verify that averaging the throughput on all 3 axes is an unbiased target PDF
 	const float pathPdf = Spectrum_Filter(VLOAD3F(taskState->throughput.c));
 
-	// Spinlock to avoid changing the selected sample when another work-item is calculating the radiance
+	// Spinlock to avoid changing the reservoir when another work-item is accessing the reservoir
 	while (atomic_cmpxchg(&taskState->reservoirMutex, 0, 1) == 0) {}
+
+	const float random = Rnd_FloatValue(&taskState->seedReservoirSampling);
 
 	// TODO: Verify that averaging the radiance is an unbiased target function
 	const float pathContribution = SampleResult_GetAverageRadiance(&taskConfig->film, newSample);
@@ -182,7 +184,7 @@ OPENCL_FORCE_INLINE void SampleResultReservoir_Add(const __global GPUTaskConfigu
 	// Weight of the sample is path contribution / path PDF 
 	const float weight = pathContribution / pathPdf;
 	reservoir->sumWeight += weight;
-	if (Rnd_FloatValue(&taskState->seedReservoirSampling) < (weight / reservoir->sumWeight)) {
+	if (random < (weight / reservoir->sumWeight)) {
 		// if (weight != reservoir->sumWeight) {
 		// 	printf("succeeded non-guaranteed resample with probability of %f\n", weight / reservoir->sumWeight);
 		// }
