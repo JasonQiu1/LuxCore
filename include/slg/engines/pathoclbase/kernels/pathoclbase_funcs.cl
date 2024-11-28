@@ -181,7 +181,7 @@ OPENCL_FORCE_INLINE void SampleResultReservoir_Add(const __global GPUTaskConfigu
 		reservoir->selectedSample = *newSample;
 	}
 
-	atomic_xchg(&mutex, 0);
+	atomic_cmpxchg(&mutex, 1, 0);
 }
 
 OPENCL_FORCE_INLINE bool CheckDirectHitVisibilityFlags(__global const LightSource* restrict lightSource,
