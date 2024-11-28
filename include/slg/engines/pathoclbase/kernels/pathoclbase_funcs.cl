@@ -171,13 +171,12 @@ OPENCL_FORCE_INLINE void SampleResultReservoir_Add(const __global GPUTaskConfigu
 	// TODO: Verify that averaging the throughput on all 3 axes is a good enough target PDF
 	const float weight = SampleResult_GetAverageRadiance(&taskConfig->film, newSample) / Spectrum_Filter(VLOAD3F(taskState->throughput.c));
 	reservoir->sumWeight += weight;
-	if (Rnd_FloatValue(&taskState->seedReservoirSampling) >= (weight / reservoir->sumWeight)) {
+	if (Rnd_FloatValue(&taskState->seedReservoirSampling) < (weight / reservoir->sumWeight)) {
 		if (weight != reservoir->sumWeight) {
-			printf("failed replacement with probability of %f\n", weight / reservoir->sumWeight);
+			printf("succeeded non-guaranteed replacement with probability of %f\n", weight / reservoir->sumWeight);
 		}
-		return;
+		reservoir->selectedSample = *newSample;
 	}
-	reservoir->selectedSample = *newSample;
 }
 
 OPENCL_FORCE_INLINE bool CheckDirectHitVisibilityFlags(__global const LightSource* restrict lightSource,
