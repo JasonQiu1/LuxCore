@@ -173,7 +173,7 @@ OPENCL_FORCE_INLINE void SampleResultReservoir_Add(const __global GPUTaskConfigu
 	reservoir->sumWeight += weight;
 	if (Rnd_FloatValue(&taskState->seedReservoirSampling) >= (weight / reservoir->sumWeight)) {
 		// if (weight != reservoir->sumWeight) {
-		// 	printf("succeeded non-guaranteed replacement with probability of %f\n", weight / reservoir->sumWeight);
+			printf("failed replacement with probability of %f\n", weight / reservoir->sumWeight);
 		// }
 		return;
 	}
