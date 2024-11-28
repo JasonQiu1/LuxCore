@@ -172,6 +172,9 @@ OPENCL_FORCE_INLINE void SampleResultReservoir_Add(const __global GPUTaskConfigu
 	const float weight = SampleResult_GetAverageRadiance(&taskConfig->film, newSample) / Spectrum_Filter(VLOAD3F(taskState->throughput.c));
 	reservoir->sumWeight += weight;
 	if (Rnd_FloatValue(&taskState->seedReservoirSampling) < (weight / reservoir->sumWeight)) {
+		if (weight != reservoir->sumWeight) {
+			printf("r");
+		}
 		reservoir->selectedSample = *newSample;
 	}
 }
