@@ -166,12 +166,15 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 OPENCL_FORCE_INLINE void SampleResultReservoir_Add(const __global GPUTaskConfiguration* taskConfig, __global GPUTaskState* taskState, 
 		__global SampleResult* newSample) {
 	__global SampleResultReservoir* reservoir = &taskState->initialPathReservoir; 
-	// weight of the sample is path contribution / path PDF 
+	// Weight of the sample is path contribution / path PDF 
 	// TODO: Verify that averaging the radiance is a good enough target function
 	// TODO: Verify that averaging the throughput on all 3 axes is a good enough target PDF
 	const float weight = SampleResult_GetAverageRadiance(&taskConfig->film, newSample) / Spectrum_Filter(VLOAD3F(taskState->throughput.c));
 	reservoir->sumWeight += weight;
 	if (Rnd_FloatValue(&taskState->seedReservoirSampling) < (weight / reservoir->sumWeight)) {
+		if (weight != sumWeight) {
+			printf("succeeded non-guaranteed replacement with probability of %f\n", weight / reservoir->sumWeight);
+		}
 		reservoir->selectedSample = *newSample;
 	}
 }
