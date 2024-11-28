@@ -165,8 +165,7 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 // Simply replace based on the new sample's weight and the reservoir's current sum weight.
 OPENCL_FORCE_INLINE void SampleResultReservoir_Add(const __global GPUTaskConfiguration* restrict taskConfig, __global GPUTaskState* restrict taskState, 
 		__global SampleResult* restrict newSample) {
-	__global int mutex = 0;
-
+	__global uint mutex = 0;
 	while (atomic_cmpxchg(&mutex, 0, 1) == 0) {}
 
 	__global SampleResultReservoir* reservoir = &taskState->initialPathReservoir; 
@@ -176,7 +175,6 @@ OPENCL_FORCE_INLINE void SampleResultReservoir_Add(const __global GPUTaskConfigu
 	const float weight = SampleResult_GetAverageRadiance(&taskConfig->film, newSample) / Spectrum_Filter(VLOAD3F(taskState->throughput.c));
 	reservoir->sumWeight += weight;
 	if (Rnd_FloatValue(&taskState->seedReservoirSampling) < (weight / reservoir->sumWeight)) {
-		atomic_cmpxchg()
 		if (weight != reservoir->sumWeight) {
 			printf("succeeded non-guaranteed resample with probability of %f\n", weight / reservoir->sumWeight);
 		}
