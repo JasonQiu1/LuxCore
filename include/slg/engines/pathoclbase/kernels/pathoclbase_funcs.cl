@@ -148,13 +148,13 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 	//
 	// Note: using the IDX_PASSTHROUGH of path depth 0
 	float seedValue = Sampler_GetSample(taskConfig, IDX_BSDF_OFFSET + IDX_PASSTHROUGH SAMPLER_PARAM);
-	Seed seed;
-	Rnd_InitFloat(seedValue, &seed);
-	taskState->seedPassThroughEvent = seed;
+	Seed initSeed;
+	Rnd_InitFloat(seedValue, &initSeed);
+	taskState->seedPassThroughEvent = initSeed;
 
 	seedValue = Sampler_GetSample(taskConfig, IDX_BSDF_OFFSET + IDX_PASSTHROUGH SAMPLER_PARAM);
-	Rnd_InitFloat(seedValue, &seed);
-	taskState->seedReservoirSampling = seed;
+	Rnd_InitFloat(seedValue, &initSeed);
+	taskState->seedReservoirSampling = initSeed;
 }
 
 //------------------------------------------------------------------------------
