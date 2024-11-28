@@ -86,7 +86,6 @@ __kernel void AdvancePaths_MK_RT_NEXT_VERTEX(
 			MATERIALS_PARAM
 			);
 	taskState->throughShadowTransparency = throughShadowTransparency;
-	taskState->totalThroughput *= connectionThroughput.x;
 	VSTORE3F(connectionThroughput * VLOAD3F(taskState->throughput.c), taskState->throughput.c);
 
 	// If continueToTrace, there is nothing to do, just keep the same state
@@ -162,7 +161,6 @@ __kernel void AdvancePaths_MK_HIT_NOTHING(
 	if (checkDirectLightHit) {
 		DirectHitInfiniteLight(
 				&taskConfig->film,
-				taskState,
 				pathInfo,
 				&taskState->throughput,
 				&rays[gid],
@@ -193,8 +191,8 @@ __kernel void AdvancePaths_MK_HIT_NOTHING(
 		sampleResult->alpha = 0.f;
 	}
 
-	// Add sampleresult to reservoir using throughputfactor and totalconnectionthroughput as contribution weight
-	SampleResultReservoir_Add(&taskState->initialPathReservoir, SampleResult_GetAverageRadiance(&taskConfig->film, sampleResult) / Spectrum_Filter(VLOAD3F(taskState->throughput.c)), &taskState->seedReservoirSampling, sampleResult);
+	// Add environment sample to reservoir
+	SampleResultReservoir_Add(taskConfig, taskState, sampleResult);
 
 	taskState->state = MK_SPLAT_SAMPLE;
 }
@@ -304,7 +302,6 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 	if (BSDF_IsLightSource(bsdf) && checkDirectLightHit) {
 		DirectHitFiniteLight(
 				&taskConfig->film,
-				taskState,
 				pathInfo,
 				&taskState->throughput,
 				&rays[gid],
@@ -312,9 +309,6 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 				bsdf,
 				sampleResult
 				LIGHTS_PARAM);
-
-		// Add sampleresult to reservoir using throughputfactor and totalconnectionthroughput as contribution weight
-		//SampleResultReservoir_Add(&taskState->initialPathReservoir, SampleResult_GetAverageRadiance(&taskConfig->film, sampleResult) / taskState->throughput.c[0], &taskState->seedReservoirSampling, sampleResult);
 	}
 
 	//----------------------------------------------------------------------
@@ -522,12 +516,6 @@ __kernel void AdvancePaths_MK_RT_DL(
 
 			__global BSDF *bsdf = &taskState->bsdf;
 
-			// if (gid == 0) {
-			// 	printf("%f %f %f\n", taskState->throughput.c[0], taskState->throughput.c[1], taskState->throughput.c[2]);
-			// 	printf("%f\n", taskState->totalThroughput);
-			// 	printf("--------\n");
-			// }
-
 			if (!BSDF_IsShadowCatcher(bsdf MATERIALS_PARAM)) {
 				const float3 lightRadiance = VLOAD3F(taskDirectLight->illumInfo.lightRadiance.c);
 				SampleResult_AddDirectLight(&taskConfig->film,
@@ -552,11 +540,12 @@ __kernel void AdvancePaths_MK_RT_DL(
 				}
 			}
 
-			// Add sampleresult to reservoir using throughputfactor and totalconnectionthroughput as contribution weight
-			SampleResultReservoir_Add(&taskState->initialPathReservoir, SampleResult_GetAverageRadiance(&taskConfig->film, sampleResult) / Spectrum_Filter(VLOAD3F(taskState->throughput.c)), &taskState->seedReservoirSampling, sampleResult);
+			// Add illuminated sample into the reservoir.
+			SampleResultReservoir_Add(taskConfig, taskState, sampleResult);
 
 			taskDirectLight->directLightResult = ILLUMINATED;
 		} else
+			// Do not need to add shadowed vertices to the reservoir, since the weight will be zero anyways as the average radiance is 0.
 			taskDirectLight->directLightResult = SHADOWED;
 
 		// Check if this is the last path vertex
@@ -646,8 +635,6 @@ __kernel void AdvancePaths_MK_DL_ILLUMINATE(
 		if (sampleResult->lastPathVertex) {
 			taskState->state = MK_SPLAT_SAMPLE;
 		} else {
-			// Add sampleresult to reservoir using throughputfactor and totalconnectionthroughput as contribution weight
-			// SampleResultReservoir_Add(&taskState->initialPathReservoir, SampleResult_GetAverageRadiance(&taskConfig->film, sampleResult) / taskState->throughput.c[0], &taskState->seedReservoirSampling, sampleResult);
 			taskState->state = MK_GENERATE_NEXT_VERTEX_RAY;
 		}
 	}
@@ -737,8 +724,6 @@ __kernel void AdvancePaths_MK_DL_SAMPLE_BSDF(
 		if (sampleResult->lastPathVertex) {
 			taskState->state = MK_SPLAT_SAMPLE;
 		} else {
-			// Add sampleresult to reservoir using throughputfactor and totalconnectionthroughput as contribution weight
-			// SampleResultReservoir_Add(&taskState->initialPathReservoir, SampleResult_GetAverageRadiance(&taskConfig->film, sampleResult) / taskState->throughput.c[0], &taskState->seedReservoirSampling, sampleResult);
 			taskState->state = MK_GENERATE_NEXT_VERTEX_RAY;
 		}
 	}
@@ -850,16 +835,12 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 
 	const bool continuePath = !Spectrum_IsBlack(bsdfSample) && rrContinuePath && !maxPathDepth;
 	if (continuePath) {
-		// Resample previous sample
-		//SampleResultReservoir_Add(&taskState->initialPathReservoir, SampleResult_GetAverageRadiance(&taskConfig->film, sampleResult) / taskState->throughput.c[0], &taskState->seedReservoirSampling, sampleResult);
-
 		float3 throughputFactor = WHITE;
 
 		// RR increases path contribution
 		throughputFactor /= rrProb;
 		throughputFactor *= bsdfSample;
 
-		taskState->totalThroughput *= throughputFactor.x;
 		VSTORE3F(throughputFactor * VLOAD3F(taskState->throughput.c), taskState->throughput.c);
 
 		// This is valid for irradiance AOV only if it is not a SPECULAR material and
@@ -946,9 +927,7 @@ __kernel void AdvancePaths_MK_SPLAT_SAMPLE(
 	// End of variables setup
 	//--------------------------------------------------------------------------
 
-	// reservoir sample last sample
-	// SampleResultReservoir_Add(&taskState->initialPathReservoir, SampleResult_GetAverageRadiance(&taskConfig->film, sampleResult) / taskState->throughput.c[0], &taskState->seedReservoirSampling, sampleResult);
-	// copy resampled sample from reservoir to sampleResultsBuff[gid]
+	// Copy resampled sample from reservoir to sampleResultsBuff[gid] to be splatted like normal
 	*sampleResult = taskState->initialPathReservoir.selectedSample;
 
 	// Initialize Film radiance group pointer table

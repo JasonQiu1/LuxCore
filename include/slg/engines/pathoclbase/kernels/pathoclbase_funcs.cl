@@ -140,41 +140,38 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 	taskState->photonGICacheEnabledOnLastHit = false;
 	taskState->photonGICausticCacheUsed = false;
 	taskState->photonGIShowIndirectPathMixUsed = false;
-	taskState->initialPathReservoir.sumConfidence = 0.0f;
-	taskState->totalThroughput = 1.0f;
+	taskState->initialPathReservoir.sumWeight = 0.0f;
 	// Initialize the trough a shadow transparency flag used by Scene_Intersect()
 	taskState->throughShadowTransparency = false;
 
 	// Initialize the pass-through event seed
 	//
 	// Note: using the IDX_PASSTHROUGH of path depth 0
-	const float passThroughEvent = Sampler_GetSample(taskConfig, IDX_BSDF_OFFSET + IDX_PASSTHROUGH SAMPLER_PARAM);
-	Seed seedPassThroughEvent;
-	Rnd_InitFloat(passThroughEvent, &seedPassThroughEvent);
-	taskState->seedPassThroughEvent = seedPassThroughEvent;
-	Rnd_InitFloat(passThroughEvent + 1, &seedPassThroughEvent);
-	taskState->seedReservoirSampling = seedPassThroughEvent;
+	float seedValue = Sampler_GetSample(taskConfig, IDX_BSDF_OFFSET + IDX_PASSTHROUGH SAMPLER_PARAM);
+	Seed seed;
+	Rnd_InitFloat(seedValue, &seed);
+	taskState->seedPassThroughEvent = seed;
+
+	seedValue = Sampler_GetSample(taskConfig, IDX_BSDF_OFFSET + IDX_PASSTHROUGH SAMPLER_PARAM);
+	Rnd_InitFloat(seedValue, &seed);
+	taskState->seedReservoirSampling = seed;
 }
 
 //------------------------------------------------------------------------------
 // Utility functions
 //------------------------------------------------------------------------------
 
-// Copy resampled sample to another spot in memory 
-// OPENCL_FORCE_INLINE void SampleResultReservoir_Copy(__global SampleResultReservoir* reservoir
-// 		SAMPLER_PARAM_DECL) {
-// 	const size_t gid = get_global_id(0);
-// 	__global SampleResult* destinationSampleResult = &sampleResultsBuff[gid];
-
-// 	*destinationSampleResult = reservoir->selectedSample;
-// }
-
-OPENCL_FORCE_INLINE void SampleResultReservoir_Add(__global SampleResultReservoir* reservoir, 
-		const float confidenceWeight, __global Seed* seed, __global SampleResult* newSample) {
-	reservoir->sumConfidence += confidenceWeight;
-	if (Rnd_FloatValue(seed) < (confidenceWeight / reservoir->sumConfidence)) {
-	// if (Rnd_FloatValue(seed) < 1.0f) {
-		printf("succeeded replacement chance of %f\n", confidenceWeight / reservoir->sumConfidence);
+// Add a sample to the streaming reservoir.
+// Simply replace based on the new sample's weight and the reservoir's current sum weight.
+OPENCL_FORCE_INLINE void SampleResultReservoir_Add(__global TaskConfig* taskConfig, __global TaskState* taskState, 
+		__global SampleResult* newSample) {
+	__global SampleResultReservoir* reservoir = &taskState->initialPathReservoir; 
+	// weight of the sample is path contribution / path PDF 
+	// TODO: Verify that averaging the radiance is a good enough target function
+	// TODO: Verify that averaging the throughput on all 3 axes is a good enough target PDF
+	const float weight = SampleResult_GetAverageRadiance(&taskConfig->film, newSample) / Spectrum_Filter(VLOAD3F(taskState->throughput.c))
+	reservoir->sumWeight += weight;
+	if (Rnd_FloatValue(taskState->seedReservoirSampling) < (weight / reservoir->sumWeight)) {
 		reservoir->selectedSample = *newSample;
 	}
 }
@@ -196,7 +193,7 @@ OPENCL_FORCE_INLINE bool CheckDirectHitVisibilityFlags(__global const LightSourc
 }
 
 OPENCL_FORCE_INLINE void DirectHitInfiniteLight(__constant const Film* restrict film,
-		__global GPUTaskState* taskState, __global EyePathInfo *pathInfo, __global const Spectrum* restrict pathThroughput,
+		__global EyePathInfo *pathInfo, __global const Spectrum* restrict pathThroughput,
 		const __global Ray *ray, __global const BSDF *bsdf, __global SampleResult *sampleResult
 		LIGHTS_PARAM_DECL) {
 	// If the material is shadow transparent, Direct Light sampling
@@ -235,13 +232,12 @@ OPENCL_FORCE_INLINE void DirectHitInfiniteLight(__constant const Film* restrict 
 				weight = 1.f;
 			
 			SampleResult_AddEmission(film, sampleResult, light->lightID, throughput, weight * envRadiance);
-			// SampleResultReservoir_Add(&taskState->initialPathReservoir, taskState->totalThroughput * weight, &taskState->seedReservoirSampling, sampleResult);
 		}
 	}
 }
 
 OPENCL_FORCE_INLINE void DirectHitFiniteLight(__constant const Film* restrict film,
-		__global GPUTaskState* taskState, __global EyePathInfo *pathInfo,
+		__global EyePathInfo *pathInfo,
 		__global const Spectrum* restrict pathThroughput, const __global Ray *ray,
 		const float distance, __global const BSDF *bsdf,
 		__global SampleResult *sampleResult
@@ -288,7 +284,6 @@ OPENCL_FORCE_INLINE void DirectHitFiniteLight(__constant const Film* restrict fi
 
 		SampleResult_AddEmission(film, sampleResult, BSDF_GetLightID(bsdf
 				MATERIALS_PARAM), VLOAD3F(pathThroughput->c), weight * emittedRadiance);
-		//SampleResultReservoir_Add(&taskState->initialPathReservoir, taskState->totalThroughput * weight, &taskState->seedReservoirSampling, sampleResult);
 	}
 }
 

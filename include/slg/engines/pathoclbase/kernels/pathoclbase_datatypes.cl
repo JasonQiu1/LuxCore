@@ -88,8 +88,7 @@ typedef struct {
 typedef struct {
 	// stream length is stored implicitly in selectedSample->depth
 	SampleResult selectedSample; // Actual resampled value is stored in the sampleResult buffer at index gid
-	// TODO: SampleResult is extremely large and makes GPUTaskState much larger. Try to find another way to store this.
-	float sumConfidence; // Sum of all stored samples' confidence weights (throughput factor * connection throughputs)
+	float sumWeight; // Sum of all stored samples' confidence weights (path contribution / path PDF)
 } SampleResultReservoir;
 
 // The state used to keep track of the rendered path
@@ -104,8 +103,6 @@ typedef struct {
 
 	// Reservoir data structure for initial path resampling using RIS
 	SampleResultReservoir initialPathReservoir;
-	// Total throughput for this path so far
-	float totalThroughput;
 	
 	int albedoToDo, photonGICacheEnabledOnLastHit,
 			photonGICausticCacheUsed, photonGIShowIndirectPathMixUsed,
