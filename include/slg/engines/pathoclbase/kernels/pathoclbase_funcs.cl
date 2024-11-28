@@ -175,8 +175,9 @@ OPENCL_FORCE_INLINE void SampleResultReservoir_Add(const __global GPUTaskConfigu
 		// if (weight != reservoir->sumWeight) {
 		// 	printf("succeeded non-guaranteed replacement with probability of %f\n", weight / reservoir->sumWeight);
 		// }
-		reservoir->selectedSample = *newSample;
+		return;
 	}
+	reservoir->selectedSample = *newSample;
 }
 
 OPENCL_FORCE_INLINE bool CheckDirectHitVisibilityFlags(__global const LightSource* restrict lightSource,
