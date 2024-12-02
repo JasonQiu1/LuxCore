@@ -173,7 +173,7 @@ OPENCL_FORCE_INLINE void SampleResultReservoir_Add(const __global GPUTaskConfigu
 	const float3 pathPdf = VLOAD3F(taskState->throughput.c);
 
 	// Spinlock to avoid changing the reservoir when another work-item is accessing the reservoir
-	while (atomic_cmpxchg(&taskState->reservoirMutex, 0, 1) == 0) { printf("waiting"); }
+	// while (atomic_cmpxchg(&taskState->reservoirMutex, 0, 1) == 0) { printf("waiting"); }
 
 	const float random = Rnd_FloatValue(&taskState->seedReservoirSampling);
 
@@ -190,7 +190,7 @@ OPENCL_FORCE_INLINE void SampleResultReservoir_Add(const __global GPUTaskConfigu
 		reservoir->selectedSample = *newSample;
 	}
 
-	taskState->reservoirMutex = 0;
+	// taskState->reservoirMutex = 0;
 }
 
 OPENCL_FORCE_INLINE bool CheckDirectHitVisibilityFlags(__global const LightSource* restrict lightSource,
