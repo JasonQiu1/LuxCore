@@ -180,9 +180,9 @@ OPENCL_FORCE_INLINE void SampleResultReservoir_Add(const __global GPUTaskConfigu
 	const float weight = Spectrum_Filter(pathContribution / pathPdf);
 	reservoir->sumWeight += weight;
 	if (random < (weight / reservoir->sumWeight)) {
-		// if (weight != reservoir->sumWeight) {
-		// 	printf("succeeded non-guaranteed resample with probability of %f\n", weight / reservoir->sumWeight);
-		// }
+		if (weight != reservoir->sumWeight) {
+			printf("succeeded non-guaranteed resample with probability of %f\n", weight / reservoir->sumWeight);
+		}
 		reservoir->selectedSample = *newSample;
 	}
 }
