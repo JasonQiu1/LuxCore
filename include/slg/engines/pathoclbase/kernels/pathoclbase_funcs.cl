@@ -141,7 +141,6 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 	taskState->photonGICausticCacheUsed = false;
 	taskState->photonGIShowIndirectPathMixUsed = false;
 	taskState->initialPathReservoir.sumWeight = 0.0f;
-	taskState->reservoirMutex = 0;
 	// Initialize the trough a shadow transparency flag used by Scene_Intersect()
 	taskState->throughShadowTransparency = false;
 
@@ -172,9 +171,6 @@ OPENCL_FORCE_INLINE void SampleResultReservoir_Add(const __global GPUTaskConfigu
 
 	const float3 pathPdf = VLOAD3F(taskState->throughput.c);
 
-	// Spinlock to avoid changing the reservoir when another work-item is accessing the reservoir
-	// while (atomic_cmpxchg(&taskState->reservoirMutex, 0, 1) == 0) { printf("waiting"); }
-
 	const float random = Rnd_FloatValue(&taskState->seedReservoirSampling);
 
 	const float3 pathContribution = SampleResult_GetRadiance(&taskConfig->film, newSample);
@@ -184,13 +180,11 @@ OPENCL_FORCE_INLINE void SampleResultReservoir_Add(const __global GPUTaskConfigu
 	const float weight = Spectrum_Filter(pathContribution / pathPdf);
 	reservoir->sumWeight += weight;
 	if (random < (weight / reservoir->sumWeight)) {
-		if (weight != reservoir->sumWeight) {
-			printf("succeeded non-guaranteed resample with probability of %f\n", weight / reservoir->sumWeight);
-		}
+		// if (weight != reservoir->sumWeight) {
+		// 	printf("succeeded non-guaranteed resample with probability of %f\n", weight / reservoir->sumWeight);
+		// }
 		reservoir->selectedSample = *newSample;
 	}
-
-	// taskState->reservoirMutex = 0;
 }
 
 OPENCL_FORCE_INLINE bool CheckDirectHitVisibilityFlags(__global const LightSource* restrict lightSource,
