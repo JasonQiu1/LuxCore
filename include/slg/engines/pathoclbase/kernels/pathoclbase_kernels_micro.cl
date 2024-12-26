@@ -191,7 +191,7 @@ __kernel void AdvancePaths_MK_HIT_NOTHING(
 		sampleResult->alpha = 0.f;
 	}
 
-	// Add environment sample to reservoir
+	// Add BSDF-importance sampled environment sample to reservoir
 	SampleResultReservoir_Update(taskConfig, taskState, sampleResult);
 
 	taskState->state = MK_SPLAT_SAMPLE;
@@ -518,7 +518,7 @@ __kernel void AdvancePaths_MK_RT_DL(
 
 			if (!BSDF_IsShadowCatcher(bsdf MATERIALS_PARAM)) {
 				const float3 lightRadiance = VLOAD3F(taskDirectLight->illumInfo.lightRadiance.c);
-				SampleResult_UpdateDirectLight(&taskConfig->film,
+				SampleResult_AddDirectLight(&taskConfig->film,
 						sampleResult, taskDirectLight->illumInfo.lightID,
 						BSDF_GetEventTypes(bsdf
 							MATERIALS_PARAM),
@@ -540,7 +540,7 @@ __kernel void AdvancePaths_MK_RT_DL(
 				}
 			}
 
-			// Add illuminated sample into the reservoir.
+			// Add NEE-illuminated sample into the reservoir.
 			SampleResultReservoir_Update(taskConfig, taskState, sampleResult);
 
 			taskDirectLight->directLightResult = ILLUMINATED;

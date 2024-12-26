@@ -143,6 +143,7 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 	taskState->initialPathReservoir.sumWeight = 0.0f;
 	// Initialize the trough a shadow transparency flag used by Scene_Intersect()
 	taskState->throughShadowTransparency = false;
+	taskState->lastWeight = 0.0f;
 
 	// Initialize the pass-through event seed
 	//
@@ -169,7 +170,7 @@ OPENCL_FORCE_INLINE void SampleResultReservoir_Update(const __global GPUTaskConf
 		__global SampleResult* restrict newSample) {
 	__global SampleResultReservoir* reservoir = &taskState->initialPathReservoir;
 
-	const float3 pathPdf = VLOAD3F(taskState->throughput.c);
+	const float3 pathPdf = VLOAD3F(taskState->throughput.c) * taskState->lastWeight;
 
 	const float random = Rnd_FloatValue(&taskState->seedReservoirSampling);
 
@@ -180,10 +181,6 @@ OPENCL_FORCE_INLINE void SampleResultReservoir_Update(const __global GPUTaskConf
 	const float weight = Spectrum_Filter(pathContribution / pathPdf);
 	reservoir->sumWeight += weight;
 	if (random < (weight / reservoir->sumWeight)) {
-		// TODO: FIGURE OUT WHY BOTH THIS CONDITIONAL AND THE PRINT STATEMENT ARE REQUIRED FOR ACHIEVING A CORRECT RESULT. 
-		if (weight != reservoir->sumWeight) {
-			printf("succeeded non-guaranteed resample with probability of %f\n", weight / reservoir->sumWeight);
-		}
 		reservoir->selectedSample = *newSample;
 	}
 }
@@ -243,6 +240,8 @@ OPENCL_FORCE_INLINE void DirectHitInfiniteLight(__constant const Film* restrict 
 			} else
 				weight = 1.f;
 			
+			taskState->lastWeight *= weight;
+
 			SampleResult_AddEmission(film, sampleResult, light->lightID, throughput, weight * envRadiance);
 		}
 	}
@@ -293,6 +292,8 @@ OPENCL_FORCE_INLINE void DirectHitFiniteLight(__constant const Film* restrict fi
 			// Note: mats[bsdf->materialIndex].avgPassThroughTransparency = lightSource->GetAvgPassThroughTransparency()
 			weight = PowerHeuristic(pathInfo->lastBSDFPdfW * Light_GetAvgPassThroughTransparency(light LIGHTS_PARAM), directPdfW * lightPickProb);
 		}
+
+		taskState->lastWeight *= weight;
 
 		SampleResult_AddEmission(film, sampleResult, BSDF_GetLightID(bsdf
 				MATERIALS_PARAM), VLOAD3F(pathThroughput->c), weight * emittedRadiance);
@@ -404,7 +405,7 @@ OPENCL_FORCE_INLINE bool DirectLight_BSDFSampling(
 	bsdfPdfW *= Light_GetAvgPassThroughTransparency(light
 			LIGHTS_PARAM);
 	
-	// MIS between direct light sampling and BSDF sampling
+	// MIS between direct light sampling adnd BSDF sampling
 	//
 	// Note: I have to avoiding MIS on the last path vertex
 
@@ -414,6 +415,7 @@ OPENCL_FORCE_INLINE bool DirectLight_BSDFSampling(
 			!bsdf->hitPoint.throughShadowTransparency;
 
 	const float weight = misEnabled ? PowerHeuristic(directLightSamplingPdfW, bsdfPdfW) : 1.f;
+	taskState->lastWeight *= weight;
 
 	const float3 lightRadiance = VLOAD3F(info->lightRadiance.c);
 	VSTORE3F(bsdfEval * (weight * factor) * lightRadiance, info->lightRadiance.c);

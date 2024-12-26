@@ -96,6 +96,7 @@ typedef struct {
 	PathState state;
 
 	Spectrum throughput;
+	float lastWeight;
 	BSDF bsdf; // Variable size structure
 
 	Seed seedPassThroughEvent;
