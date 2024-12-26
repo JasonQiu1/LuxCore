@@ -824,7 +824,7 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 	if (sampleResult->firstPathVertex)
 		sampleResult->firstPathVertexEvent = bsdfEvent;
 
-	EyePathInfo_UpdateVertex(pathInfo, bsdf, bsdfEvent, bsdfPdfW,
+	EyePathInfo_AddVertex(pathInfo, bsdf, bsdfEvent, bsdfPdfW,
 			taskConfig->pathTracer.hybridBackForward.glossinessThreshold
 			MATERIALS_PARAM);
 
