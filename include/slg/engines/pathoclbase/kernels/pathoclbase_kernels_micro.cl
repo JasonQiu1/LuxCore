@@ -163,6 +163,7 @@ __kernel void AdvancePaths_MK_HIT_NOTHING(
 				&taskConfig->film,
 				pathInfo,
 				&taskState->throughput,
+				&taskState->lastWeight,
 				&rays[gid],
 				sampleResult->firstPathVertex ? NULL : &taskState->bsdf,
 				sampleResult
@@ -304,12 +305,16 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 				&taskConfig->film,
 				pathInfo,
 				&taskState->throughput,
+				&taskState->lastWeight,
 				&rays[gid],
 				rayHits[gid].t,
 				bsdf,
 				sampleResult
 				LIGHTS_PARAM);
 	}
+
+	// Add BSDF importance sampled light sample into the reservoir.
+	SampleResultReservoir_Update(taskConfig, taskState, sampleResult);
 
 	//----------------------------------------------------------------------
 	// Check if I can use the photon cache
@@ -693,7 +698,8 @@ __kernel void AdvancePaths_MK_DL_SAMPLE_BSDF(
 			pathInfo,
 			&task->tmpPathDepthInfo,
 			&taskState->bsdf,
-			VLOAD3F(&rays[gid].d.x)
+			VLOAD3F(&rays[gid].d.x),
+			&taskState->lastWeight
 			LIGHTS_PARAM)) {
 		__global GPUTask *task = &tasks[gid];
 		Seed seedValue = task->seed;

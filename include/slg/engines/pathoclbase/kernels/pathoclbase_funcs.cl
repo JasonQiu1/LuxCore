@@ -202,7 +202,8 @@ OPENCL_FORCE_INLINE bool CheckDirectHitVisibilityFlags(__global const LightSourc
 }
 
 OPENCL_FORCE_INLINE void DirectHitInfiniteLight(__constant const Film* restrict film,
-		__global EyePathInfo *pathInfo, __global const Spectrum* restrict pathThroughput,
+		__global EyePathInfo *pathInfo, __global const Spectrum* restrict pathThroughput, 
+		__global float* lastWeight,
 		const __global Ray *ray, __global const BSDF *bsdf, __global SampleResult *sampleResult
 		LIGHTS_PARAM_DECL) {
 	// If the material is shadow transparent, Direct Light sampling
@@ -240,7 +241,7 @@ OPENCL_FORCE_INLINE void DirectHitInfiniteLight(__constant const Film* restrict 
 			} else
 				weight = 1.f;
 			
-			taskState->lastWeight *= weight;
+			*lastWeight *= weight;
 
 			SampleResult_AddEmission(film, sampleResult, light->lightID, throughput, weight * envRadiance);
 		}
@@ -249,7 +250,8 @@ OPENCL_FORCE_INLINE void DirectHitInfiniteLight(__constant const Film* restrict 
 
 OPENCL_FORCE_INLINE void DirectHitFiniteLight(__constant const Film* restrict film,
 		__global EyePathInfo *pathInfo,
-		__global const Spectrum* restrict pathThroughput, const __global Ray *ray,
+		__global const Spectrum* restrict pathThroughput,  
+		__global float* lastWeight, const __global Ray *ray,
 		const float distance, __global const BSDF *bsdf,
 		__global SampleResult *sampleResult
 		LIGHTS_PARAM_DECL) {
@@ -293,7 +295,7 @@ OPENCL_FORCE_INLINE void DirectHitFiniteLight(__constant const Film* restrict fi
 			weight = PowerHeuristic(pathInfo->lastBSDFPdfW * Light_GetAvgPassThroughTransparency(light LIGHTS_PARAM), directPdfW * lightPickProb);
 		}
 
-		taskState->lastWeight *= weight;
+		*lastWeight *= weight;
 
 		SampleResult_AddEmission(film, sampleResult, BSDF_GetLightID(bsdf
 				MATERIALS_PARAM), VLOAD3F(pathThroughput->c), weight * emittedRadiance);
@@ -368,7 +370,8 @@ OPENCL_FORCE_INLINE bool DirectLight_BSDFSampling(
 		__global EyePathInfo *pathInfo,
 		__global PathDepthInfo *tmpDepthInfo,
 		__global const BSDF *bsdf,
-		const float3 shadowRayDir
+		const float3 shadowRayDir 
+		__global float* lastWeight,
 		LIGHTS_PARAM_DECL) {
 	// Sample the BSDF
 	BSDFEvent event;
@@ -415,7 +418,7 @@ OPENCL_FORCE_INLINE bool DirectLight_BSDFSampling(
 			!bsdf->hitPoint.throughShadowTransparency;
 
 	const float weight = misEnabled ? PowerHeuristic(directLightSamplingPdfW, bsdfPdfW) : 1.f;
-	taskState->lastWeight *= weight;
+	*lastWeight *= weight;
 
 	const float3 lightRadiance = VLOAD3F(info->lightRadiance.c);
 	VSTORE3F(bsdfEval * (weight * factor) * lightRadiance, info->lightRadiance.c);
