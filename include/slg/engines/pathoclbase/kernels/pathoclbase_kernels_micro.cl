@@ -192,7 +192,7 @@ __kernel void AdvancePaths_MK_HIT_NOTHING(
 	}
 
 	// Add environment sample to reservoir
-	SampleResultReservoir_Add(taskConfig, taskState, sampleResult);
+	SampleResultReservoir_Update(taskConfig, taskState, sampleResult);
 
 	taskState->state = MK_SPLAT_SAMPLE;
 }
@@ -518,7 +518,7 @@ __kernel void AdvancePaths_MK_RT_DL(
 
 			if (!BSDF_IsShadowCatcher(bsdf MATERIALS_PARAM)) {
 				const float3 lightRadiance = VLOAD3F(taskDirectLight->illumInfo.lightRadiance.c);
-				SampleResult_AddDirectLight(&taskConfig->film,
+				SampleResult_UpdateDirectLight(&taskConfig->film,
 						sampleResult, taskDirectLight->illumInfo.lightID,
 						BSDF_GetEventTypes(bsdf
 							MATERIALS_PARAM),
@@ -541,7 +541,7 @@ __kernel void AdvancePaths_MK_RT_DL(
 			}
 
 			// Add illuminated sample into the reservoir.
-			SampleResultReservoir_Add(taskConfig, taskState, sampleResult);
+			SampleResultReservoir_Update(taskConfig, taskState, sampleResult);
 
 			taskDirectLight->directLightResult = ILLUMINATED;
 		} else
@@ -818,7 +818,7 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 	if (sampleResult->firstPathVertex)
 		sampleResult->firstPathVertexEvent = bsdfEvent;
 
-	EyePathInfo_AddVertex(pathInfo, bsdf, bsdfEvent, bsdfPdfW,
+	EyePathInfo_UpdateVertex(pathInfo, bsdf, bsdfEvent, bsdfPdfW,
 			taskConfig->pathTracer.hybridBackForward.glossinessThreshold
 			MATERIALS_PARAM);
 

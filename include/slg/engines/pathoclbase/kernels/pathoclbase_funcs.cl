@@ -165,7 +165,7 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 
 // Add a sample to the streaming reservoir.
 // Simply replace based on the new sample's weight and the reservoir's current sum weight.
-OPENCL_FORCE_INLINE void SampleResultReservoir_Add(const __global GPUTaskConfiguration* restrict taskConfig, __global GPUTaskState* restrict taskState, 
+OPENCL_FORCE_INLINE void SampleResultReservoir_Update(const __global GPUTaskConfiguration* restrict taskConfig, __global GPUTaskState* restrict taskState, 
 		__global SampleResult* restrict newSample) {
 	__global SampleResultReservoir* reservoir = &taskState->initialPathReservoir;
 
@@ -176,10 +176,11 @@ OPENCL_FORCE_INLINE void SampleResultReservoir_Add(const __global GPUTaskConfigu
 	const float3 pathContribution = SampleResult_GetRadiance(&taskConfig->film, newSample);
 
 	// Weight of the sample is path contribution / path PDF 
-	// TODO: verify that averaging each color together to get the sample weight is unbiased
+	// TODO: verify that averaging weight from each color together to get the sample weight is unbiased
 	const float weight = Spectrum_Filter(pathContribution / pathPdf);
 	reservoir->sumWeight += weight;
 	if (random < (weight / reservoir->sumWeight)) {
+		// TODO: FIGURE OUT WHY BOTH THIS CONDITIONAL AND THE PRINT STATEMENT ARE REQUIRED FOR ACHIEVING A CORRECT RESULT. 
 		if (weight != reservoir->sumWeight) {
 			printf("succeeded non-guaranteed resample with probability of %f\n", weight / reservoir->sumWeight);
 		}
