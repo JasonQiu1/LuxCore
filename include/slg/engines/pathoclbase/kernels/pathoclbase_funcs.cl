@@ -371,7 +371,7 @@ OPENCL_FORCE_INLINE bool DirectLight_BSDFSampling(
 		__global PathDepthInfo *tmpDepthInfo,
 		__global const BSDF *bsdf,
 		const float3 shadowRayDir 
-		__global float* lastWeight,
+		__global float* lastWeight
 		LIGHTS_PARAM_DECL) {
 	// Sample the BSDF
 	BSDFEvent event;
