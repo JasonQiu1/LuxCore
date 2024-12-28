@@ -162,8 +162,7 @@ __kernel void AdvancePaths_MK_HIT_NOTHING(
 		DirectHitInfiniteLight(
 				&taskConfig->film,
 				pathInfo,
-				&taskState->throughput,
-				&taskState->lastWeight,
+				taskState,
 				&rays[gid],
 				sampleResult->firstPathVertex ? NULL : &taskState->bsdf,
 				sampleResult
@@ -192,8 +191,10 @@ __kernel void AdvancePaths_MK_HIT_NOTHING(
 		sampleResult->alpha = 0.f;
 	}
 
+#if defined(OCL_THREAD_RESPIR) 
 	// Add BSDF-importance sampled environment sample to reservoir
 	SampleResultReservoir_Update(taskConfig, taskState, sampleResult);
+#endif
 
 	taskState->state = MK_SPLAT_SAMPLE;
 }
@@ -304,8 +305,7 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 		DirectHitFiniteLight(
 				&taskConfig->film,
 				pathInfo,
-				&taskState->throughput,
-				&taskState->lastWeight,
+				taskState,
 				&rays[gid],
 				rayHits[gid].t,
 				bsdf,
@@ -313,8 +313,10 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 				LIGHTS_PARAM);
 	}
 
+#if defined(OCL_THREAD_RESPIR) 
 	// Add BSDF importance sampled light sample into the reservoir.
 	SampleResultReservoir_Update(taskConfig, taskState, sampleResult);
+#endif
 
 	//----------------------------------------------------------------------
 	// Check if I can use the photon cache
@@ -545,8 +547,10 @@ __kernel void AdvancePaths_MK_RT_DL(
 				}
 			}
 
+#if defined(OCL_THREAD_RESPIR) 
 			// Add NEE-illuminated sample into the reservoir.
 			SampleResultReservoir_Update(taskConfig, taskState, sampleResult);
+#endif
 
 			taskDirectLight->directLightResult = ILLUMINATED;
 		} else
@@ -697,9 +701,8 @@ __kernel void AdvancePaths_MK_DL_SAMPLE_BSDF(
 			rays[gid].time, sampleResult->lastPathVertex,
 			pathInfo,
 			&task->tmpPathDepthInfo,
-			&taskState->bsdf,
-			VLOAD3F(&rays[gid].d.x),
-			&taskState->lastWeight
+			taskState,
+			VLOAD3F(&rays[gid].d.x)
 			LIGHTS_PARAM)) {
 		__global GPUTask *task = &tasks[gid];
 		Seed seedValue = task->seed;
@@ -933,8 +936,10 @@ __kernel void AdvancePaths_MK_SPLAT_SAMPLE(
 	// End of variables setup
 	//--------------------------------------------------------------------------
 
+#if defined(OCL_THREAD_RESPIR) 
 	// Copy resampled sample from reservoir to sampleResultsBuff[gid] to be splatted like normal
 	*sampleResult = taskState->initialPathReservoir.selectedSample;
+#endif
 
 	// Initialize Film radiance group pointer table
 	__global float *filmRadianceGroup[FILM_MAX_RADIANCE_GROUP_COUNT];

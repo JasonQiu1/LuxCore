@@ -183,7 +183,7 @@ protected:
 	virtual void EnqueueAdvancePathsKernel();
 
 	static luxrays::oclKernelCache *AllocKernelCache(const std::string &type);
-	static void GetKernelParamters(std::vector<std::string> &params,
+	virtual void GetKernelParameters(std::vector<std::string> &params,
 			luxrays::HardwareIntersectionDevice *intersectionDevice,
 			const std::string renderEngineType,
 			const float epsilonMin, const float epsilonMax);

@@ -58,7 +58,7 @@ void PathOCLBaseOCLRenderThread::CompileKernel(HardwareIntersectionDevice *devic
 	}
 }
 
-void PathOCLBaseOCLRenderThread::GetKernelParamters(
+void PathOCLBaseOCLRenderThread::GetKernelParameters(
 		vector<string> &params,
 		HardwareIntersectionDevice *intersectionDevice,
 		const string renderEngineType,
@@ -261,7 +261,7 @@ void PathOCLBaseOCLRenderThread::InitKernels() {
 	}
 
 	vector<string> kernelsParameters;
-	GetKernelParamters(kernelsParameters, intersectionDevice,
+	GetKernelParameters(kernelsParameters, intersectionDevice,
 			RenderEngine::RenderEngineType2String(renderEngine->GetType()),
 			MachineEpsilon::GetMin(), MachineEpsilon::GetMax());
 

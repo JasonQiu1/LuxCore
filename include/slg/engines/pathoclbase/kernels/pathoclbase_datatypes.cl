@@ -96,14 +96,18 @@ typedef struct {
 	PathState state;
 
 	Spectrum throughput;
-	float lastWeight;
 	BSDF bsdf; // Variable size structure
 
 	Seed seedPassThroughEvent;
+#if defined(OCL_THREAD_RESPIR) 
 	Seed seedReservoirSampling;
+
+	// keep track of the MIS weights of the most recent direct lighting event
+	float lastWeight;
 
 	// Reservoir data structure for initial path resampling using RIS
 	SampleResultReservoir initialPathReservoir;
+#endif
 	
 	int albedoToDo, photonGICacheEnabledOnLastHit,
 			photonGICausticCacheUsed, photonGIShowIndirectPathMixUsed,

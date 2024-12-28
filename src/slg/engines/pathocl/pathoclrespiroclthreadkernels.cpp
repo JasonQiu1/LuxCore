@@ -39,6 +39,15 @@ using namespace slg;
 // PathOCLRespirOCLRenderThread kernel functions
 //------------------------------------------------------------------------------
 
+void PathOCLRespirOCLRenderThread::GetKernelParameters(
+		vector<string> &params,
+		HardwareIntersectionDevice *intersectionDevice,
+		const string renderEngineType,
+		const float epsilonMin, const float epsilonMax) {
+	params.push_back("-D OCL_THREAD_RESPIR");
+	PathOCLOpenCLRenderThread::GetKernelParameters(params, intersectionDevice, renderEngineType, epsilonMin, epsilonMax);
+}
+
 void PathOCLRespirOCLRenderThread::InitKernels() {
     PathOCLOpenCLRenderThread::InitKernels();
 }
