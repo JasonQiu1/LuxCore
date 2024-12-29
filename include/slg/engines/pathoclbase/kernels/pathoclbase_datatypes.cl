@@ -91,6 +91,7 @@ typedef struct {
 	float sumWeight; // Sum of all stored samples' confidence weights (path contribution / path PDF)
 } SampleResultReservoir;
 
+#if defined(OCL_THREAD_RESPIR) 
 // The state used to keep track of the rendered path
 typedef struct {
 	PathState state;
@@ -99,7 +100,6 @@ typedef struct {
 	BSDF bsdf; // Variable size structure
 
 	Seed seedPassThroughEvent;
-// #if defined(OCL_THREAD_RESPIR) 
 	Seed seedReservoirSampling;
 
 	// keep track of the MIS weights of the most recent direct lighting event
@@ -107,13 +107,27 @@ typedef struct {
 
 	// Reservoir data structure for initial path resampling using RIS
 	SampleResultReservoir initialPathReservoir;
-// #endif
 	
 	int albedoToDo, photonGICacheEnabledOnLastHit,
 			photonGICausticCacheUsed, photonGIShowIndirectPathMixUsed,
 			// The shadow transparency lag used by Scene_Intersect()
 			throughShadowTransparency;
 } GPUTaskState;
+#else
+typedef struct {
+	PathState state;
+
+	Spectrum throughput;
+	BSDF bsdf; // Variable size structure
+
+	Seed seedPassThroughEvent;
+	
+	int albedoToDo, photonGICacheEnabledOnLastHit,
+			photonGICausticCacheUsed, photonGIShowIndirectPathMixUsed,
+			// The shadow transparency lag used by Scene_Intersect()
+			throughShadowTransparency;
+} GPUTaskState;
+#endif
 
 typedef enum {
 	ILLUMINATED, SHADOWED, NOT_VISIBLE
