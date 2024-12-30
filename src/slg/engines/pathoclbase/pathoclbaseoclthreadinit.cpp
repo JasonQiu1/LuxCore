@@ -309,6 +309,10 @@ void PathOCLBaseOCLRenderThread::InitImageMaps() {
 	}
 }
 
+void PathOCLBaseOCLRenderThread::InitGPUTaskBuffer(const u_int taskCount) {
+	intersectionDevice->AllocBufferRW(&tasksBuff, nullptr, sizeof(slg::ocl::pathoclbase::VanillaGPUTask) * taskCount, "Vanilla GPUTask");
+}
+
 void PathOCLBaseOCLRenderThread::InitGPUTaskStateBuffer(const u_int taskCount) {
 	intersectionDevice->AllocBufferRW(&tasksStateBuff, nullptr, sizeof(slg::ocl::pathoclbase::VanillaGPUTaskState) * taskCount, "Vanilla GPUTaskState");
 }
@@ -326,7 +330,7 @@ void PathOCLBaseOCLRenderThread::InitGPUTaskBuffer() {
 	// Allocate tasksBuff
 	//--------------------------------------------------------------------------
 
-	intersectionDevice->AllocBufferRW(&tasksBuff, nullptr, sizeof(slg::ocl::pathoclbase::GPUTask) * taskCount, "GPUTask");
+	InitGPUTaskBuffer(taskCount);
 
 	//--------------------------------------------------------------------------
 	// Allocate tasksDirectLightBuff

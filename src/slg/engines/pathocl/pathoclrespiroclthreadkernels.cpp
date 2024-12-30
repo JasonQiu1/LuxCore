@@ -48,6 +48,10 @@ void PathOCLRespirOCLRenderThread::GetKernelParameters(
 	PathOCLOpenCLRenderThread::GetKernelParameters(params, intersectionDevice, renderEngineType, epsilonMin, epsilonMax);
 }
 
+void PathOCLRespirOCLRenderThread::InitGPUTaskBuffer(const u_int taskCount) {
+	intersectionDevice->AllocBufferRW(&tasksBuff, nullptr, sizeof(slg::ocl::pathoclbase::RespirGPUTask) * taskCount, "ReSPIR GPUTask");
+}
+
 void PathOCLRespirOCLRenderThread::InitGPUTaskStateBuffer(const u_int taskCount) {
 	intersectionDevice->AllocBufferRW(&tasksStateBuff, nullptr, sizeof(slg::ocl::pathoclbase::RespirGPUTaskState) * taskCount, "ReSPIR GPUTaskState");
 }

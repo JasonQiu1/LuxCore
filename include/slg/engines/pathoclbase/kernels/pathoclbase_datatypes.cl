@@ -85,6 +85,7 @@ typedef struct {
 	unsigned int lightID;
 } DirectLightIlluminateInfo;
 
+// A streaming random-sampling reservoir.
 typedef struct {
 	// stream length is stored implicitly in selectedSample->depth
 	SampleResult selectedSample; // Actual resampled value is stored in the sampleResult buffer at index gid
@@ -127,12 +128,6 @@ typedef struct {
 			throughShadowTransparency;
 } VanillaGPUTaskState;
 
-#if defined(OCL_THREAD_RESPIR) 
-typedef RespirGPUTaskState GPUTaskState;
-#else
-typedef VanillaGPUTaskState GPUTaskState;
-#endif
-
 typedef enum {
 	ILLUMINATED, SHADOWED, NOT_VISIBLE
 } DirectLightResult;
@@ -149,6 +144,31 @@ typedef struct {
 	int throughShadowTransparency;
 } GPUTaskDirectLight;
 
+// Stores information about the reconnection vertex for a particular path in the ReSTIR algorithm.
+typedef struct {
+	float incidentAngle; // the incident angle coming out of the reconnection vertex in the base path
+	SampleResult radiance; // the radiance at the reconnection vertex
+	// TODO: find out if LuxCoreRender has multi-lobed materials
+	// uint prevLobeIndex; // the sampled lobe index of the material at the previous vertex 
+	// uint currLobeIndex; // the sampled lobe index of the material at the reconnection vertex
+} ReconnectionVertex;
+
+// Stores reuse information about a selected ReSPIR sample. (spatial reuse only)
+typedef struct {
+	ReconnectionVertex reconnectionVertex; // the chosen reconnection vertex for this path
+	Seed seedInitial; // the initial GPUTask seed at the beginning of tracing this path
+	u_int pathDepth; // the depth of the path at the reconnection vertex
+	float partialJacobian; // the denominator of the jacobian for this path for calculating the full jacobian when performing reuse 
+} RespirSample;
+
+// A streaming random-sampling reservoir for spatial reuse.
+typedef struct {
+	RespirSample selectedSample; // selected sample result
+	float selectedUnbiasedContributionWeight; // the unbiased contribution weight of the selected sample
+	float selectedWeight; // weight of selected sample
+	float sumWeight; // sum weights
+} RespirReservoir;
+
 typedef struct {
 	// The task seed
 	Seed seed;
@@ -163,7 +183,36 @@ typedef struct {
 	
 	// This is used by DirectLight_BSDFSampling()
 	PathDepthInfo tmpPathDepthInfo;
-} GPUTask;
+} VanillaGPUTask;
+
+typedef struct {
+	// The task seed
+	Seed seed;
+
+	// Space for temporary storage
+	BSDF tmpBsdf; // Variable size structure
+
+	// This is used by TriangleLight_Illuminate() to temporary store the
+	// point on the light sources.
+	// Also used by Scene_Intersect() for evaluating volume textures.
+	HitPoint tmpHitPoint;
+	
+	// This is used by DirectLight_BSDFSampling()
+	PathDepthInfo tmpPathDepthInfo;
+
+	// Reservoir used to hold the current frame+pixel's selected sample for spatial reuse with other pixels.
+	RespirReservoir respirReservoir;
+} RespirGPUTask;
+
+
+#if defined(OCL_THREAD_RESPIR) 
+typedef RespirGPUTaskState GPUTaskState;
+typedef RespirGPUTask GPUTask;
+#else
+typedef VanillaGPUTaskState GPUTaskState;
+typedef VanillaGPUTask GPUTask;
+#endif
+
 
 typedef struct {
 	unsigned int sampleCount;
