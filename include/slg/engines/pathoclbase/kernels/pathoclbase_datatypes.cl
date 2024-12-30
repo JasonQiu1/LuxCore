@@ -157,7 +157,7 @@ typedef struct {
 typedef struct {
 	ReconnectionVertex reconnectionVertex; // the chosen reconnection vertex for this path
 	Seed seedInitial; // the initial GPUTask seed at the beginning of tracing this path
-	u_int pathDepth; // the depth of the path at the reconnection vertex
+	uint pathDepth; // the depth of the path at the reconnection vertex
 	float partialJacobian; // the denominator of the jacobian for this path for calculating the full jacobian when performing reuse 
 } RespirSample;
 
