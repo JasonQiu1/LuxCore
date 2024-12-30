@@ -91,7 +91,6 @@ typedef struct {
 	float sumWeight; // Sum of all stored samples' confidence weights (path contribution / path PDF)
 } SampleResultReservoir;
 
-#if defined(OCL_THREAD_RESPIR) 
 // The state used to keep track of the rendered path
 typedef struct {
 	PathState state;
@@ -112,8 +111,8 @@ typedef struct {
 			photonGICausticCacheUsed, photonGIShowIndirectPathMixUsed,
 			// The shadow transparency lag used by Scene_Intersect()
 			throughShadowTransparency;
-} GPUTaskState;
-#else
+} RespirGPUTaskState;
+
 typedef struct {
 	PathState state;
 
@@ -126,7 +125,12 @@ typedef struct {
 			photonGICausticCacheUsed, photonGIShowIndirectPathMixUsed,
 			// The shadow transparency lag used by Scene_Intersect()
 			throughShadowTransparency;
-} GPUTaskState;
+} VanillaGPUTaskState;
+
+#if defined(OCL_THREAD_RESPIR) 
+typedef RespirGPUTaskState GPUTaskState;
+#else
+typedef VanillaGPUTaskState GPUTaskState;
 #endif
 
 typedef enum {

@@ -61,6 +61,7 @@ protected:
 			luxrays::HardwareIntersectionDevice *intersectionDevice,
 			const std::string renderEngineType,
 			const float epsilonMin, const float epsilonMax) override;
+	void InitGPUTaskStateBuffer() override;
 	void GetThreadFilmSize(u_int *filmWidth, u_int *filmHeight, u_int *filmSubRegion) override;
 	void RenderThreadImpl() override;
     void InitKernels() override;

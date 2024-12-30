@@ -164,6 +164,7 @@ protected:
 	void InitLights();
 	void InitPhotonGI();
 	virtual void InitKernels();
+	virtual void InitGPUTaskStateBuffer();
 	void InitGPUTaskBuffer();
 	void InitSamplerSharedDataBuffer();
 	void InitSamplesBuffer();

@@ -309,6 +309,10 @@ void PathOCLBaseOCLRenderThread::InitImageMaps() {
 	}
 }
 
+void PathOCLBaseOCLRenderThread::InitGPUTaskStateBuffer() {
+	intersectionDevice->AllocBufferRW(&tasksStateBuff, nullptr, sizeof(slg::ocl::pathoclbase::VanillaGPUTaskState) * taskCount, "Vanilla GPUTaskState");
+}
+
 void PathOCLBaseOCLRenderThread::InitGPUTaskBuffer() {
 	const u_int taskCount = renderEngine->taskCount;
 
@@ -334,7 +338,8 @@ void PathOCLBaseOCLRenderThread::InitGPUTaskBuffer() {
 	// Allocate tasksStateBuff
 	//--------------------------------------------------------------------------
 
-	intersectionDevice->AllocBufferRW(&tasksStateBuff, nullptr, sizeof(slg::ocl::pathoclbase::GPUTaskState) * taskCount, "GPUTaskState");
+	InitGPUTaskStateBuffer();
+
 }
 
 void PathOCLBaseOCLRenderThread::InitSamplerSharedDataBuffer() {
