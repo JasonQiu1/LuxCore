@@ -176,6 +176,7 @@ void PathOCLRespirOCLRenderThread::RenderThreadImpl() {
             // Perform initial path resampling to get canonical samples for each pixel this frame.
             bool isInitialPathResamplingDone = false;
             u_int totalIterationsThisFrame = 0;
+			u_int iterations = 4;
             while (!isInitialPathResamplingDone) {
 				SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Queuing advance paths kernels");
 
