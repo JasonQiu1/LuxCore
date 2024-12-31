@@ -23,6 +23,7 @@
 //------------------------------------------------------------------------------
 
 #define DEBUG_PRINTF_KERNEL_NAME 1
+#define DEBUG_GID 1
 
 //------------------------------------------------------------------------------
 // Evaluation of the Path finite state machine.
@@ -44,7 +45,7 @@ __kernel void AdvancePaths_MK_RT_NEXT_VERTEX(
 	__global GPUTaskState *taskState = &tasksState[gid];
 	PathState pathState = taskState->state;
 #if defined(DEBUG_PRINTF_KERNEL_NAME)
-	if (gid == 0)
+	if (gid == DEBUG_GID)
 		printf("Kernel: AdvancePaths_MK_RT_NEXT_VERTEX(state = %d)\n", pathState);
 	else
 		return;
@@ -120,7 +121,7 @@ __kernel void AdvancePaths_MK_HIT_NOTHING(
 	__global GPUTaskState *taskState = &tasksState[gid];
 	PathState pathState = taskState->state;
 #if defined(DEBUG_PRINTF_KERNEL_NAME)
-	if (gid == 0)
+	if (gid == DEBUG_GID)
 		printf("Kernel: AdvancePaths_MK_HIT_NOTHING(state = %d)\n", pathState);
 	else
 		return;
@@ -216,7 +217,7 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 	__global GPUTaskState *taskState = &tasksState[gid];
 	PathState pathState = taskState->state;
 #if defined(DEBUG_PRINTF_KERNEL_NAME)
-	if (gid == 0)
+	if (gid == DEBUG_GID)
 		printf("Kernel: AdvancePaths_MK_HIT_OBJECT(state = %d)\n", pathState);
 	else
 		return;
@@ -478,7 +479,7 @@ __kernel void AdvancePaths_MK_RT_DL(
 	__global GPUTaskState *taskState = &tasksState[gid];
 	PathState pathState = taskState->state;
 #if defined(DEBUG_PRINTF_KERNEL_NAME)
-	if (gid == 0)
+	if (gid == DEBUG_GID)
 		printf("Kernel: AdvancePaths_MK_RT_DL(state = %d)\n", pathState);
 	else
 		return;
@@ -601,7 +602,7 @@ __kernel void AdvancePaths_MK_DL_ILLUMINATE(
 	__global GPUTaskState *taskState = &tasksState[gid];
 	PathState pathState = taskState->state;
 #if defined(DEBUG_PRINTF_KERNEL_NAME)
-	if (gid == 0)
+	if (gid == DEBUG_GID)
 		printf("Kernel: AdvancePaths_MK_DL_ILLUMINATE(state = %d)\n", pathState);
 	else
 		return;
@@ -689,7 +690,7 @@ __kernel void AdvancePaths_MK_DL_SAMPLE_BSDF(
 	__global GPUTaskState *taskState = &tasksState[gid];
 	PathState pathState = taskState->state;
 #if defined(DEBUG_PRINTF_KERNEL_NAME)
-	if (gid == 0)
+	if (gid == DEBUG_GID)
 		printf("Kernel: AdvancePaths_MK_DL_SAMPLE_BSDF(state = %d)\n", pathState);
 	else
 		return;
@@ -778,7 +779,7 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 	__global GPUTaskState *taskState = &tasksState[gid];
 	PathState pathState = taskState->state;
 #if defined(DEBUG_PRINTF_KERNEL_NAME)
-	if (gid == 0)
+	if (gid == DEBUG_GID)
 		printf("Kernel: AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(state = %d)\n", pathState);
 	else
 		return;
@@ -940,7 +941,7 @@ __kernel void AdvancePaths_MK_SPLAT_SAMPLE(
 	__global GPUTaskState *taskState = &tasksState[gid];
 	PathState pathState = taskState->state;
 #if defined(DEBUG_PRINTF_KERNEL_NAME)
-	if (gid == 0)
+	if (gid == DEBUG_GID)
 		printf("Kernel: AdvancePaths_MK_SPLAT_SAMPLE(state = %d)\n", pathState);
 	else
 		return;
@@ -1049,7 +1050,7 @@ __kernel void AdvancePaths_MK_NEXT_SAMPLE(
 	__global GPUTaskState *taskState = &tasksState[gid];
 	PathState pathState = taskState->state;
 #if defined(DEBUG_PRINTF_KERNEL_NAME)
-	if (gid == 0)
+	if (gid == DEBUG_GID)
 		printf("Kernel: AdvancePaths_MK_NEXT_SAMPLE(state = %d)\n", pathState);
 	else
 		return;
@@ -1114,7 +1115,7 @@ __kernel void AdvancePaths_MK_GENERATE_CAMERA_RAY(
 	__global GPUTaskState *taskState = &tasksState[gid];
 	PathState pathState = taskState->state;
 #if defined(DEBUG_PRINTF_KERNEL_NAME)
-	if (gid == 0)
+	if (gid == DEBUG_GID)
 		printf("Kernel: AdvancePaths_MK_GENERATE_CAMERA_RAY(state = %d)\n", pathState);
 	else
 		return;
@@ -1174,7 +1175,7 @@ __kernel void SpatialReusePassKernel(
 	__global GPUTask *task = &tasks[gid];
 	__global GPUTaskState *taskState = &tasksState[gid];
 #if defined(DEBUG_PRINTF_KERNEL_NAME)
-	if (gid == 0)
+	if (gid == DEBUG_GID)
 		printf("Kernel: SpatialReusePass(state = %d)\n", taskState->state);
 	else
 		return;
