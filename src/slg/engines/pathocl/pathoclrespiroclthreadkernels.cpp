@@ -176,12 +176,12 @@ void PathOCLRespirOCLRenderThread::SetInitKernelArgs(const u_int filmIndex) {
 
 void PathOCLRespirOCLRenderThread::SetAdvancePathsKernelArgs(luxrays::HardwareDeviceKernel *advancePathsKernel, const u_int filmIndex) {
     PathOCLOpenCLRenderThread::SetAdvancePathsKernelArgs(advancePathsKernel, filmIndex);
-	if (spatialReusePassKernel)
-		SetAdvancePathsKernelArgs(spatialReusePassKernel, filmIndex);
 }
 
 void PathOCLRespirOCLRenderThread::SetAllAdvancePathsKernelArgs(const u_int filmIndex) {
     PathOCLOpenCLRenderThread::SetAllAdvancePathsKernelArgs(filmIndex);
+	if (spatialReusePassKernel)
+		SetAdvancePathsKernelArgs(spatialReusePassKernel, filmIndex);
 }
 
 void PathOCLRespirOCLRenderThread::EnqueueAdvancePathsKernel() {
