@@ -22,8 +22,8 @@
 // AdvancePaths (Micro-Kernels)
 //------------------------------------------------------------------------------
 
-#define DEBUG_PRINTF_KERNEL_NAME 1
-#define DEBUG_GID 1
+// #define DEBUG_PRINTF_KERNEL_NAME 1
+// #define DEBUG_GID 1
 
 //------------------------------------------------------------------------------
 // Evaluation of the Path finite state machine.
