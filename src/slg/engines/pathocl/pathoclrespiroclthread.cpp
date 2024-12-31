@@ -199,7 +199,7 @@ void PathOCLRespirOCLRenderThread::RenderThreadImpl() {
                 // TODO: move pathState to a separate buffer so minimal amount of memory needs to be read here
                 intersectionDevice->EnqueueReadBuffer(tasksStateBuff, true,
                     sizeof(slg::ocl::pathoclbase::RespirGPUTaskState) * taskCount,
-                    &tasksState);
+                    tasksState);
 
 				SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Checking whether initial path resampling is complete");
 
