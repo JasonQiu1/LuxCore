@@ -50,7 +50,10 @@ PathOCLRespirOCLRenderThread::~PathOCLRespirOCLRenderThread() {
 }
 
 void PathOCLRespirOCLRenderThread::StartRenderThread() {
-    PathOCLOpenCLRenderThread::StartRenderThread();
+	threadDone = false;
+
+	// Create the thread for the rendering
+	renderThread = new boost::thread(&PathOCLRespirOCLRenderThread::RenderThreadImpl, this);
 }
 
 void PathOCLRespirOCLRenderThread::GetThreadFilmSize(u_int *filmWidth, u_int *filmHeight, u_int *filmSubRegion) {
