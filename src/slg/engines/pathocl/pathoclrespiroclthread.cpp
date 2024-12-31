@@ -58,7 +58,7 @@ void PathOCLRespirOCLRenderThread::GetThreadFilmSize(u_int *filmWidth, u_int *fi
 }
 
 void PathOCLRespirOCLRenderThread::RenderThreadImpl() {
-    //SLG_LOG("[PathOCLRenderThread::" << threadIndex << "] Rendering thread started");
+    SLG_LOG("[PathOCLRenderThread::" << threadIndex << "] Rendering thread started");
 
 	PathOCLRenderEngine *engine = (PathOCLRenderEngine *)renderEngine;
 	const u_int taskCount = engine->taskCount;
