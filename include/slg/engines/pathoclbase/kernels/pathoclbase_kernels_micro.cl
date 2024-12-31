@@ -194,9 +194,10 @@ __kernel void AdvancePaths_MK_HIT_NOTHING(
 #if defined(OCL_THREAD_RESPIR) 
 	// Add BSDF-importance sampled environment sample to reservoir
 	SampleResultReservoir_Update(taskConfig, taskState, sampleResult);
-#endif
-
+	taskState->state = SPATIAL_REUSE_PASS;
+#else
 	taskState->state = MK_SPLAT_SAMPLE;
+#endif
 }
 
 //------------------------------------------------------------------------------
@@ -266,6 +267,7 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 		sampleResult->isHoldout = isHoldout;
 	}
 
+#if !defined(OCL_THREAD_RESPIR) 
 	//----------------------------------------------------------------------
 	// Check if it is a baked material
 	//----------------------------------------------------------------------
@@ -299,6 +301,7 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 	checkDirectLightHit = checkDirectLightHit &&
 			((!taskConfig->pathTracer.pgic.indirectEnabled && !taskConfig->pathTracer.pgic.causticEnabled) ||
 			PhotonGICache_IsDirectLightHitVisible(taskConfig, pathInfo, taskState->photonGICausticCacheUsed));
+#endif
 
 	// Check if it is a light source (note: I can hit only triangle area light sources)
 	if (BSDF_IsLightSource(bsdf) && checkDirectLightHit) {
@@ -321,7 +324,7 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 	//----------------------------------------------------------------------
 	// Check if I can use the photon cache
 	//----------------------------------------------------------------------
-
+#if !defined(OCL_THREAD_RESPIR)
 	if (taskConfig->pathTracer.pgic.indirectEnabled || taskConfig->pathTracer.pgic.causticEnabled) {
 		const bool isPhotonGIEnabled = PhotonGICache_IsPhotonGIEnabled(bsdf,
 				taskConfig->pathTracer.pgic.glossinessUsageThreshold
@@ -440,14 +443,22 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 			}
 		}
 	}
+#endif
 
 	//----------------------------------------------------------------------
 	// Check if this is the last path vertex (but not also the first)
 	//
 	// I handle as a special case when the path vertex is both the first
 	// and the last: I do direct light sampling without MIS.
-	taskState->state = (sampleResult->lastPathVertex && !sampleResult->firstPathVertex) ?
-		MK_SPLAT_SAMPLE : MK_DL_ILLUMINATE;
+	if (sampleResult->lastPathVertex && !sampleResult->firstPathVertex) {
+#if defined(OCL_THREAD_RESPIR) 
+		taskState->state = SPATIAL_REUSE_PASS;
+#else
+		taskState->state = MK_SPLAT_SAMPLE;
+#endif
+	} else {
+		taskState->state = MK_DL_ILLUMINATE;
+	}
 }
 
 //------------------------------------------------------------------------------
@@ -559,7 +570,11 @@ __kernel void AdvancePaths_MK_RT_DL(
 
 		// Check if this is the last path vertex
 		if (sampleResult->lastPathVertex)
+#if defined(OCL_THREAD_RESPIR) 
+			pathState = SPATIAL_REUSE_PASS;
+#else
 			pathState = MK_SPLAT_SAMPLE;
+#endif
 		else {
 			pathState = MK_GENERATE_NEXT_VERTEX_RAY;
 		}
@@ -642,7 +657,11 @@ __kernel void AdvancePaths_MK_DL_ILLUMINATE(
 		// No shadow ray to trace, move to the next vertex ray
 		// however, I have to check if this is the last path vertex
 		if (sampleResult->lastPathVertex) {
+#if defined(OCL_THREAD_RESPIR) 
+			taskState->state = SPATIAL_REUSE_PASS;
+#else
 			taskState->state = MK_SPLAT_SAMPLE;
+#endif
 		} else {
 			taskState->state = MK_GENERATE_NEXT_VERTEX_RAY;
 		}
@@ -731,7 +750,11 @@ __kernel void AdvancePaths_MK_DL_SAMPLE_BSDF(
 		// No shadow ray to trace, move to the next vertex ray
 		// however, I have to check if this is the last path vertex
 		if (sampleResult->lastPathVertex) {
+#if defined(OCL_THREAD_RESPIR) 
+			taskState->state = SPATIAL_REUSE_PASS;
+#else
 			taskState->state = MK_SPLAT_SAMPLE;
+#endif
 		} else {
 			taskState->state = MK_GENERATE_NEXT_VERTEX_RAY;
 		}
@@ -884,7 +907,11 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 
 		pathState = MK_RT_NEXT_VERTEX;
 	} else
+#if defined(OCL_THREAD_RESPIR) 
+		pathState = SPATIAL_REUSE_PASS;
+#else
 		pathState = MK_SPLAT_SAMPLE;
+#endif
 
 	// Save the state
 	taskState->state = pathState;
@@ -894,6 +921,7 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 	// Save the seed
 	task->seed = seedValue;
 }
+
 
 //------------------------------------------------------------------------------
 // Evaluation of the Path finite state machine.
@@ -968,10 +996,12 @@ __kernel void AdvancePaths_MK_SPLAT_SAMPLE(
 		VSTORE3F(BLACK, sampleResult->albedo.c);
 	}
 
+#if !defined(OCL_THREAD_RESPIR)
 	if (taskConfig->pathTracer.pgic.indirectEnabled &&
 			(taskConfig->pathTracer.pgic.debugType == PGIC_DEBUG_SHOWINDIRECTPATHMIX) &&
 			!taskState->photonGIShowIndirectPathMixUsed)
 		VSTORE3F(MAKE_FLOAT3(1.f, 0.f, 0.f), sampleResult->radiancePerPixelNormalized[0].c);
+#endif
 
 	//--------------------------------------------------------------------------
 	// Variance clamping
@@ -1127,7 +1157,47 @@ __kernel void AdvancePaths_MK_GENERATE_CAMERA_RAY(
 
 	// Save the seed
 	task->seed = seedValue;
-
-#endif
 }
 
+//------------------------------------------------------------------------------
+// SPATIAL_REUSE_PASS
+//
+// Performs spatial reuse on the current frame, storing into the respir reservoir buffers.
+//------------------------------------------------------------------------------
+__kernel void AdvancePaths_SPATIAL_REUSE_PASS(
+		KERNEL_ARGS
+		) {
+	const size_t gid = get_global_id(0);
+
+	// Read the path state
+	__global GPUTask *task = &tasks[gid];
+	__global GPUTaskState *taskState = &tasksState[gid];
+	PathState pathState = taskState->state;
+#if defined(DEBUG_PRINTF_KERNEL_NAME)
+	if (gid == 0)
+		printf("Kernel: AdvancePaths_SPATIAL_REUSE_PASS(state = %d)\n", pathState);
+	else
+		return;
+#endif
+
+	//--------------------------------------------------------------------------
+	// Start of variables setup
+	//--------------------------------------------------------------------------
+
+	// Read the seed
+	Seed seedValue = task->seed;
+	// This trick is required by SAMPLER_PARAM macro
+	Seed *seed = &seedValue;
+
+	//--------------------------------------------------------------------------
+	// End of variables setup
+	//--------------------------------------------------------------------------
+
+	// TODO: IMPLEMENT SPATIAL RESAMPLING
+	taskState->state = MK_SPLAT_SAMPLE;
+
+	//--------------------------------------------------------------------------
+
+	// Save the seed
+	task->seed = seedValue;
+}

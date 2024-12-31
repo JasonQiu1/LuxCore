@@ -55,7 +55,6 @@ public:
 	void StartRenderThread() override;
 
 	friend class PathOCLRenderEngine;
-
 protected:
 	void GetKernelParameters(std::vector<std::string> &params,
 			luxrays::HardwareIntersectionDevice *intersectionDevice,
@@ -70,6 +69,8 @@ protected:
     void SetAdvancePathsKernelArgs(luxrays::HardwareDeviceKernel *advancePathsKernel, const u_int filmIndex) override;
     void SetAllAdvancePathsKernelArgs(const u_int filmIndex) override;
     void EnqueueAdvancePathsKernel() override;
+
+	luxrays::HardwareDeviceKernel *spatialReusePassKernel;
 };
 
 //------------------------------------------------------------------------------
@@ -119,6 +120,7 @@ public:
 	static RenderEngine *FromProperties(const RenderConfig *rcfg);
 
 	friend class PathOCLOpenCLRenderThread;
+	friend class PathOCLRespirOCLRenderThread;
 	friend class PathOCLNativeRenderThread;
 
 protected:
