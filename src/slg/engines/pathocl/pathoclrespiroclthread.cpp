@@ -167,6 +167,8 @@ void PathOCLRespirOCLRenderThread::RenderThreadImpl() {
 				SetAllAdvancePathsKernelArgs(0);
 			}
 
+            SLG_LOG("[PathOCLRespirRenderThread::" << threadIndex << "] Beginning rendering for frame " << spp << ".");
+
             // Generate camera rays for each pixel in this frame.
             intersectionDevice->EnqueueKernel(advancePathsKernel_MK_GENERATE_CAMERA_RAY,
 			    HardwareDeviceRange(taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
