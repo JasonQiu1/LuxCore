@@ -207,7 +207,7 @@ void PathOCLRespirOCLRenderThread::RenderThreadImpl() {
 				SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Task count is " << taskCount);
                 isInitialPathResamplingDone = true;
                 for (u_int i = 0; i < taskCount; i++) {
-					SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] TaskState(" << i << ") PathState=" << tasksState[i].state);
+					//SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] TaskState(" << i << ") PathState=" << tasksState[i].state);
                     if (tasksState[i].state != slg::ocl::pathoclbase::PathState::SPATIAL_REUSE_PASS) {
                         isInitialPathResamplingDone = false;
                         break;
