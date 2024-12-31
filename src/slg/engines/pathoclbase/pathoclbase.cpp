@@ -350,8 +350,12 @@ void PathOCLBaseRenderEngine::StartLockLess() {
 		renderOCLThreads[i]->intersectionDevice->PopThreadCurrentDevice();
 	}
 
+	SLG_LOG("Finished starting OpenCL render threads");
+
 	// I know kernels has been compiled at this point
 	SetCachedKernels(*renderConfig);
+
+	SLG_LOG("Finished caching OpenCL kernels");
 
 	//--------------------------------------------------------------------------
 	// Start native render threads
