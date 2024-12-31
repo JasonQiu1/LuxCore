@@ -205,7 +205,7 @@ void PathOCLRespirOCLRenderThread::RenderThreadImpl() {
 
                 isInitialPathResamplingDone = true;
                 for (u_int i = 0; i < taskCount; i++) {
-                    if (tasksState[i]->state != slg::ocl::pathoclbase::PathState::SPATIAL_REUSE_PASS) {
+                    if (tasksState[i].state != slg::ocl::pathoclbase::PathState::SPATIAL_REUSE_PASS) {
                         isInitialPathResamplingDone = false;
                         break;
                     }
