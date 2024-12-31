@@ -204,6 +204,7 @@ void PathOCLRespirOCLRenderThread::RenderThreadImpl() {
 
 				SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Checking whether initial path resampling is complete");
 
+				SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Task count is " << taskCount);
                 isInitialPathResamplingDone = true;
                 for (u_int i = 0; i < taskCount; i++) {
 					SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] TaskState(" << i << ") PathState=" << tasksState[i].state);
