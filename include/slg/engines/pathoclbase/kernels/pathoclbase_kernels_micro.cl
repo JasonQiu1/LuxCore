@@ -1175,7 +1175,7 @@ __kernel void SpatialReusePassKernel(
 	__global GPUTaskState *taskState = &tasksState[gid];
 #if defined(DEBUG_PRINTF_KERNEL_NAME)
 	if (gid == 0)
-		printf("Kernel: SpatialReusePass(state = %d)\n", pathState);
+		printf("Kernel: SpatialReusePass(state = %d)\n", taskState->state);
 	else
 		return;
 #endif
