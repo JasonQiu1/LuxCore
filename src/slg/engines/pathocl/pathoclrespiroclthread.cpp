@@ -167,7 +167,7 @@ void PathOCLRespirOCLRenderThread::RenderThreadImpl() {
 				SetAllAdvancePathsKernelArgs(0);
 			}
 
-            SLG_LOG("[PathOCLRespirRenderThread::" << threadIndex << "] Beginning rendering for frame " << spp << ".");
+            SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Beginning rendering for frame " << spp << ".");
 
             // Generate camera rays for each pixel in this frame.
             intersectionDevice->EnqueueKernel(advancePathsKernel_MK_GENERATE_CAMERA_RAY,
@@ -177,6 +177,8 @@ void PathOCLRespirOCLRenderThread::RenderThreadImpl() {
             bool isInitialPathResamplingDone = false;
             u_int totalIterationsThisFrame = 0;
             while (!isInitialPathResamplingDone) {
+				SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Queuing advance paths kernels" << spp << ".");
+
                 // Trace until all paths are completed for this frame.
                 for (u_int i = 0; i < iterations; ++i) {
                     // Trace rays
@@ -186,14 +188,20 @@ void PathOCLRespirOCLRenderThread::RenderThreadImpl() {
                     EnqueueAdvancePathsKernel();
                 }
 
+				SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Finished queuing advance paths kernels" << spp << ".");
+
                 // Wait for all kernels to finish running.
 			    intersectionDevice->FinishQueue();
+
+				SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] All advance paths kernels finished execution" << spp << ".");
 
                 // Check if initial path resampling for all pixels is complete
                 // TODO: move pathState to a separate buffer so minimal amount of memory needs to be read here
                 intersectionDevice->EnqueueReadBuffer(tasksStateBuff, true,
                     sizeof(slg::ocl::pathoclbase::RespirGPUTaskState) * taskCount,
                     &tasksState);
+
+				SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Checking whether initial path resampling is complete" << spp << ".");
 
                 isInitialPathResamplingDone = true;
                 for (u_int i = 0; i < taskCount; i++) {
@@ -202,6 +210,9 @@ void PathOCLRespirOCLRenderThread::RenderThreadImpl() {
                         break;
                     }
                 }
+
+								SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Checking whether initial path resampling is complete" << spp << ".");
+
 
                 totalIterations += iterations;
                 totalIterationsThisFrame += iterations;
@@ -216,6 +227,8 @@ void PathOCLRespirOCLRenderThread::RenderThreadImpl() {
                 else
                     iterations = Min<u_int>(iterations + 1, 128);
             }
+
+			SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Initial path resampling is complete, performing spatial reuse" << spp << ".");
             
             // Perform spatial reuse.
             for (u_int i = 0; i < spatialReusePassIterations; i++) {
