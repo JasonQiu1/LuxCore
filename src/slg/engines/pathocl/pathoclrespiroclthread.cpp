@@ -92,7 +92,7 @@ void PathOCLRespirOCLRenderThread::RenderThreadImpl() {
 		if (engine->hasStartFilm && (threadIndex == 0))
 			threadFilms[0]->SendFilm(intersectionDevice);
 
-        slg::ocl::pathoclbase::RespirGPUTaskState** tasksState = (slg::ocl::pathoclbase::RespirGPUTaskState**)malloc(sizeof(*tasksState) * taskCount);
+        slg::ocl::pathoclbase::RespirGPUTaskState* tasksState = (slg::ocl::pathoclbase::RespirGPUTaskState*)malloc(sizeof(*tasksState) * taskCount);
 
 		//----------------------------------------------------------------------
 		// Rendering loop
@@ -211,7 +211,7 @@ void PathOCLRespirOCLRenderThread::RenderThreadImpl() {
                     }
                 }
 
-								SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Checking whether initial path resampling is complete");
+				SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Checking whether initial path resampling is complete");
 
 
                 totalIterations += iterations;
