@@ -491,6 +491,7 @@ void PathOCLBaseOCLRenderThread::SetAllAdvancePathsKernelArgs(const u_int filmIn
 }
 
 void PathOCLBaseOCLRenderThread::SetKernelArgs() {
+	SLG_LOG("[PathOCLBaseRenderThread::" << threadIndex << "] Setting kernel arguments");
 	// Set OpenCL kernel arguments
 
 	// OpenCL kernel setArg() is the only non thread safe function in OpenCL 1.1 so
@@ -502,11 +503,16 @@ void PathOCLBaseOCLRenderThread::SetKernelArgs() {
 	// advancePathsKernels
 	//--------------------------------------------------------------------------
 
+	SLG_LOG("[PathOCLBaseRenderThread::" << threadIndex << "] Setting advance paths kernel arguments");
+
+
 	SetAllAdvancePathsKernelArgs(0);
 
 	//--------------------------------------------------------------------------
 	// initKernel
 	//--------------------------------------------------------------------------
+
+	SLG_LOG("[PathOCLBaseRenderThread::" << threadIndex << "] Setting init kernel arguments");
 
 	SetInitKernelArgs(0);
 }
