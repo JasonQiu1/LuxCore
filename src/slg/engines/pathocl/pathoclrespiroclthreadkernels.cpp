@@ -161,7 +161,7 @@ void PathOCLRespirOCLRenderThread::InitKernels() {
 	SLG_LOG("[PathOCLBaseRenderThread::" << threadIndex << "] AdvancePaths_MK_* workgroup size: " << advancePathsWorkGroupSize);
 
 	CompileKernel(intersectionDevice, program, &spatialReusePassKernel, &workGroupSize,
-			"SPATIAL_REUSE_PASS");
+			"SpatialReusePassKernel");
 
 	const double tEnd = WallClockTime();
 	SLG_LOG("[PathOCLBaseRenderThread::" << threadIndex << "] Kernels compilation time: " << int((tEnd - tStart) * 1000.0) << "ms");

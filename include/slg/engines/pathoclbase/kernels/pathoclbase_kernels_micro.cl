@@ -267,6 +267,8 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 		sampleResult->isHoldout = isHoldout;
 	}
 
+	bool checkDirectLightHit = true;
+
 #if !defined(OCL_THREAD_RESPIR) 
 	//----------------------------------------------------------------------
 	// Check if it is a baked material
@@ -291,8 +293,6 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 	//--------------------------------------------------------------------------
 	// Check if it is a light source and I have to add light emission
 	//--------------------------------------------------------------------------
-
-	bool checkDirectLightHit = true;
 
 	checkDirectLightHit = checkDirectLightHit &&
 			// Avoid to render caustic path if hybridBackForwardEnable
@@ -1157,14 +1157,15 @@ __kernel void AdvancePaths_MK_GENERATE_CAMERA_RAY(
 
 	// Save the seed
 	task->seed = seedValue;
+#endif
 }
 
 //------------------------------------------------------------------------------
-// SPATIAL_REUSE_PASS
+// SpatialReusePass Kernel
 //
 // Performs spatial reuse on the current frame, storing into the respir reservoir buffers.
 //------------------------------------------------------------------------------
-__kernel void AdvancePaths_SPATIAL_REUSE_PASS(
+__kernel void SpatialReusePassKernel(
 		KERNEL_ARGS
 		) {
 	const size_t gid = get_global_id(0);
@@ -1172,10 +1173,9 @@ __kernel void AdvancePaths_SPATIAL_REUSE_PASS(
 	// Read the path state
 	__global GPUTask *task = &tasks[gid];
 	__global GPUTaskState *taskState = &tasksState[gid];
-	PathState pathState = taskState->state;
 #if defined(DEBUG_PRINTF_KERNEL_NAME)
 	if (gid == 0)
-		printf("Kernel: AdvancePaths_SPATIAL_REUSE_PASS(state = %d)\n", pathState);
+		printf("Kernel: SpatialReusePass(state = %d)\n", pathState);
 	else
 		return;
 #endif
