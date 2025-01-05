@@ -661,8 +661,8 @@ set(SLG_CORE_SRCS
 	${LuxRays_SOURCE_DIR}/src/slg/engines/pathocl/pathocl.cpp
 	${LuxRays_SOURCE_DIR}/src/slg/engines/pathocl/pathoclrenderstate.cpp
 	${LuxRays_SOURCE_DIR}/src/slg/engines/pathocl/pathoclopenclthread.cpp
-	${LuxRays_SOURCE_DIR}/src/slg/engines/pathocl/pathoclrespiroclthread.cpp
-	${LuxRays_SOURCE_DIR}/src/slg/engines/pathocl/pathoclrespiroclthreadkernels.cpp
+	${LuxRays_SOURCE_DIR}/src/slg/engines/respirpathocl/respirpathoclthread.cpp
+	${LuxRays_SOURCE_DIR}/src/slg/engines/respirpathocl/respirpathoclthreadkernels.cpp
 	${LuxRays_SOURCE_DIR}/src/slg/engines/pathocl/pathoclnativethread.cpp
 	${LuxRays_SOURCE_DIR}/src/slg/engines/rtpathocl/rtpathocl.cpp
 	${LuxRays_SOURCE_DIR}/src/slg/engines/rtpathocl/rtpathoclthread.cpp
