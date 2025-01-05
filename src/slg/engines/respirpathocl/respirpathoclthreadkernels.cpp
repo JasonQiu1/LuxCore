@@ -37,10 +37,10 @@ using namespace luxrays;
 using namespace slg;
 
 //------------------------------------------------------------------------------
-// PathOCLRespirOCLRenderThread kernel functions
+// RespirPathOCLRenderThread kernel functions
 //------------------------------------------------------------------------------
 
-void PathOCLRespirOCLRenderThread::GetKernelParameters(
+void RespirPathOCLRenderThread::GetKernelParameters(
 		vector<string> &params,
 		HardwareIntersectionDevice *intersectionDevice,
 		const string renderEngineType,
@@ -49,15 +49,15 @@ void PathOCLRespirOCLRenderThread::GetKernelParameters(
 	PathOCLOpenCLRenderThread::GetKernelParameters(params, intersectionDevice, renderEngineType, epsilonMin, epsilonMax);
 }
 
-void PathOCLRespirOCLRenderThread::InitGPUTaskBuffer(const u_int taskCount) {
+void RespirPathOCLRenderThread::InitGPUTaskBuffer(const u_int taskCount) {
 	intersectionDevice->AllocBufferRW(&tasksBuff, nullptr, sizeof(slg::ocl::pathoclbase::RespirGPUTask) * taskCount, "ReSPIR GPUTask");
 }
 
-void PathOCLRespirOCLRenderThread::InitGPUTaskStateBuffer(const u_int taskCount) {
+void RespirPathOCLRenderThread::InitGPUTaskStateBuffer(const u_int taskCount) {
 	intersectionDevice->AllocBufferRW(&tasksStateBuff, nullptr, sizeof(slg::ocl::pathoclbase::RespirGPUTaskState) * taskCount, "ReSPIR GPUTaskState");
 }
 
-void PathOCLRespirOCLRenderThread::InitKernels() {
+void RespirPathOCLRenderThread::InitKernels() {
 	//--------------------------------------------------------------------------
 	// Compile kernels
 	//--------------------------------------------------------------------------
@@ -179,15 +179,15 @@ void PathOCLRespirOCLRenderThread::InitKernels() {
 
 }
 
-void PathOCLRespirOCLRenderThread::SetInitKernelArgs(const u_int filmIndex) {
+void RespirPathOCLRenderThread::SetInitKernelArgs(const u_int filmIndex) {
     PathOCLOpenCLRenderThread::SetInitKernelArgs(filmIndex);
 }
 
-void PathOCLRespirOCLRenderThread::SetAdvancePathsKernelArgs(luxrays::HardwareDeviceKernel *advancePathsKernel, const u_int filmIndex) {
+void RespirPathOCLRenderThread::SetAdvancePathsKernelArgs(luxrays::HardwareDeviceKernel *advancePathsKernel, const u_int filmIndex) {
     PathOCLOpenCLRenderThread::SetAdvancePathsKernelArgs(advancePathsKernel, filmIndex);
 }
 
-void PathOCLRespirOCLRenderThread::SetAllAdvancePathsKernelArgs(const u_int filmIndex) {
+void RespirPathOCLRenderThread::SetAllAdvancePathsKernelArgs(const u_int filmIndex) {
     PathOCLOpenCLRenderThread::SetAllAdvancePathsKernelArgs(filmIndex);
 	if (spatialReuseInitKernel)
 		SetAdvancePathsKernelArgs(spatialReuseInitKernel, filmIndex);
@@ -199,7 +199,7 @@ void PathOCLRespirOCLRenderThread::SetAllAdvancePathsKernelArgs(const u_int film
 		SetAdvancePathsKernelArgs(spatialReuseSetSplatKernel, filmIndex);
 }
 
-void PathOCLRespirOCLRenderThread::EnqueueAdvancePathsKernel() {
+void RespirPathOCLRenderThread::EnqueueAdvancePathsKernel() {
     const u_int taskCount = renderEngine->taskCount;
 
 	// Micro kernels version
