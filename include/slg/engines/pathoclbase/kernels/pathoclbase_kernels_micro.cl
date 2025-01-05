@@ -195,7 +195,7 @@ __kernel void AdvancePaths_MK_HIT_NOTHING(
 #if defined(OCL_THREAD_RESPIR) 
 	// Add BSDF-importance sampled environment sample to reservoir
 	SampleResultReservoir_Update(taskConfig, taskState, sampleResult);
-	taskState->state = SPATIAL_REUSE_PASS;
+	taskState->state = SYNC;
 #else
 	taskState->state = MK_SPLAT_SAMPLE;
 #endif
@@ -453,7 +453,7 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 	// and the last: I do direct light sampling without MIS.
 	if (sampleResult->lastPathVertex && !sampleResult->firstPathVertex) {
 #if defined(OCL_THREAD_RESPIR) 
-		taskState->state = SPATIAL_REUSE_PASS;
+		taskState->state = SYNC;
 #else
 		taskState->state = MK_SPLAT_SAMPLE;
 #endif
@@ -572,7 +572,7 @@ __kernel void AdvancePaths_MK_RT_DL(
 		// Check if this is the last path vertex
 		if (sampleResult->lastPathVertex)
 #if defined(OCL_THREAD_RESPIR) 
-			pathState = SPATIAL_REUSE_PASS;
+			pathState = SYNC;
 #else
 			pathState = MK_SPLAT_SAMPLE;
 #endif
@@ -659,7 +659,7 @@ __kernel void AdvancePaths_MK_DL_ILLUMINATE(
 		// however, I have to check if this is the last path vertex
 		if (sampleResult->lastPathVertex) {
 #if defined(OCL_THREAD_RESPIR) 
-			taskState->state = SPATIAL_REUSE_PASS;
+			taskState->state = SYNC;
 #else
 			taskState->state = MK_SPLAT_SAMPLE;
 #endif
@@ -752,7 +752,7 @@ __kernel void AdvancePaths_MK_DL_SAMPLE_BSDF(
 		// however, I have to check if this is the last path vertex
 		if (sampleResult->lastPathVertex) {
 #if defined(OCL_THREAD_RESPIR) 
-			taskState->state = SPATIAL_REUSE_PASS;
+			taskState->state = SYNC;
 #else
 			taskState->state = MK_SPLAT_SAMPLE;
 #endif
@@ -909,7 +909,7 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 		pathState = MK_RT_NEXT_VERTEX;
 	} else
 #if defined(OCL_THREAD_RESPIR) 
-		pathState = SPATIAL_REUSE_PASS;
+		pathState = SYNC;
 #else
 		pathState = MK_SPLAT_SAMPLE;
 #endif
