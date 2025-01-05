@@ -73,13 +73,7 @@ PathOCLRenderEngine::~PathOCLRenderEngine() {
 
 PathOCLBaseOCLRenderThread *PathOCLRenderEngine::CreateOCLThread(const u_int index,
             HardwareIntersectionDevice *device) {
-    const string oclRenderType = renderConfig->GetProperty("pathocl.openclrenderthread.type").Get<string>();
-
-    if (oclRenderType == "respir")
-        return new PathOCLRespirOCLRenderThread(index, device, this);
-    else {
-        return new PathOCLOpenCLRenderThread(index, device, this);
-    }
+    return new PathOCLOpenCLRenderThread(index, device, this);
 }
 
 PathOCLBaseNativeRenderThread *PathOCLRenderEngine::CreateNativeThread(const u_int index,
@@ -292,7 +286,6 @@ Properties PathOCLRenderEngine::ToProperties(const Properties &cfg) {
 			cfg.Get(GetDefaultProps().Get("renderengine.type")) <<
 			PathTracer::ToProperties(cfg) <<
 			cfg.Get(GetDefaultProps().Get("pathocl.pixelatomics.enable")) <<
-			cfg.Get(GetDefaultProps().Get("pathocl.openclrenderthread.type")) <<
 			cfg.Get(GetDefaultProps().Get("opencl.task.count")) <<
 			Sampler::ToProperties(cfg) <<
 			PhotonGICache::ToProperties(cfg);
@@ -310,7 +303,6 @@ const Properties &PathOCLRenderEngine::GetDefaultProps() {
 			Property("renderengine.type")(GetObjectTag()) <<
 			PathTracer::GetDefaultProps() <<
 			Property("pathocl.pixelatomics.enable")(true) <<
-			Property("pathocl.openclrenderthread.type")("vanilla") <<
 			Property("opencl.task.count")("AUTO") <<
 			PhotonGICache::GetDefaultProps();
 

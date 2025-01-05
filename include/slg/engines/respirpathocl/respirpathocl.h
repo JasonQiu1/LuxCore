@@ -57,6 +57,52 @@ protected:
 	luxrays::HardwareDeviceKernel *spatialReuseSetSplatKernel;
 };
 
+//------------------------------------------------------------------------------
+// Respir path tracing 100% OpenCL render engine
+//------------------------------------------------------------------------------
+
+class RespirPathOCLRenderEngine : public PathOCLBaseRenderEngine {
+public:
+	RespirPathOCLRenderEngine(const RenderConfig *cfg, const bool supportsNativeThreads);
+	virtual ~RespirPathOCLRenderEngine();
+
+	virtual RenderEngineType GetType() const { return GetObjectType(); }
+	virtual std::string GetTag() const { return GetObjectTag(); }
+
+	virtual RenderState *GetRenderState();
+
+	//--------------------------------------------------------------------------
+	// Static methods used by RenderEngineRegistry
+	//--------------------------------------------------------------------------
+
+	static RenderEngineType GetObjectType() { return RESPIRPATHOCL; }
+	static std::string GetObjectTag() { return "RESPIRPATHOCL"; }
+	static luxrays::Properties ToProperties(const luxrays::Properties &cfg);
+	static RenderEngine *FromProperties(const RenderConfig *rcfg);
+
+	friend class RespirPathOCLRenderThread;
+    friend class PathOCLNativeRenderThread;
+    // TODO: replace above line with below if additional native thread functionality required
+	// friend class RespirPathNativeRenderThread; 
+
+	// number of times to iterate spatial reuse pass per frame
+	u_int numSpatialReuseIterations;
+
+protected:
+	static const luxrays::Properties &GetDefaultProps();
+
+	virtual PathOCLBaseOCLRenderThread *CreateOCLThread(const u_int index,
+		luxrays::HardwareIntersectionDevice *device);
+	virtual PathOCLBaseNativeRenderThread *CreateNativeThread(const u_int index,
+			luxrays::NativeIntersectionDevice *device);
+
+	virtual void StartLockLess();
+	virtual void StopLockLess();
+	virtual void EndSceneEditLockLess(const EditActionList &editActions);
+	virtual void UpdateFilmLockLess() { }
+	virtual void UpdateCounters();
+};
+
 }
 
 #endif
