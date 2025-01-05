@@ -163,7 +163,7 @@ void PathOCLRespirOCLRenderThread::InitKernels() {
 	SLG_LOG("[PathOCLBaseRenderThread::" << threadIndex << "] Kernels compilation time: " << int((tEnd - tStart) * 1000.0) << "ms");
 
 	const double tSpatialReuseStart = WallClockTime();
-	SLG_LOG("[PathOCLRespirOCLThread::" << threadIndex << "] Compiling kernels ");
+	SLG_LOG("[RespirPathOCLThread::" << threadIndex << "] Compiling kernels ");
 	CompileKernel(intersectionDevice, program, &spatialReuseInitKernel, &workGroupSize,
 			"spatialReuse_Init");
 	CompileKernel(intersectionDevice, program, &spatialReuseIterateKernel, &workGroupSize,
@@ -173,7 +173,7 @@ void PathOCLRespirOCLRenderThread::InitKernels() {
 	CompileKernel(intersectionDevice, program, &spatialReuseSetSplatKernel, &workGroupSize,
 			"spatialReuse_SetSplat");
 	const double tSpatialReuseEnd = WallClockTime();
-	SLG_LOG("[PathOCLRespirOCLThread::" << threadIndex << "] Spatial reuse kernels compilation time: " << int((tSpatialReuseEnd - tSpatialReuseStart) * 1000.0) << "ms");
+	SLG_LOG("[RespirPathOCLThread::" << threadIndex << "] Spatial reuse kernels compilation time: " << int((tSpatialReuseEnd - tSpatialReuseStart) * 1000.0) << "ms");
 
 	delete program;
 

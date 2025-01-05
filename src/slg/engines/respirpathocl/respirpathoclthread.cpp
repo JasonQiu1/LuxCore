@@ -30,34 +30,35 @@
 #include "slg/kernels/kernels.h"
 #include "slg/renderconfig.h"
 #include "slg/engines/pathocl/pathocl.h"
+#include "slg/engines/respirpathocl/respirpathocl.h"
 
 using namespace std;
 using namespace luxrays;
 using namespace slg;
 
 //------------------------------------------------------------------------------
-// PathOCLRespirOCLRenderThread
+// RespirPathOCLRenderThread
 //------------------------------------------------------------------------------
 
-PathOCLRespirOCLRenderThread::PathOCLRespirOCLRenderThread(const u_int index, luxrays::HardwareIntersectionDevice *device,
+RespirPathOCLRenderThread::RespirPathOCLRenderThread(const u_int index, luxrays::HardwareIntersectionDevice *device,
         PathOCLRenderEngine *re)
     : PathOCLOpenCLRenderThread(index, device, re) {
 
 }
 
-PathOCLRespirOCLRenderThread::~PathOCLRespirOCLRenderThread() {
+RespirPathOCLRenderThread::~RespirPathOCLRenderThread() {
 
 }
 
-void PathOCLRespirOCLRenderThread::StartRenderThread() {
+void RespirPathOCLRenderThread::StartRenderThread() {
     PathOCLOpenCLRenderThread::StartRenderThread();
 }
 
-void PathOCLRespirOCLRenderThread::GetThreadFilmSize(u_int *filmWidth, u_int *filmHeight, u_int *filmSubRegion) {
+void RespirPathOCLRenderThread::GetThreadFilmSize(u_int *filmWidth, u_int *filmHeight, u_int *filmSubRegion) {
     PathOCLOpenCLRenderThread::GetThreadFilmSize(filmWidth, filmHeight, filmSubRegion);
 }
 
-void PathOCLRespirOCLRenderThread::RenderThreadImpl() {
+void RespirPathOCLRenderThread::RenderThreadImpl() {
     SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Rendering thread started");
 
 	PathOCLRenderEngine *engine = (PathOCLRenderEngine *)renderEngine;

@@ -46,37 +46,6 @@ protected:
 	virtual void RenderThreadImpl();
 };
 
-class PathOCLRespirOCLRenderThread : public PathOCLOpenCLRenderThread {
-public:
-	PathOCLRespirOCLRenderThread(const u_int index, luxrays::HardwareIntersectionDevice *device,
-			PathOCLRenderEngine *re);
-	~PathOCLRespirOCLRenderThread();
-
-	void StartRenderThread() override;
-
-	friend class PathOCLRenderEngine;
-protected:
-	void GetKernelParameters(std::vector<std::string> &params,
-			luxrays::HardwareIntersectionDevice *intersectionDevice,
-			const std::string renderEngineType,
-			const float epsilonMin, const float epsilonMax) override;
-	void InitGPUTaskBuffer(const u_int taskCount) override;
-	void InitGPUTaskStateBuffer(const u_int taskCount) override;
-	void GetThreadFilmSize(u_int *filmWidth, u_int *filmHeight, u_int *filmSubRegion) override;
-	void RenderThreadImpl() override;
-    void InitKernels() override;
-    void SetInitKernelArgs(const u_int filmIndex) override;
-    void SetAdvancePathsKernelArgs(luxrays::HardwareDeviceKernel *advancePathsKernel, const u_int filmIndex) override;
-    void SetAllAdvancePathsKernelArgs(const u_int filmIndex) override;
-    void EnqueueAdvancePathsKernel() override;
-
-	luxrays::HardwareDeviceKernel *spatialReuseInitKernel;
-	luxrays::HardwareDeviceKernel *spatialReuseIterateKernel;
-	luxrays::HardwareDeviceKernel *spatialReuseDoneKernel;
-	luxrays::HardwareDeviceKernel *spatialReuseSetSplatKernel;
-
-};
-
 //------------------------------------------------------------------------------
 // Path Tracing native render threads
 //------------------------------------------------------------------------------
@@ -124,7 +93,7 @@ public:
 	static RenderEngine *FromProperties(const RenderConfig *rcfg);
 
 	friend class PathOCLOpenCLRenderThread;
-	friend class PathOCLRespirOCLRenderThread;
+	friend class RespirPathOCLRenderThread;
 	friend class PathOCLNativeRenderThread;
 
 protected:
