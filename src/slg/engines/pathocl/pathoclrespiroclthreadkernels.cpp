@@ -159,12 +159,20 @@ void PathOCLRespirOCLRenderThread::InitKernels() {
 			"AdvancePaths_MK_GENERATE_CAMERA_RAY");
 	advancePathsWorkGroupSize = Min(advancePathsWorkGroupSize, workGroupSize);
 	SLG_LOG("[PathOCLBaseRenderThread::" << threadIndex << "] AdvancePaths_MK_* workgroup size: " << advancePathsWorkGroupSize);
-
-	CompileKernel(intersectionDevice, program, &spatialReusePassKernel, &workGroupSize,
-			"SpatialReusePassKernel");
-
 	const double tEnd = WallClockTime();
 	SLG_LOG("[PathOCLBaseRenderThread::" << threadIndex << "] Kernels compilation time: " << int((tEnd - tStart) * 1000.0) << "ms");
+
+	const double tSpatialReuseStart = WallClockTime();
+	CompileKernel(intersectionDevice, program, &spatialReuseInitKernel, &workGroupSize,
+			"spatialReuse_Init");
+	CompileKernel(intersectionDevice, program, &spatialReuseIterateKernel, &workGroupSize,
+			"spatialReuse_Iterate");
+	CompileKernel(intersectionDevice, program, &spatialReuseDoneKernel, &workGroupSize,
+			"spatialReuse_Done");
+	CompileKernel(intersectionDevice, program, &spatialReuseSetSplatKernel, &workGroupSize,
+			"spatialReuse_SetSplat");
+	const double tSpatialReuseEnd = WallClockTime();
+	SLG_LOG("[PathOCLRespirOCLThread::" << threadIndex << "] Spatial reuse kernels compilation time: " << int((tSpatialReuseEnd - tSpatialReuseStart) * 1000.0) << "ms");
 
 	delete program;
 
@@ -180,8 +188,14 @@ void PathOCLRespirOCLRenderThread::SetAdvancePathsKernelArgs(luxrays::HardwareDe
 
 void PathOCLRespirOCLRenderThread::SetAllAdvancePathsKernelArgs(const u_int filmIndex) {
     PathOCLOpenCLRenderThread::SetAllAdvancePathsKernelArgs(filmIndex);
-	if (spatialReusePassKernel)
-		SetAdvancePathsKernelArgs(spatialReusePassKernel, filmIndex);
+	if (spatialReuseInitKernel)
+		SetAdvancePathsKernelArgs(spatialReuseInitKernel, filmIndex);
+	if (spatialReuseIterateKernel)
+		SetAdvancePathsKernelArgs(spatialReuseIterateKernel, filmIndex);
+	if (spatialReuseDoneKernel)
+		SetAdvancePathsKernelArgs(spatialReuseDoneKernel, filmIndex);
+	if (spatialReuseSetSplatKernel)
+		SetAdvancePathsKernelArgs(spatialReuseSetSplatKernel, filmIndex);
 }
 
 void PathOCLRespirOCLRenderThread::EnqueueAdvancePathsKernel() {

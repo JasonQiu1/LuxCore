@@ -70,7 +70,11 @@ protected:
     void SetAllAdvancePathsKernelArgs(const u_int filmIndex) override;
     void EnqueueAdvancePathsKernel() override;
 
-	luxrays::HardwareDeviceKernel *spatialReusePassKernel;
+	luxrays::HardwareDeviceKernel *spatialReuseInitKernel;
+	luxrays::HardwareDeviceKernel *spatialReuseIterateKernel;
+	luxrays::HardwareDeviceKernel *spatialReuseDoneKernel;
+	luxrays::HardwareDeviceKernel *spatialReuseSetSplatKernel;
+
 };
 
 //------------------------------------------------------------------------------

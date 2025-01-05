@@ -1161,12 +1161,14 @@ __kernel void AdvancePaths_MK_GENERATE_CAMERA_RAY(
 #endif
 }
 
+// SPATIAL REUSE KERNELS BELOW
+
 //------------------------------------------------------------------------------
-// SpatialReusePass Kernel
+// SpatialReuse_Init Kernel
 //
-// Performs spatial reuse on the current frame, storing into the respir reservoir buffers.
+// Initializes the spatial reuse pass.
 //------------------------------------------------------------------------------
-__kernel void SpatialReusePassKernel(
+__kernel void SpatialReuse_Init(
 		KERNEL_ARGS
 		) {
 	const size_t gid = get_global_id(0);
@@ -1176,7 +1178,49 @@ __kernel void SpatialReusePassKernel(
 	__global GPUTaskState *taskState = &tasksState[gid];
 #if defined(DEBUG_PRINTF_KERNEL_NAME)
 	if (gid == DEBUG_GID)
-		printf("Kernel: SpatialReusePass(state = %d)\n", taskState->state);
+		printf("Kernel: SpatialReuse_Init(state = %d)\n", taskState->state);
+	else
+		return;
+#endif
+
+	//--------------------------------------------------------------------------
+	// Start of variables setup
+	//--------------------------------------------------------------------------
+
+	// Read the seed
+	Seed seedValue = task->seed;
+	// This trick is required by SAMPLER_PARAM macro
+	Seed *seed = &seedValue;
+
+	//--------------------------------------------------------------------------
+	// End of variables setup
+	//--------------------------------------------------------------------------
+
+	// TODO: INITIALIZE SPATIAL REUSE PASS
+
+	//--------------------------------------------------------------------------
+
+	// Save the seed
+	task->seed = seedValue;
+}
+
+
+//------------------------------------------------------------------------------
+// SpatialReuse_Iterate Kernel
+//
+// Performs a single iteration of spatial reuse on the current frame, storing into the respir reservoir buffers.
+//------------------------------------------------------------------------------
+__kernel void SpatialReuse_Iterate(
+		KERNEL_ARGS
+		) {
+	const size_t gid = get_global_id(0);
+
+	// Read the path state
+	__global GPUTask *task = &tasks[gid];
+	__global GPUTaskState *taskState = &tasksState[gid];
+#if defined(DEBUG_PRINTF_KERNEL_NAME)
+	if (gid == DEBUG_GID)
+		printf("Kernel: SpatialReuse_Iterate(state = %d)\n", taskState->state);
 	else
 		return;
 #endif
@@ -1195,10 +1239,72 @@ __kernel void SpatialReusePassKernel(
 	//--------------------------------------------------------------------------
 
 	// TODO: IMPLEMENT SPATIAL RESAMPLING
-	taskState->state = MK_SPLAT_SAMPLE;
 
 	//--------------------------------------------------------------------------
 
 	// Save the seed
 	task->seed = seedValue;
+}
+
+//------------------------------------------------------------------------------
+// SpatialReuse_Done Kernel
+//
+// Completes the spatial reuse pass and sets up for splatting.
+//------------------------------------------------------------------------------
+__kernel void SpatialReuse_Done(
+		KERNEL_ARGS
+		) {
+	const size_t gid = get_global_id(0);
+
+	// Read the path state
+	__global GPUTask *task = &tasks[gid];
+	__global GPUTaskState *taskState = &tasksState[gid];
+#if defined(DEBUG_PRINTF_KERNEL_NAME)
+	if (gid == DEBUG_GID)
+		printf("Kernel: SpatialReuse_Done(state = %d)\n", taskState->state);
+	else
+		return;
+#endif
+
+	//--------------------------------------------------------------------------
+	// Start of variables setup
+	//--------------------------------------------------------------------------
+
+	// Read the seed
+	Seed seedValue = task->seed;
+	// This trick is required by SAMPLER_PARAM macro
+	Seed *seed = &seedValue;
+
+	//--------------------------------------------------------------------------
+	// End of variables setup
+	//--------------------------------------------------------------------------
+
+	// TODO: SET UP SPLATTING FROM SPATIAL REUSE PASSES
+
+	//--------------------------------------------------------------------------
+
+	// Save the seed
+	task->seed = seedValue;
+}
+
+//------------------------------------------------------------------------------
+// SpatialReuse_SetSplat Kernel
+//
+// Sets path state to splat.
+//------------------------------------------------------------------------------
+__kernel void SpatialReuse_SetSplat(
+		KERNEL_ARGS
+		) {
+	const size_t gid = get_global_id(0);
+
+	// Read the path state
+	__global GPUTaskState *taskState = &tasksState[gid];
+#if defined(DEBUG_PRINTF_KERNEL_NAME)
+	if (gid == DEBUG_GID)
+		printf("Kernel: SpatialReuse_Splat(state = %d)\n", taskState->state);
+	else
+		return;
+#endif
+
+	taskState->state = MK_SPLAT_SAMPLE;
 }

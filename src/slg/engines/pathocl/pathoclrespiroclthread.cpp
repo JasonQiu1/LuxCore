@@ -102,7 +102,7 @@ void PathOCLRespirOCLRenderThread::RenderThreadImpl() {
 		const double targetTime = 0.2; // 200ms
 
         // TODO: Let this be configurable
-        const u_int spatialReusePassIterations = 1;
+        const u_int numSpatialReuseIterations = 1;
 
 		u_int iterations = 4;
 		u_int totalIterations = 0;
@@ -173,6 +173,10 @@ void PathOCLRespirOCLRenderThread::RenderThreadImpl() {
             intersectionDevice->EnqueueKernel(advancePathsKernel_MK_GENERATE_CAMERA_RAY,
 			    HardwareDeviceRange(taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
 
+			// Get next sample if this is not the first iteration of this loop.
+	        intersectionDevice->EnqueueKernel(advancePathsKernel_MK_NEXT_SAMPLE,
+			    HardwareDeviceRange(taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
+
             // Perform initial path resampling to get canonical samples for each pixel this frame.
             bool isInitialPathResamplingDone = false;
             u_int totalIterationsThisFrame = 0;
@@ -235,34 +239,45 @@ void PathOCLRespirOCLRenderThread::RenderThreadImpl() {
 			SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Initial path resampling is complete, performing spatial reuse");
             
             // Perform spatial reuse.
-            for (u_int i = 0; i < spatialReusePassIterations; i++) {
-                // Select neighboring pixels to resample from.
-                intersectionDevice->EnqueueKernel(spatialReusePassKernel,
+			if (numSpatialReuseIterations > 0) {
+				// Initialize spatial reuse iterations
+				intersectionDevice->EnqueueKernel(spatialReuseInitKernel,
+						HardwareDeviceRange(engine->taskCount), HardwareDeviceRange(initWorkGroupSize));
+				// Ensure all paths are synced before continuing
+				intersectionDevice->FinishQueue();
+
+				// Iterate x times
+				for (u_int i = 0; i < numSpatialReuseIterations; i++) {
+					// Select neighboring pixels to resample from.
+					intersectionDevice->EnqueueKernel(spatialReuseIterateKernel,
+						HardwareDeviceRange(engine->taskCount), HardwareDeviceRange(initWorkGroupSize));
+					
+					// TODO: When in shift mapping mode, do not need to perform MK_ILLUMINATE calculations.
+					// Only need to advance the random number by the amount it would use.
+					
+					// Since spatial reuse (shift mapping step) needs to retrace only paths already traced in this frame, 
+					// the max number of iterations possible is the amount required for 
+					// the path that took the most number of iterations in this frame.
+					for (u_int i = 0; i < totalIterationsThisFrame; ++i) {
+						// Trace rays
+						intersectionDevice->EnqueueTraceRayBuffer(raysBuff, hitsBuff, taskCount);
+
+						// Advance to next path state
+						EnqueueAdvancePathsKernel();
+					}
+
+					// Ensure all paths are synced before continuing
+					intersectionDevice->FinishQueue();
+				}
+				// Set up for splatting
+				intersectionDevice->EnqueueKernel(spatialReuseDoneKernel,
+						HardwareDeviceRange(engine->taskCount), HardwareDeviceRange(initWorkGroupSize));
+			}
+
+            // Splat pixels.
+			intersectionDevice->EnqueueKernel(spatialReuseSetSplatKernel,
                     HardwareDeviceRange(engine->taskCount), HardwareDeviceRange(initWorkGroupSize));
-                
-                // TODO: When in shift mapping mode, do not need to perform MK_ILLUMINATE calculations.
-                // Only need to advance the random number by the amount it would use.
-                
-                // Since spatial reuse (shift mapping step) needs to retrace only paths already traced in this frame, 
-                // the max number of iterations possible is the amount required for 
-                // the path that took the most number of iterations in this frame.
-                for (u_int i = 0; i < totalIterationsThisFrame; ++i) {
-                    // Trace rays
-                    intersectionDevice->EnqueueTraceRayBuffer(raysBuff, hitsBuff, taskCount);
-
-                    // Advance to next path state
-                    EnqueueAdvancePathsKernel();
-                }
-
-                // Ensure all paths are synced before
-                intersectionDevice->FinishQueue();
-            }
-
-            // Splat pixels and set up next frame.
-            // We do not need to iterate these kernels because they do not form any possible execution cycles.
             intersectionDevice->EnqueueKernel(advancePathsKernel_MK_SPLAT_SAMPLE,
-			    HardwareDeviceRange(taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
-	        intersectionDevice->EnqueueKernel(advancePathsKernel_MK_NEXT_SAMPLE,
 			    HardwareDeviceRange(taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
 
             spp++;

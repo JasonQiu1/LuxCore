@@ -51,7 +51,7 @@ typedef enum {
 	MK_NEXT_SAMPLE = 8,
 	MK_GENERATE_CAMERA_RAY = 9,
 	MK_DONE = 10,
-	SPATIAL_REUSE_PASS = 11
+	SYNC = 11
 } PathState;
 
 typedef struct {
