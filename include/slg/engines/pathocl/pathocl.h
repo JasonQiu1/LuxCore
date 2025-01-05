@@ -93,6 +93,7 @@ public:
 	static RenderEngine *FromProperties(const RenderConfig *rcfg);
 
 	friend class PathOCLOpenCLRenderThread;
+	// TODO: Remove this and create a new RespirPathOCLRenderEngine so it doesn't bloat this class
 	friend class RespirPathOCLRenderThread;
 	friend class PathOCLNativeRenderThread;
 
