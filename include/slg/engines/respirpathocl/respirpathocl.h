@@ -58,3 +58,7 @@ protected:
 };
 
 }
+
+#endif
+
+#endif	/* _SLG_RESPIRPATHOCL_H */
