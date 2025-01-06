@@ -21,11 +21,12 @@
 
 #if !defined(LUXRAYS_DISABLE_OPENCL)
 
+#include "slg/engines/pathocl/pathocl.h"
 #include "slg/engines/pathoclbase/pathoclbase.h"
 
 namespace slg {
 
-class PathOCLRenderEngine;
+class RespirPathOCLRenderEngine;
 
 class RespirPathOCLRenderThread : public PathOCLOpenCLRenderThread {
 public:
@@ -35,7 +36,7 @@ public:
 
 	void StartRenderThread() override;
 
-	friend class PathOCLRenderEngine;
+	friend class RespirPathOCLRenderEngine;
 protected:
 	void GetKernelParameters(std::vector<std::string> &params,
 			luxrays::HardwareIntersectionDevice *intersectionDevice,
