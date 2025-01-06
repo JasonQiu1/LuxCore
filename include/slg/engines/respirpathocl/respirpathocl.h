@@ -31,7 +31,7 @@ class RespirPathOCLRenderEngine;
 class RespirPathOCLRenderThread : public PathOCLOpenCLRenderThread {
 public:
 	RespirPathOCLRenderThread(const u_int index, luxrays::HardwareIntersectionDevice *device,
-			PathOCLRenderEngine *re);
+			RespirPathOCLRenderEngine *re);
 	~RespirPathOCLRenderThread();
 
 	void StartRenderThread() override;
@@ -62,7 +62,7 @@ protected:
 // Respir path tracing 100% OpenCL render engine
 //------------------------------------------------------------------------------
 
-class RespirPathOCLRenderEngine : public PathOCLBaseRenderEngine {
+class RespirPathOCLRenderEngine : public PathOCLRenderEngine {
 public:
 	RespirPathOCLRenderEngine(const RenderConfig *cfg, const bool supportsNativeThreads);
 	virtual ~RespirPathOCLRenderEngine();
