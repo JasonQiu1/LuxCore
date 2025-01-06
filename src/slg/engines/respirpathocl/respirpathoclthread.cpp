@@ -61,7 +61,7 @@ void RespirPathOCLRenderThread::GetThreadFilmSize(u_int *filmWidth, u_int *filmH
 void RespirPathOCLRenderThread::RenderThreadImpl() {
     SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Rendering thread started");
 
-	PathOCLRenderEngine *engine = (PathOCLRenderEngine *)renderEngine;
+	RespirPathOCLRenderEngine *engine = (RespirPathOCLRenderEngine *)renderEngine;
 	const u_int taskCount = engine->taskCount;
 
 	intersectionDevice->PushThreadCurrentDevice();
