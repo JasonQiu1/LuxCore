@@ -15,7 +15,7 @@ using namespace slg;
 
 PathOCLBaseOCLRenderThread* RespirOCLRenderEngine::CreateOCLThread(const u_int index,
             HardwareIntersectionDevice *device) {
-        return new PathOCLRespirOCLRenderThread(index, device, this);
+        return new RespirPathOCLRenderThread(index, device, this);
 }
 
 #endif
