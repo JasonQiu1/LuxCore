@@ -18,8 +18,6 @@ PathOCLBaseOCLRenderThread* RespirPathOCLRenderEngine::CreateOCLThread(const u_i
         return new RespirPathOCLRenderThread(index, device, this);
 }
 
-#endif
-
 //------------------------------------------------------------------------------
 // Static methods used by RenderEngineRegistry
 //------------------------------------------------------------------------------
@@ -40,7 +38,7 @@ Properties RespirPathOCLRenderEngine::ToProperties(const Properties &cfg) {
 }
 
 RenderEngine* RespirPathOCLRenderEngine::FromProperties(const RenderConfig *rcfg) {
-	return new PathOCLRenderEngine(rcfg);
+	return new RespirPathOCLRenderEngine(rcfg);
 }
 
 const Properties &RespirPathOCLRenderEngine::GetDefaultProps() {
