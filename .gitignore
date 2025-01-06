@@ -19,7 +19,6 @@ pyunittests/images/*.png
 pyunittests/referenceimages/*.png
 pyunittests/totaltestsdone.txt
 *~
-*CMakeFiles
 *CMakeCache.txt
 *Makefile
 *cmake_install.cmake
