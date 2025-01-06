@@ -13,7 +13,7 @@ using namespace slg;
 // RespirPathOCLRenderEngine
 //------------------------------------------------------------------------------
 
-PathOCLBaseOCLRenderThread* RespirOCLRenderEngine::CreateOCLThread(const u_int index,
+PathOCLBaseOCLRenderThread* RespirPathOCLRenderEngine::CreateOCLThread(const u_int index,
             HardwareIntersectionDevice *device) {
         return new RespirPathOCLRenderThread(index, device, this);
 }
