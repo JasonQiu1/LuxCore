@@ -151,7 +151,7 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 	Rnd_InitFloat(seedValue, &initSeed);
 	taskState->seedPassThroughEvent = initSeed;
 
-#if defined(OCL_THREAD_RESPIR) 
+#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
 	taskState->lastWeight = 0.0f;
 	taskState->initialPathReservoir.sumWeight = 0.0f;
 
@@ -167,7 +167,7 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 // Utility functions
 //------------------------------------------------------------------------------
 
-#if defined(OCL_THREAD_RESPIR) 
+#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
 // Add a sample to the streaming reservoir.
 // Simply replace based on the new sample's weight and the reservoir's current sum weight.
 OPENCL_FORCE_INLINE void SampleResultReservoir_Update(const __global GPUTaskConfiguration* restrict taskConfig, __global GPUTaskState* restrict taskState, 
@@ -244,7 +244,7 @@ OPENCL_FORCE_INLINE void DirectHitInfiniteLight(__constant const Film* restrict 
 				weight = PowerHeuristic(pathInfo->lastBSDFPdfW, directPdfW * lightPickProb);
 			} else
 				weight = 1.f;
-#if defined(OCL_THREAD_RESPIR) 
+#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
 			taskState->lastWeight *= weight;
 #endif
 
@@ -297,7 +297,7 @@ OPENCL_FORCE_INLINE void DirectHitFiniteLight(__constant const Film* restrict fi
 			// Note: mats[bsdf->materialIndex].avgPassThroughTransparency = lightSource->GetAvgPassThroughTransparency()
 			weight = PowerHeuristic(pathInfo->lastBSDFPdfW * Light_GetAvgPassThroughTransparency(light LIGHTS_PARAM), directPdfW * lightPickProb);
 		}
-#if defined(OCL_THREAD_RESPIR) 
+#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
 		taskState->lastWeight *= weight;
 #endif
 		SampleResult_AddEmission(film, sampleResult, BSDF_GetLightID(bsdf
@@ -421,7 +421,7 @@ OPENCL_FORCE_INLINE bool DirectLight_BSDFSampling(
 			!bsdf->hitPoint.throughShadowTransparency;
 
 	const float weight = misEnabled ? PowerHeuristic(directLightSamplingPdfW, bsdfPdfW) : 1.f;
-#if defined(OCL_THREAD_RESPIR) 
+#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
 	taskState->lastWeight *= weight;
 #endif
 

@@ -45,9 +45,21 @@ void RespirPathOCLRenderThread::GetKernelParameters(
 		HardwareIntersectionDevice *intersectionDevice,
 		const string renderEngineType,
 		const float epsilonMin, const float epsilonMax) {
-	params.push_back("-D OCL_THREAD_RESPIR");
-	PathOCLOpenCLRenderThread::GetKernelParameters(params, intersectionDevice, renderEngineType, epsilonMin, epsilonMax);
-}
+	params.push_back("-D LUXRAYS_OPENCL_KERNEL");
+	params.push_back("-D SLG_OPENCL_KERNEL");
+	params.push_back("-D RENDER_ENGINE_" + renderEngineType);
+	params.push_back("-D PARAM_RAY_EPSILON_MIN=" + ToString(epsilonMin) + "f");
+	params.push_back("-D PARAM_RAY_EPSILON_MAX=" + ToString(epsilonMax) + "f");
+
+	const OpenCLDeviceDescription *oclDeviceDesc = dynamic_cast<const OpenCLDeviceDescription *>(intersectionDevice->GetDeviceDesc());
+	if (oclDeviceDesc) {
+		if (oclDeviceDesc->IsAMDPlatform())
+			params.push_back("-D LUXCORE_AMD_OPENCL");
+		else if (oclDeviceDesc->IsNVIDIAPlatform())
+			params.push_back("-D LUXCORE_NVIDIA_OPENCL");
+		else
+			params.push_back("-D LUXCORE_GENERIC_OPENCL");
+	}}
 
 void RespirPathOCLRenderThread::InitGPUTaskBuffer(const u_int taskCount) {
 	intersectionDevice->AllocBufferRW(&tasksBuff, nullptr, sizeof(slg::ocl::pathoclbase::RespirGPUTask) * taskCount, "ReSPIR GPUTask");

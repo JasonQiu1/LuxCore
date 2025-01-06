@@ -192,7 +192,7 @@ __kernel void AdvancePaths_MK_HIT_NOTHING(
 		sampleResult->alpha = 0.f;
 	}
 
-#if defined(OCL_THREAD_RESPIR) 
+#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
 	// Add BSDF-importance sampled environment sample to reservoir
 	SampleResultReservoir_Update(taskConfig, taskState, sampleResult);
 	taskState->state = SYNC;
@@ -270,7 +270,7 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 
 	bool checkDirectLightHit = true;
 
-#if !defined(OCL_THREAD_RESPIR) 
+#if !defined(RENDER_ENGINE_RESPIRPATHOCL) 
 	//----------------------------------------------------------------------
 	// Check if it is a baked material
 	//----------------------------------------------------------------------
@@ -317,7 +317,7 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 				LIGHTS_PARAM);
 	}
 
-#if defined(OCL_THREAD_RESPIR) 
+#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
 	// Add BSDF importance sampled light sample into the reservoir.
 	SampleResultReservoir_Update(taskConfig, taskState, sampleResult);
 #endif
@@ -325,7 +325,7 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 	//----------------------------------------------------------------------
 	// Check if I can use the photon cache
 	//----------------------------------------------------------------------
-#if !defined(OCL_THREAD_RESPIR)
+#if !defined(RENDER_ENGINE_RESPIRPATHOCL)
 	if (taskConfig->pathTracer.pgic.indirectEnabled || taskConfig->pathTracer.pgic.causticEnabled) {
 		const bool isPhotonGIEnabled = PhotonGICache_IsPhotonGIEnabled(bsdf,
 				taskConfig->pathTracer.pgic.glossinessUsageThreshold
@@ -452,7 +452,7 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 	// I handle as a special case when the path vertex is both the first
 	// and the last: I do direct light sampling without MIS.
 	if (sampleResult->lastPathVertex && !sampleResult->firstPathVertex) {
-#if defined(OCL_THREAD_RESPIR) 
+#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
 		taskState->state = SYNC;
 #else
 		taskState->state = MK_SPLAT_SAMPLE;
@@ -559,7 +559,7 @@ __kernel void AdvancePaths_MK_RT_DL(
 				}
 			}
 
-#if defined(OCL_THREAD_RESPIR) 
+#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
 			// Add NEE-illuminated sample into the reservoir.
 			SampleResultReservoir_Update(taskConfig, taskState, sampleResult);
 #endif
@@ -571,7 +571,7 @@ __kernel void AdvancePaths_MK_RT_DL(
 
 		// Check if this is the last path vertex
 		if (sampleResult->lastPathVertex)
-#if defined(OCL_THREAD_RESPIR) 
+#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
 			pathState = SYNC;
 #else
 			pathState = MK_SPLAT_SAMPLE;
@@ -658,7 +658,7 @@ __kernel void AdvancePaths_MK_DL_ILLUMINATE(
 		// No shadow ray to trace, move to the next vertex ray
 		// however, I have to check if this is the last path vertex
 		if (sampleResult->lastPathVertex) {
-#if defined(OCL_THREAD_RESPIR) 
+#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
 			taskState->state = SYNC;
 #else
 			taskState->state = MK_SPLAT_SAMPLE;
@@ -751,7 +751,7 @@ __kernel void AdvancePaths_MK_DL_SAMPLE_BSDF(
 		// No shadow ray to trace, move to the next vertex ray
 		// however, I have to check if this is the last path vertex
 		if (sampleResult->lastPathVertex) {
-#if defined(OCL_THREAD_RESPIR) 
+#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
 			taskState->state = SYNC;
 #else
 			taskState->state = MK_SPLAT_SAMPLE;
@@ -908,7 +908,7 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 
 		pathState = MK_RT_NEXT_VERTEX;
 	} else
-#if defined(OCL_THREAD_RESPIR) 
+#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
 		pathState = SYNC;
 #else
 		pathState = MK_SPLAT_SAMPLE;
@@ -965,7 +965,7 @@ __kernel void AdvancePaths_MK_SPLAT_SAMPLE(
 	// End of variables setup
 	//--------------------------------------------------------------------------
 
-#if defined(OCL_THREAD_RESPIR) 
+#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
 	// Copy resampled sample from reservoir to sampleResultsBuff[gid] to be splatted like normal
 	*sampleResult = taskState->initialPathReservoir.selectedSample;
 #endif
@@ -997,7 +997,7 @@ __kernel void AdvancePaths_MK_SPLAT_SAMPLE(
 		VSTORE3F(BLACK, sampleResult->albedo.c);
 	}
 
-#if !defined(OCL_THREAD_RESPIR)
+#if !defined(RENDER_ENGINE_RESPIRPATHOCL)
 	if (taskConfig->pathTracer.pgic.indirectEnabled &&
 			(taskConfig->pathTracer.pgic.debugType == PGIC_DEBUG_SHOWINDIRECTPATHMIX) &&
 			!taskState->photonGIShowIndirectPathMixUsed)

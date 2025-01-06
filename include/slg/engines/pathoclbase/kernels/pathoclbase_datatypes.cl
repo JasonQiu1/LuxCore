@@ -206,7 +206,7 @@ typedef struct {
 } RespirGPUTask;
 
 
-#if defined(OCL_THREAD_RESPIR) 
+#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
 typedef RespirGPUTaskState GPUTaskState;
 typedef RespirGPUTask GPUTask;
 #else
