@@ -177,13 +177,13 @@ void RespirPathOCLRenderThread::InitKernels() {
 	const double tSpatialReuseStart = WallClockTime();
 	SLG_LOG("[RespirPathOCLThread::" << threadIndex << "] Compiling kernels ");
 	CompileKernel(intersectionDevice, program, &spatialReuseInitKernel, &workGroupSize,
-			"spatialReuse_Init");
+			"SpatialReuse_Init");
 	CompileKernel(intersectionDevice, program, &spatialReuseIterateKernel, &workGroupSize,
-			"spatialReuse_Iterate");
+			"SpatialReuse_Iterate");
 	CompileKernel(intersectionDevice, program, &spatialReuseDoneKernel, &workGroupSize,
-			"spatialReuse_Done");
+			"SpatialReuse_Done");
 	CompileKernel(intersectionDevice, program, &spatialReuseSetSplatKernel, &workGroupSize,
-			"spatialReuse_SetSplat");
+			"SpatialReuse_SetSplat");
 	const double tSpatialReuseEnd = WallClockTime();
 	SLG_LOG("[RespirPathOCLThread::" << threadIndex << "] Spatial reuse kernels compilation time: " << int((tSpatialReuseEnd - tSpatialReuseStart) * 1000.0) << "ms");
 
