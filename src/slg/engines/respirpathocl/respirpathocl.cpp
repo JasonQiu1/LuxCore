@@ -13,6 +13,10 @@ using namespace slg;
 // RespirPathOCLRenderEngine
 //------------------------------------------------------------------------------
 
+RespirPathOCLRenderEngine::RespirPathOCLRenderEngine(const RenderConfig *rcfg) :
+		PathOCLRenderEngine(rcfg, true) {
+}
+
 PathOCLBaseOCLRenderThread* RespirPathOCLRenderEngine::CreateOCLThread(const u_int index,
             HardwareIntersectionDevice *device) {
         return new RespirPathOCLRenderThread(index, device, this);
