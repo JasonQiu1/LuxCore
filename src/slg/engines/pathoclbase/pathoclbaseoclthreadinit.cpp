@@ -372,6 +372,8 @@ void PathOCLBaseOCLRenderThread::InitSamplerSharedDataBuffer() {
 				break;
 			case RTPATHOCL:
 				break;
+			case RESPIRPATHOCL:
+				break;
 			default:
 				throw runtime_error("Unknown render engine in PathOCLBaseRenderThread::InitSamplerSharedDataBuffer(): " +
 						ToString(renderEngine->GetType()));
@@ -432,6 +434,8 @@ void PathOCLBaseOCLRenderThread::InitSamplerSharedDataBuffer() {
 				break;
 			}
 			case RTPATHOCL:
+				break;
+			case RESPIRPATHOCL:
 				break;
 			default:
 				throw runtime_error("Unknown render engine in PathOCLBaseRenderThread::InitSamplerSharedDataBuffer(): " +

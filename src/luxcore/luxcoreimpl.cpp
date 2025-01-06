@@ -34,6 +34,7 @@
 #include "slg/engines/oclrenderengine.h"
 #include "slg/engines/tilepathocl/tilepathocl.h"
 #include "slg/engines/rtpathocl/rtpathocl.h"
+#include "slg/engines/respirpathocl/respirpathocl.h"
 #include "slg/engines/filesaver/filesaver.h"
 #include "luxcore/luxcore.h"
 #include "luxcore/luxcoreimpl.h"
@@ -1736,6 +1737,11 @@ void RenderSessionImpl::UpdateStats() {
 				engine->GetConvergedTiles(tiles);
 				SetTileProperties(stats, "stats.tilepath.tiles.converged", tiles);
 			}
+			break;
+		}
+		case slg::RESPIRPATHOCL: {
+			slg::RespirPathOCLRenderEngine* engine = (slg::RespirPathOCLRenderEngine*)renderSession->renderEngine;
+			// TODO: Add stats later
 			break;
 		}
 #endif

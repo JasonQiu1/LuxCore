@@ -271,7 +271,7 @@ static void RenderTestScene(const Properties &cfgSetUpProps, const Properties &s
 
 static void KernelCacheFillImpl(const Properties &config, void (*ProgressHandler)(const size_t, const size_t)) {
 	// Extract the render engines
-	const Property renderEngines = config.Get(Property("kernelcachefill.renderengine.types")("PATHOCL", "TILEPATHOCL", "RTPATHOCL"));
+	const Property renderEngines = config.Get(Property("kernelcachefill.renderengine.types")("PATHOCL", "TILEPATHOCL", "RTPATHOCL", "RESPIRPATHOCL"));
 	const size_t count = renderEngines.GetSize();
 	
 	// For each render engine type
