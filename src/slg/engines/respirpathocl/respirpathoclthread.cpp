@@ -42,11 +42,17 @@ using namespace slg;
 RespirPathOCLRenderThread::RespirPathOCLRenderThread(const u_int index, luxrays::HardwareIntersectionDevice *device,
         RespirPathOCLRenderEngine *re)
     : PathOCLOpenCLRenderThread(index, device, re) {
-
+    spatialReuseInitKernel = nullptr;
+	spatialReuseIterateKernel = nullptr;
+	spatialReuseDoneKernel = nullptr;
+	spatialReuseSetSplatKernel = nullptr;
 }
 
 RespirPathOCLRenderThread::~RespirPathOCLRenderThread() {
-
+    delete spatialReuseInitKernel;
+	delete spatialReuseIterateKernel;
+	delete spatialReuseDoneKernel;
+	delete spatialReuseSetSplatKernel;
 }
 
 void RespirPathOCLRenderThread::StartRenderThread() {

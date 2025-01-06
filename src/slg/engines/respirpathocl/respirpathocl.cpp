@@ -17,18 +17,9 @@ RespirPathOCLRenderEngine::RespirPathOCLRenderEngine(const RenderConfig *rcfg) :
 		PathOCLRenderEngine(rcfg) {
     const Properties &cfg = renderConfig->cfg;
     numSpatialReuseIterations = cfg.Get(GetDefaultProps().Get("respirpathocl.spatialreuse.numiterations")).Get<int>();
-
-    spatialReuseInitKernel = nullptr;
-	spatialReuseIterateKernel = nullptr;
-	spatialReuseDoneKernel = nullptr;
-	spatialReuseSetSplatKernel = nullptr;
 }
 
 RespirPathOCLRenderEngine::~RespirPathOCLRenderEngine() {
-    delete spatialReuseInitKernel;
-	delete spatialReuseIterateKernel;
-	delete spatialReuseDoneKernel;
-	delete spatialReuseSetSplatKernel;
 }
 
 PathOCLBaseOCLRenderThread* RespirPathOCLRenderEngine::CreateOCLThread(const u_int index,
