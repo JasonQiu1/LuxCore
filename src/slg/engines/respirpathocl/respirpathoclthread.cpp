@@ -40,7 +40,7 @@ using namespace slg;
 //------------------------------------------------------------------------------
 
 RespirPathOCLRenderThread::RespirPathOCLRenderThread(const u_int index, luxrays::HardwareIntersectionDevice *device,
-        PathOCLRenderEngine *re)
+        RespirPathOCLRenderEngine *re)
     : PathOCLOpenCLRenderThread(index, device, re) {
 
 }
