@@ -14,7 +14,7 @@ using namespace slg;
 //------------------------------------------------------------------------------
 
 RespirPathOCLRenderEngine::RespirPathOCLRenderEngine(const RenderConfig *rcfg) :
-		PathOCLRenderEngine(rcfg, true) {
+		PathOCLRenderEngine(rcfg) {
 }
 
 PathOCLBaseOCLRenderThread* RespirPathOCLRenderEngine::CreateOCLThread(const u_int index,
