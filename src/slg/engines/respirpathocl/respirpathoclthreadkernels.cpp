@@ -30,7 +30,7 @@
 #include "slg/slg.h"
 #include "slg/kernels/kernels.h"
 #include "slg/renderconfig.h"
-#include "slg/engines/pathocl/pathocl.h"
+#include "slg/engines/respirpathocl/respirpathocl.h"
 
 using namespace std;
 using namespace luxrays;
