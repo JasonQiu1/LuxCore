@@ -64,7 +64,7 @@ protected:
 
 class RespirPathOCLRenderEngine : public PathOCLRenderEngine {
 public:
-	RespirPathOCLRenderEngine(const RenderConfig *cfg, const bool supportsNativeThreads);
+	RespirPathOCLRenderEngine(const RenderConfig *cfg);
 	virtual ~RespirPathOCLRenderEngine();
 
 	virtual RenderEngineType GetType() const { return GetObjectType(); }
