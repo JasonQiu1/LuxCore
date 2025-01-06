@@ -65,12 +65,10 @@ protected:
 class RespirPathOCLRenderEngine : public PathOCLRenderEngine {
 public:
 	RespirPathOCLRenderEngine(const RenderConfig *cfg);
-	virtual ~RespirPathOCLRenderEngine();
+	~RespirPathOCLRenderEngine();
 
 	virtual RenderEngineType GetType() const { return GetObjectType(); }
 	virtual std::string GetTag() const { return GetObjectTag(); }
-
-	virtual RenderState *GetRenderState();
 
 	//--------------------------------------------------------------------------
 	// Static methods used by RenderEngineRegistry
@@ -94,14 +92,6 @@ protected:
 
 	virtual PathOCLBaseOCLRenderThread *CreateOCLThread(const u_int index,
 		luxrays::HardwareIntersectionDevice *device);
-	virtual PathOCLBaseNativeRenderThread *CreateNativeThread(const u_int index,
-			luxrays::NativeIntersectionDevice *device);
-
-	virtual void StartLockLess();
-	virtual void StopLockLess();
-	virtual void EndSceneEditLockLess(const EditActionList &editActions);
-	virtual void UpdateFilmLockLess() { }
-	virtual void UpdateCounters();
 };
 
 }

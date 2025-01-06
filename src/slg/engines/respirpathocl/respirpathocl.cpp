@@ -17,6 +17,10 @@ RespirPathOCLRenderEngine::RespirPathOCLRenderEngine(const RenderConfig *rcfg) :
 		PathOCLRenderEngine(rcfg) {
 }
 
+RespirPathOCLRenderEngine::~RespirPathOCLRenderEngine()
+{
+}
+
 PathOCLBaseOCLRenderThread* RespirPathOCLRenderEngine::CreateOCLThread(const u_int index,
             HardwareIntersectionDevice *device) {
         return new RespirPathOCLRenderThread(index, device, this);
