@@ -15,6 +15,8 @@ using namespace slg;
 
 RespirPathOCLRenderEngine::RespirPathOCLRenderEngine(const RenderConfig *rcfg) :
 		PathOCLRenderEngine(rcfg) {
+    const Properties &cfg = renderConfig->cfg;
+    numSpatialReuseIterations = cfg.Get(GetDefaultProps().Get("respirpathocl.spatialreuse.numiterations")).Get<int>();
 }
 
 RespirPathOCLRenderEngine::~RespirPathOCLRenderEngine()
@@ -23,7 +25,7 @@ RespirPathOCLRenderEngine::~RespirPathOCLRenderEngine()
 
 PathOCLBaseOCLRenderThread* RespirPathOCLRenderEngine::CreateOCLThread(const u_int index,
             HardwareIntersectionDevice *device) {
-        return new RespirPathOCLRenderThread(index, device, this);
+    return new RespirPathOCLRenderThread(index, device, this);
 }
 
 //------------------------------------------------------------------------------
@@ -39,9 +41,8 @@ Properties RespirPathOCLRenderEngine::ToProperties(const Properties &cfg) {
 			PathTracer::ToProperties(cfg) <<
 			cfg.Get(GetDefaultProps().Get("pathocl.pixelatomics.enable")) <<
 			cfg.Get(GetDefaultProps().Get("opencl.task.count")) <<
-			Sampler::ToProperties(cfg) <<
-			PhotonGICache::ToProperties(cfg);
-
+            cfg.Get(GetDefaultProps().Get("respirpathocl.spatialreuse.numiterations")) <<
+			Sampler::ToProperties(cfg);
 	return props;
 }
 
@@ -56,8 +57,7 @@ const Properties &RespirPathOCLRenderEngine::GetDefaultProps() {
 			PathTracer::GetDefaultProps() <<
 			Property("pathocl.pixelatomics.enable")(true) <<
 			Property("opencl.task.count")("AUTO") <<
-			PhotonGICache::GetDefaultProps();
-
+            Property("respirpathocl.spatialreuse.numiterations")(1);
 	return props;
 }
 

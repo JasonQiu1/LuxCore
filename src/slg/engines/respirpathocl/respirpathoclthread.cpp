@@ -101,8 +101,7 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 		// The film refresh time target
 		const double targetTime = 0.2; // 200ms
 
-        // TODO: Let this be configurable
-        const u_int numSpatialReuseIterations = 1;
+        const u_int numSpatialReuseIterations = engine->numSpatialReuseIterations;
 
 		u_int iterations = 4;
 		u_int totalIterations = 0;
