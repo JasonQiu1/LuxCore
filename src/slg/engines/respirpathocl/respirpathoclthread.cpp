@@ -189,7 +189,7 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 
 			SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Generating canonical initial path samples:" << taskCount);
 			while (!isInitialPathResamplingDone) {
-				//SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Queuing advance paths kernels");
+				SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Queuing advance paths kernels for " << iterations << "iterations");
 
                 // Trace until all paths are completed for this frame.
                 for (u_int i = 0; i < iterations; ++i) {
