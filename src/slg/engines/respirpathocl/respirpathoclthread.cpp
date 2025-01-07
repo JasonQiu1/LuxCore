@@ -162,9 +162,6 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 			totalTransferTime += timeTransferEnd - timeTransferStart;
 
 			//------------------------------------------------------------------
-			
-			const double timeKernelStart = WallClockTime();
-
 			// This is required for updating film denoiser parameter
 			if (threadFilms[0]->film->GetDenoiser().IsEnabled()) {
 				boost::unique_lock<boost::mutex> lock(engine->setKernelArgsMutex);
@@ -218,6 +215,7 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
                 for (u_int i = 0; i < taskCount; i++) {
 					//SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] TaskState(" << i << ") PathState=" << tasksState[i].state);
                     if (tasksState[i].state != slg::ocl::pathoclbase::PathState::SYNC) {
+						SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] TaskState(" << i << ") PathState=" << tasksState[i].state << " Continue advancing path");
                         isInitialPathResamplingDone = false;
                         break;
                     }
