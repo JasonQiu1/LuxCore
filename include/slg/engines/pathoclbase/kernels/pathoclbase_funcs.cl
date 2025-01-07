@@ -185,7 +185,7 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 	const float weight = Spectrum_Filter(pathContribution / pathPdf);
 	reservoir->sumWeight += weight;
 	if (random < (weight / reservoir->sumWeight)) {
-		reservoir->selectedSample.radiance = *newSample;
+		reservoir->selectedSample.sampleResult = *newSample;
 	}
 }
 #endif

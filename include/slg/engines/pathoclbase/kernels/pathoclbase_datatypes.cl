@@ -89,7 +89,8 @@ typedef struct {
 // Stores information about the reconnection vertex for a particular path in the ReSTIR algorithm.
 typedef struct {
 	float incidentAngle; // the incident angle coming out of the reconnection vertex in the base path
-	SampleResult radiance; // the radiance at the reconnection vertex
+	float3 incomingIrradiance; // the incoming irradiance at the reconnection vertex
+	uint pathLength; // the length of the path at the reconnection vertex
 	// TODO: find out if LuxCoreRender has multi-lobed materials
 	// uint prevLobeIndex; // the sampled lobe index of the material at the previous vertex 
 	// uint currLobeIndex; // the sampled lobe index of the material at the reconnection vertex
@@ -98,16 +99,17 @@ typedef struct {
 // Stores reuse information about a selected ReSPIR sample. (spatial reuse only)
 typedef struct {
 	ReconnectionVertex reconnectionVertex; // the chosen reconnection vertex for this path
+	SampleResult sampleResult; // the sampleresult data of the entire path
 	Seed seedInitial; // the initial GPUTask seed at the beginning of tracing this path
-	uint pathDepth; // the depth of the path at the reconnection vertex
-	float partialJacobian; // the denominator of the jacobian for this path for calculating the full jacobian when performing reuse 
+	Seed seedReconnectionVertex; // the GPUTask seed right after tracing the reconnection vertex
+	uint pathLength; // the length of the path
+	float partialCachedJacobian; // the denominator of the jacobian for this path for calculating the full jacobian when performing reuse 
 } RespirSample;
 
 // A streaming random-sampling reservoir for spatial reuse.
 typedef struct {
 	RespirSample selectedSample; // selected sample result
-	float selectedUnbiasedContributionWeight; // the unbiased contribution weight of the selected sample
-	float selectedWeight; // weight of selected sample
+	float selectedWeight; // (unbiased contribution) weight of selected sample
 	float sumWeight; // sum weights
 } RespirReservoir;
 
