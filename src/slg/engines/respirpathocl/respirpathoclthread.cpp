@@ -186,8 +186,10 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
             bool isInitialPathResamplingDone = false;
             u_int totalIterationsThisFrame = 0;
 			u_int iterations = 4;
+
+			SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Generating canonical initial path samples:" << taskCount);
             while (!isInitialPathResamplingDone) {
-				SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Queuing advance paths kernels");
+				//SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Queuing advance paths kernels");
 
                 // Trace until all paths are completed for this frame.
                 for (u_int i = 0; i < iterations; ++i) {
@@ -198,12 +200,12 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
                     EnqueueAdvancePathsKernel();
                 }
 
-				SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Finished queuing advance paths kernels");
+				//SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Finished queuing advance paths kernels");
 
                 // Wait for all kernels to finish running.
 			    intersectionDevice->FinishQueue();
 
-				SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] All advance paths kernels finished execution");
+				//SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] All advance paths kernels finished execution");
 
                 // Check if initial path resampling for all pixels is complete
                 // TODO: move pathState to a separate buffer so minimal amount of memory needs to be read here
@@ -211,9 +213,8 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
                     sizeof(slg::ocl::pathoclbase::RespirGPUTaskState) * taskCount,
                     tasksState);
 
-				SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Checking whether initial path resampling is complete");
+				//SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Checking whether initial path resampling is complete");
 
-				SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Task count is " << taskCount);
                 isInitialPathResamplingDone = true;
                 for (u_int i = 0; i < taskCount; i++) {
 					//SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] TaskState(" << i << ") PathState=" << tasksState[i].state);
@@ -247,6 +248,7 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
             
             // Perform spatial reuse.
 			if (numSpatialReuseIterations > 0) {
+				SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Spatial reuse is enabled, performing " << numSpatialReuseIterations << " iterations");
 				// Initialize spatial reuse iterations
 				intersectionDevice->EnqueueKernel(spatialReuseInitKernel,
 						HardwareDeviceRange(engine->taskCount), HardwareDeviceRange(initWorkGroupSize));
@@ -265,6 +267,7 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 					// Since spatial reuse (shift mapping step) needs to retrace only paths already traced in this frame, 
 					// the max number of iterations possible is the amount required for 
 					// the path that took the most number of iterations in this frame.
+					SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Spatial reuse (iteration " << i << "): retracing paths");
 					for (u_int i = 0; i < totalIterationsThisFrame; ++i) {
 						// Trace rays
 						intersectionDevice->EnqueueTraceRayBuffer(raysBuff, hitsBuff, taskCount);
@@ -279,7 +282,10 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 				// Set up for splatting
 				intersectionDevice->EnqueueKernel(spatialReuseDoneKernel,
 						HardwareDeviceRange(engine->taskCount), HardwareDeviceRange(initWorkGroupSize));
+			} else {
+				SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Spatial reuse is disabled, configure with respirpathocl.spatialreuse.numiterations");
 			}
+			SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Spatial reuse passes are complete, splatting pixels");
 
             // Splat pixels.
 			intersectionDevice->EnqueueKernel(spatialReuseSetSplatKernel,
