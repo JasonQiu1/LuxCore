@@ -89,7 +89,7 @@ typedef struct {
 // Stores information about the reconnection vertex for a particular path in the ReSTIR algorithm.
 typedef struct {
 	float incidentAngle; // the incident angle coming out of the reconnection vertex in the base path
-	float3 incomingIrradiance; // the incoming irradiance at the reconnection vertex
+	Spectrum incomingIrradiance; // the incoming irradiance at the reconnection vertex
 	uint pathLength; // the length of the path at the reconnection vertex
 	// TODO: find out if LuxCoreRender has multi-lobed materials
 	// uint prevLobeIndex; // the sampled lobe index of the material at the previous vertex 
