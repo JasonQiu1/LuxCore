@@ -170,12 +170,12 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 
             SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Beginning rendering for frame " << numFrames << ".");
 
-            // Generate camera rays for each pixel in this frame.
-            intersectionDevice->EnqueueKernel(advancePathsKernel_MK_GENERATE_CAMERA_RAY,
-			    HardwareDeviceRange(taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
-
 			// Get next sample if this is not the first iteration of this loop.
 	        intersectionDevice->EnqueueKernel(advancePathsKernel_MK_NEXT_SAMPLE,
+			    HardwareDeviceRange(taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
+
+            // Generate camera rays for each pixel in this frame.
+            intersectionDevice->EnqueueKernel(advancePathsKernel_MK_GENERATE_CAMERA_RAY,
 			    HardwareDeviceRange(taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
 
             // Perform initial path resampling to get canonical samples for each pixel this frame.
