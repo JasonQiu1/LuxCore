@@ -526,6 +526,11 @@ __kernel void AdvancePaths_MK_RT_DL(
 	VSTORE3F(connectionThroughput * VLOAD3F(taskDirectLight->illumInfo.lightRadiance.c), taskDirectLight->illumInfo.lightRadiance.c);
 	VSTORE3F(connectionThroughput * VLOAD3F(taskDirectLight->illumInfo.lightIrradiance.c), taskDirectLight->illumInfo.lightIrradiance.c);
 
+#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
+	// add connectionThroughput contribution to pathThroughput when resampling
+	VSTORE3F(connectionThroughput * VLOAD3F(taskState->lastWeight), taskState->lastWeight);
+#endif
+
 	const bool rayMiss = (rayHits[gid].meshIndex == NULL_INDEX);
 
 	// If continueToTrace, there is nothing to do, just keep the same state
