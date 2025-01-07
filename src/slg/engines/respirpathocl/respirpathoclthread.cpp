@@ -185,11 +185,10 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
             bool isInitialPathResamplingDone = false;
 			bool firstLoop = false;
             u_int totalIterationsThisFrame = 0;
-			u_int num_loops;
 
-			SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Generating canonical initial path samples:" << taskCount);
+			SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Generating canonical initial path samples: " << taskCount);
 			while (!isInitialPathResamplingDone) {
-				SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Queuing advance paths kernels for " << iterations << "iterations");
+				SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Queuing advance paths kernels for " << iterations << " iterations");
 
                 // Trace until all paths are completed for this frame.
                 for (u_int i = 0; i < iterations; ++i) {
@@ -246,7 +245,7 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 				SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Spatial reuse is enabled, performing " << numSpatialReuseIterations << " iterations");
 				// Initialize spatial reuse iterations
 				intersectionDevice->EnqueueKernel(spatialReuseInitKernel,
-						HardwareDeviceRange(engine->taskCount), HardwareDeviceRange(initWorkGroupSize));
+						HardwareDeviceRange(engine->taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
 				// Ensure all paths are synced before continuing
 				intersectionDevice->FinishQueue();
 
@@ -254,7 +253,7 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 				for (u_int i = 0; i < numSpatialReuseIterations; i++) {
 					// Select neighboring pixels to resample from.
 					intersectionDevice->EnqueueKernel(spatialReuseIterateKernel,
-						HardwareDeviceRange(engine->taskCount), HardwareDeviceRange(initWorkGroupSize));
+						HardwareDeviceRange(taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
 					
 					// TODO: When in shift mapping mode, do not need to perform MK_ILLUMINATE calculations.
 					// Only need to advance the random number by the amount it would use.
@@ -276,7 +275,7 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 				}
 				// Set up for splatting
 				intersectionDevice->EnqueueKernel(spatialReuseDoneKernel,
-						HardwareDeviceRange(engine->taskCount), HardwareDeviceRange(initWorkGroupSize));
+						HardwareDeviceRange(taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
 			} else {
 				SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Spatial reuse is disabled, configure with respirpathocl.spatialreuse.numiterations");
 			}
@@ -284,7 +283,7 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 
             // Splat pixels.
 			intersectionDevice->EnqueueKernel(spatialReuseSetSplatKernel,
-                    HardwareDeviceRange(engine->taskCount), HardwareDeviceRange(initWorkGroupSize));
+                    HardwareDeviceRange(engine->taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
             intersectionDevice->EnqueueKernel(advancePathsKernel_MK_SPLAT_SAMPLE,
 			    HardwareDeviceRange(taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
 
