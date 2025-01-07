@@ -152,7 +152,7 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 	taskState->seedPassThroughEvent = initSeed;
 
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-	taskState->lastWeight = BLACK;
+	VSTORE3F(BLACK, taskState->lastWeight);
 	taskState->initialPathReservoir.sumWeight = 0.0f;
 
 	// Initialize reservoir sampling seed
