@@ -245,7 +245,7 @@ OPENCL_FORCE_INLINE void DirectHitInfiniteLight(__constant const Film* restrict 
 			} else
 				weight = 1.f;
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-			VSTORE3F((float3) weight, taskState->lastWeight.c);
+			VSTORE3F((float3) (weight,weight,weight), taskState->lastWeight.c);
 #endif
 
 			SampleResult_AddEmission(film, sampleResult, light->lightID, throughput, weight * envRadiance);
@@ -298,7 +298,7 @@ OPENCL_FORCE_INLINE void DirectHitFiniteLight(__constant const Film* restrict fi
 			weight = PowerHeuristic(pathInfo->lastBSDFPdfW * Light_GetAvgPassThroughTransparency(light LIGHTS_PARAM), directPdfW * lightPickProb);
 		}
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-		VSTORE3F((float3) weight, taskState->lastWeight.c);
+		VSTORE3F((float3) (weight,weight,weight), taskState->lastWeight.c);
 #endif
 		SampleResult_AddEmission(film, sampleResult, BSDF_GetLightID(bsdf
 				MATERIALS_PARAM), VLOAD3F(taskState->throughput.c), weight * emittedRadiance);
@@ -422,7 +422,7 @@ OPENCL_FORCE_INLINE bool DirectLight_BSDFSampling(
 
 	const float weight = misEnabled ? PowerHeuristic(directLightSamplingPdfW, bsdfPdfW) : 1.f;
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-	VSTORE3F((float3) weight, taskState->lastWeight.c);
+	VSTORE3F((float3) (weight,weight,weight), taskState->lastWeight.c);
 #endif
 
 	const float3 lightRadiance = VLOAD3F(info->lightRadiance.c);
