@@ -185,7 +185,6 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
             // Perform initial path resampling to get canonical samples for each pixel this frame.
             bool isInitialPathResamplingDone = false;
             u_int totalIterationsThisFrame = 0;
-			u_int iterations = 4;
 
 			SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Generating canonical initial path samples:" << taskCount);
             while (!isInitialPathResamplingDone) {
@@ -241,9 +240,7 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
                 else
                     iterations = Min<u_int>(iterations + 1, 128);
             }
-
-			iterations = totalIterations / (spp + 1);
-
+			
 			SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Initial path resampling is complete, performing spatial reuse");
             
             // Perform spatial reuse.
