@@ -73,7 +73,7 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 
     // Keep track of rendered samples per pixel for this thread.
     // TODO: remove, since this should already be tracked in the film class I think
-    u_int spp = 0;
+    u_int numFrames = 0;
 
 	try {
 		//----------------------------------------------------------------------
@@ -172,7 +172,7 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 				SetAllAdvancePathsKernelArgs(0);
 			}
 
-            SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Beginning rendering for frame " << spp << ".");
+            SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Beginning rendering for frame " << numFrames << ".");
 
             // Generate camera rays for each pixel in this frame.
             intersectionDevice->EnqueueKernel(advancePathsKernel_MK_GENERATE_CAMERA_RAY,
@@ -240,7 +240,7 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
                 else
                     iterations = Min<u_int>(iterations + 1, 128);
             }
-			
+
 			SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Initial path resampling is complete, performing spatial reuse");
             
             // Perform spatial reuse.
@@ -290,7 +290,7 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
             intersectionDevice->EnqueueKernel(advancePathsKernel_MK_SPLAT_SAMPLE,
 			    HardwareDeviceRange(taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
 
-            spp++;
+            numFrames++;
 
 			/*if (threadIndex == 0)
 				SLG_LOG("[DEBUG] transfer time: " << (timeTransferEnd - timeTransferStart) * 1000.0 << "ms "
@@ -306,7 +306,7 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 	} catch (boost::thread_interrupted) {
 		SLG_LOG("[PathOCLRenderThread::" << threadIndex << "] Rendering thread halted");
 	}
-    SLG_LOG("[PathOCLRespirRenderThread::" << threadIndex << "]: Rendered " << spp << "samples per pixel (spp) in total.");
+    SLG_LOG("[PathOCLRespirRenderThread::" << threadIndex << "]: Rendered " << numFrames << " frames in total.");
 
 	threadFilms[0]->RecvFilm(intersectionDevice);
 	intersectionDevice->FinishQueue();
