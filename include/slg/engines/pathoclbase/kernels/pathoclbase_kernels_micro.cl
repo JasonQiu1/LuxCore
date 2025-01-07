@@ -528,7 +528,7 @@ __kernel void AdvancePaths_MK_RT_DL(
 
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
 	// add connectionThroughput contribution to pathThroughput when resampling
-	VSTORE3F(connectionThroughput * VLOAD3F(taskState->lastWeight), taskState->lastWeight);
+	VSTORE3F(connectionThroughput * VLOAD3F(taskState->lastWeight.c), taskState->lastWeight.c);
 #endif
 
 	const bool rayMiss = (rayHits[gid].meshIndex == NULL_INDEX);
