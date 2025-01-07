@@ -1,4 +1,4 @@
-#line 2 "pathoclstatebase_datatypes.cl"
+#line 2 "pathoclbase_datatypes.cl"
 
 /***************************************************************************
  * Copyright 1998-2020 by authors (see AUTHORS.txt)                        *
