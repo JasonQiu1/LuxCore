@@ -109,8 +109,7 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 
         const u_int numSpatialReuseIterations = engine->numSpatialReuseIterations;
 
-		u_int iterations = 4;
-		u_int totalIterations = 0;
+		u_int iterations = 128;
 
 		double totalTransferTime = 0.0;
 		double totalKernelTime = 0.0;
@@ -184,10 +183,12 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 
             // Perform initial path resampling to get canonical samples for each pixel this frame.
             bool isInitialPathResamplingDone = false;
+			bool firstLoop = false;
             u_int totalIterationsThisFrame = 0;
+			u_int num_loops;
 
 			SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Generating canonical initial path samples:" << taskCount);
-            while (!isInitialPathResamplingDone) {
+			while (!isInitialPathResamplingDone) {
 				//SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Queuing advance paths kernels");
 
                 // Trace until all paths are completed for this frame.
@@ -223,23 +224,20 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
                     }
                 }
 
+                totalIterationsThisFrame += iterations;
+
 				if (isInitialPathResamplingDone) {
 					break;
 				}
-
-                totalIterations += iterations;
-                totalIterationsThisFrame += iterations;
-                // TODO: redo this logic outside of the loop later
-                //      can compare the number of iterations it takes for each frame
-                const double timeKernelEnd = WallClockTime();
-                totalKernelTime += timeKernelEnd - timeKernelStart;
-
-                // Check if I have to adjust the number of kernel enqueued
-                if (timeKernelEnd - timeKernelStart > targetTime)
-                    iterations = Max<u_int>(iterations - 1, 1);
-                else
-                    iterations = Min<u_int>(iterations + 1, 128);
+				firstLoop = false;
+				iterations++;
             }
+
+			if (firstLoop) {
+				iterations /= 2;
+			} else {
+				iterations = totalIterationsThisFrame;
+			}
 
 			SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Initial path resampling is complete, performing spatial reuse");
             
