@@ -86,12 +86,30 @@ typedef struct {
 	unsigned int lightID;
 } DirectLightIlluminateInfo;
 
-// A streaming random-sampling reservoir.
+// Stores information about the reconnection vertex for a particular path in the ReSTIR algorithm.
 typedef struct {
-	// stream length is stored implicitly in selectedSample->depth
-	SampleResult selectedSample; // Actual resampled value is stored in the sampleResult buffer at index gid
-	float sumWeight; // Sum of all stored samples' confidence weights (path contribution / path PDF)
-} SampleResultReservoir;
+	float incidentAngle; // the incident angle coming out of the reconnection vertex in the base path
+	SampleResult radiance; // the radiance at the reconnection vertex
+	// TODO: find out if LuxCoreRender has multi-lobed materials
+	// uint prevLobeIndex; // the sampled lobe index of the material at the previous vertex 
+	// uint currLobeIndex; // the sampled lobe index of the material at the reconnection vertex
+} ReconnectionVertex;
+
+// Stores reuse information about a selected ReSPIR sample. (spatial reuse only)
+typedef struct {
+	ReconnectionVertex reconnectionVertex; // the chosen reconnection vertex for this path
+	Seed seedInitial; // the initial GPUTask seed at the beginning of tracing this path
+	uint pathDepth; // the depth of the path at the reconnection vertex
+	float partialJacobian; // the denominator of the jacobian for this path for calculating the full jacobian when performing reuse 
+} RespirSample;
+
+// A streaming random-sampling reservoir for spatial reuse.
+typedef struct {
+	RespirSample selectedSample; // selected sample result
+	float selectedUnbiasedContributionWeight; // the unbiased contribution weight of the selected sample
+	float selectedWeight; // weight of selected sample
+	float sumWeight; // sum weights
+} RespirReservoir;
 
 // The state used to keep track of the rendered path
 typedef struct {
@@ -107,7 +125,7 @@ typedef struct {
 	float lastWeight;
 
 	// Reservoir data structure for initial path resampling using RIS
-	SampleResultReservoir initialPathReservoir;
+	RespirReservoir initialPathReservoir;
 	
 	int albedoToDo, photonGICacheEnabledOnLastHit,
 			photonGICausticCacheUsed, photonGIShowIndirectPathMixUsed,
@@ -144,31 +162,6 @@ typedef struct {
 	// The shadow transparency flag used by Scene_Intersect()
 	int throughShadowTransparency;
 } GPUTaskDirectLight;
-
-// Stores information about the reconnection vertex for a particular path in the ReSTIR algorithm.
-typedef struct {
-	float incidentAngle; // the incident angle coming out of the reconnection vertex in the base path
-	SampleResult radiance; // the radiance at the reconnection vertex
-	// TODO: find out if LuxCoreRender has multi-lobed materials
-	// uint prevLobeIndex; // the sampled lobe index of the material at the previous vertex 
-	// uint currLobeIndex; // the sampled lobe index of the material at the reconnection vertex
-} ReconnectionVertex;
-
-// Stores reuse information about a selected ReSPIR sample. (spatial reuse only)
-typedef struct {
-	ReconnectionVertex reconnectionVertex; // the chosen reconnection vertex for this path
-	Seed seedInitial; // the initial GPUTask seed at the beginning of tracing this path
-	uint pathDepth; // the depth of the path at the reconnection vertex
-	float partialJacobian; // the denominator of the jacobian for this path for calculating the full jacobian when performing reuse 
-} RespirSample;
-
-// A streaming random-sampling reservoir for spatial reuse.
-typedef struct {
-	RespirSample selectedSample; // selected sample result
-	float selectedUnbiasedContributionWeight; // the unbiased contribution weight of the selected sample
-	float selectedWeight; // weight of selected sample
-	float sumWeight; // sum weights
-} RespirReservoir;
 
 typedef struct {
 	// The task seed

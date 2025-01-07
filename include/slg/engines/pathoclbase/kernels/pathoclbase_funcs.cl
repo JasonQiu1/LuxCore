@@ -170,9 +170,9 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
 // Add a sample to the streaming reservoir.
 // Simply replace based on the new sample's weight and the reservoir's current sum weight.
-OPENCL_FORCE_INLINE void SampleResultReservoir_Update(const __global GPUTaskConfiguration* restrict taskConfig, __global GPUTaskState* restrict taskState, 
+OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfiguration* restrict taskConfig, __global GPUTaskState* restrict taskState, 
 		__global SampleResult* restrict newSample) {
-	__global SampleResultReservoir* reservoir = &taskState->initialPathReservoir;
+	__global RespirReservoir* reservoir = &taskState->initialPathReservoir;
 
 	const float3 pathPdf = VLOAD3F(taskState->throughput.c) * taskState->lastWeight;
 
@@ -185,7 +185,7 @@ OPENCL_FORCE_INLINE void SampleResultReservoir_Update(const __global GPUTaskConf
 	const float weight = Spectrum_Filter(pathContribution / pathPdf);
 	reservoir->sumWeight += weight;
 	if (random < (weight / reservoir->sumWeight)) {
-		reservoir->selectedSample = *newSample;
+		reservoir->selectedSample->radiance = *newSample;
 	}
 }
 #endif
