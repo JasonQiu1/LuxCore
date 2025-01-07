@@ -270,6 +270,7 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 
 	bool checkDirectLightHit = true;
 
+#if !defined(RENDER_ENGINE_RESPIRPATHOCL) 
 	//----------------------------------------------------------------------
 	// Check if it is a baked material
 	//----------------------------------------------------------------------
@@ -278,12 +279,7 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 		const float3 radiance = VLOAD3F(&taskState->throughput.c[0]) * BSDF_GetBakeMapValue(bsdf MATERIALS_PARAM);
 		VADD3F(sampleResult->radiancePerPixelNormalized[0].c, radiance);
 
-#if defined(RENDER_ENGINE_RESPIRPATHOCL)
-		taskState->initialPathReservoir.selectedSample.sampleResult = sampleResult;
-		taskState->state = SYNC;
-#else
 		taskState->state = MK_SPLAT_SAMPLE;
-#endif
 		return;
 	} else if (BSDF_HasBakeMap(bsdf, LIGHTMAP MATERIALS_PARAM)) {
 		const float3 radiance = VLOAD3F(&taskState->throughput.c[0]) *
@@ -291,16 +287,10 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 				BSDF_GetBakeMapValue(bsdf MATERIALS_PARAM);
 		VADD3F(sampleResult->radiancePerPixelNormalized[0].c, radiance);
 
-#if defined(RENDER_ENGINE_RESPIRPATHOCL)
-		taskState->initialPathReservoir.selectedSample.sampleResult = sampleResult;
-		taskState->state = SYNC;
-#else
 		taskState->state = MK_SPLAT_SAMPLE;
-#endif
 		return;
 	}
 
-#if !defined(RENDER_ENGINE_RESPIRPATHOCL) 
 	//--------------------------------------------------------------------------
 	// Check if it is a light source and I have to add light emission
 	//--------------------------------------------------------------------------
