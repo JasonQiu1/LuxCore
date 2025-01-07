@@ -279,7 +279,7 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 		VADD3F(sampleResult->radiancePerPixelNormalized[0].c, radiance);
 
 #if defined(RENDER_ENGINE_RESPIRPATHOCL)
-		taskState->initialPathReservoir.selectedSample.sampleResult = sampleResult;
+		taskState->initialPathReservoir.selectedSample.sampleResult = *sampleResult;
 		taskState->state = SYNC;
 #else
 		taskState->state = MK_SPLAT_SAMPLE;
