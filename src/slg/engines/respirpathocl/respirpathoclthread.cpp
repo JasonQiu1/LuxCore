@@ -109,7 +109,7 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 
         const u_int numSpatialReuseIterations = engine->numSpatialReuseIterations;
 
-		u_int iterations = 128;
+		u_int iterations = 4;
 
 		double totalTransferTime = 0.0;
 		double totalKernelTime = 0.0;
@@ -234,7 +234,7 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
             }
 
 			if (firstLoop) {
-				iterations /= 2;
+				iterations -= 1;
 			} else {
 				iterations = totalIterationsThisFrame;
 			}
