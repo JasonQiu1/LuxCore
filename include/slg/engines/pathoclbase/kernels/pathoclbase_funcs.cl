@@ -422,7 +422,8 @@ OPENCL_FORCE_INLINE bool DirectLight_BSDFSampling(
 
 	const float weight = misEnabled ? PowerHeuristic(directLightSamplingPdfW, bsdfPdfW) : 1.f;
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-	VSTORE3F(weight, taskState->lastWeight.c);
+	const float3 weight3 = (float3)(weight, weight, weight);
+	VSTORE3F(weight3, taskState->lastWeight.c);
 #endif
 
 	const float3 lightRadiance = VLOAD3F(info->lightRadiance.c);
