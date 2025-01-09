@@ -317,11 +317,6 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 				LIGHTS_PARAM);
 	}
 
-#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-	// Add BSDF importance sampled light sample into the reservoir.
-	//RespirReservoir_Update(taskConfig, taskState, sampleResult);
-#endif
-
 	//----------------------------------------------------------------------
 	// Check if I can use the photon cache
 	//----------------------------------------------------------------------
@@ -446,6 +441,11 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 	}
 #endif
 
+#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
+	// Add BSDF importance sampled light sample into the reservoir.
+	RespirReservoir_Update(taskConfig, taskState, sampleResult);
+#endif
+
 	//----------------------------------------------------------------------
 	// Check if this is the last path vertex (but not also the first)
 	//
@@ -564,15 +564,17 @@ __kernel void AdvancePaths_MK_RT_DL(
 				}
 			}
 
-#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-			// Add NEE-illuminated sample into the reservoir.
-			//RespirReservoir_Update(taskConfig, taskState, sampleResult);
-#endif
 
 			taskDirectLight->directLightResult = ILLUMINATED;
 		} else
 			// Do not need to add shadowed vertices to the reservoir, since the weight will be zero anyways as the average radiance is 0.
 			taskDirectLight->directLightResult = SHADOWED;
+
+
+#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
+		// Add NEE-illuminated sample into the reservoir.
+		RespirReservoir_Update(taskConfig, taskState, sampleResult);
+#endif
 
 		// Check if this is the last path vertex
 		if (sampleResult->lastPathVertex)
@@ -660,6 +662,11 @@ __kernel void AdvancePaths_MK_DL_ILLUMINATE(
 		// I have now to evaluate the BSDF
 		taskState->state = MK_DL_SAMPLE_BSDF;
 	} else {
+#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
+		// Add unilluminated sample into the reservoir.
+		RespirReservoir_Update(taskConfig, taskState, sampleResult);
+#endif
+
 		// No shadow ray to trace, move to the next vertex ray
 		// however, I have to check if this is the last path vertex
 		if (sampleResult->lastPathVertex) {
@@ -753,6 +760,11 @@ __kernel void AdvancePaths_MK_DL_SAMPLE_BSDF(
 		// I have to trace the shadow ray
 		taskState->state = MK_RT_DL;
 	} else { 
+#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
+		// Add shadowed sample into the reservoir.
+		RespirReservoir_Update(taskConfig, taskState, sampleResult);
+#endif
+
 		// No shadow ray to trace, move to the next vertex ray
 		// however, I have to check if this is the last path vertex
 		if (sampleResult->lastPathVertex) {
@@ -912,12 +924,13 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 		taskState->throughShadowTransparency = false;
 
 		pathState = MK_RT_NEXT_VERTEX;
-	} else
+	} else {
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
 		pathState = SYNC;
 #else
 		pathState = MK_SPLAT_SAMPLE;
 #endif
+	}
 
 	// Save the state
 	taskState->state = pathState;
