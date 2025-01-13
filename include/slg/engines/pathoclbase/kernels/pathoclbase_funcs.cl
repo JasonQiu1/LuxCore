@@ -182,7 +182,7 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 
 	// Weight of the sample is path contribution / path PDF 
 	// TODO: verify that averaging weight from each color together to get the sample weight is unbiased
-	const float weight = (pathPdf.x == 0 || pathPdf.y == 0 || pathPdf.z == 0) ? 0 : Spectrum_Filter(pathContribution / pathPdf);
+	const float weight = Spectrum_Filter(pathContribution / pathPdf);
 	reservoir->sumWeight += weight;
 	if (random < (weight / reservoir->sumWeight)) {
 		reservoir->selectedSample.sampleResult = *newSample;

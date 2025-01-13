@@ -565,8 +565,8 @@ __kernel void AdvancePaths_MK_RT_DL(
 			}
 
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-		// Add NEE-illuminated sample into the reservoir.
-		RespirReservoir_Update(taskConfig, taskState, sampleResult);
+			// Add NEE-illuminated sample into the reservoir.
+			RespirReservoir_Update(taskConfig, taskState, sampleResult);
 #endif
 
 			taskDirectLight->directLightResult = ILLUMINATED;
