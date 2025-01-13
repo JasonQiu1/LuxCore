@@ -181,7 +181,7 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 	const float3 pathContribution = SampleResult_GetRadiance(&taskConfig->film, newSample);
 
 	// Weight of the sample is path contribution / path PDF 
-	const float3 weight3 = pathContribution / pathPdf;
+	float3 weight3 = pathContribution / pathPdf;
 	// TODO: verify that averaging weight from each color together to get the sample weight is unbiased
 	if (pathPdf.x == 0.0) {
 		weight3.x = 0.0;
