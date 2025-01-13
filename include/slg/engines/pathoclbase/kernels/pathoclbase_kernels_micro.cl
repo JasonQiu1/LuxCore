@@ -564,17 +564,15 @@ __kernel void AdvancePaths_MK_RT_DL(
 				}
 			}
 
+#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
+		// Add NEE-illuminated sample into the reservoir.
+		RespirReservoir_Update(taskConfig, taskState, sampleResult);
+#endif
 
 			taskDirectLight->directLightResult = ILLUMINATED;
 		} else
 			// Do not need to add shadowed vertices to the reservoir, since the weight will be zero anyways as the average radiance is 0.
 			taskDirectLight->directLightResult = SHADOWED;
-
-
-#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-		// Add NEE-illuminated sample into the reservoir.
-		RespirReservoir_Update(taskConfig, taskState, sampleResult);
-#endif
 
 		// Check if this is the last path vertex
 		if (sampleResult->lastPathVertex)
