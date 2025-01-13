@@ -762,7 +762,7 @@ __kernel void AdvancePaths_MK_DL_SAMPLE_BSDF(
 	} else { 
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
 		// Add shadowed sample into the reservoir.
-		RespirReservoir_Update(taskConfig, taskState, sampleResult);
+		//RespirReservoir_Update(taskConfig, taskState, sampleResult);
 #endif
 
 		// No shadow ray to trace, move to the next vertex ray
