@@ -173,26 +173,28 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfiguration* restrict taskConfig, __global GPUTaskState* restrict taskState, 
 		__global SampleResult* restrict newSample) {
 	__global RespirReservoir* reservoir = &taskState->initialPathReservoir;
-
-	const float3 pathPdf = VLOAD3F(taskState->throughput.c) * VLOAD3F(taskState->lastWeight.c);
-
 	const float random = Rnd_FloatValue(&taskState->seedReservoirSampling);
 
-	const float3 pathContribution = SampleResult_GetRadiance(&taskConfig->film, newSample);
+	float3 pathPdf = VLOAD3F(taskState->throughput.c) * VLOAD3F(taskState->lastWeight.c);
+
+	float3 pathContribution = SampleResult_GetRadiance(&taskConfig->film, newSample);
 
 	// Weight of the sample is path contribution / path PDF 
-	float3 weight3 = pathContribution / pathPdf;
-	// TODO: verify that averaging weight from each color together to get the sample weight is unbiased
 	if (pathPdf.x == 0.0) {
-		weight3.x = 0.0;
+		pathContribution.x = 0.0;
+		pathPdf.x = 1.0;
 	}
 	if (pathPdf.y == 0.0) {
-		weight3.y = 0.0;
+		pathContribution.y = 0.0;
+		pathPdf.y = 1.0;
 	}
 	if (pathPdf.z == 0.0) {
-		weight3.z = 0.0;
+		pathContribution.z = 0.0;
+		pathPdf.z = 1.0;
 	}
-	const float weight = Spectrum_Filter(weight3);
+	
+	// TODO: verify that averaging weight from each color together to get the sample weight is unbiased
+	const float weight = Spectrum_Filter(pathContribution / pathPdf);
 	reservoir->sumWeight += weight;
 	if (random < (weight / reservoir->sumWeight)) {
 		reservoir->selectedSample.sampleResult = *newSample;
