@@ -153,6 +153,7 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
 	VSTORE3F(WHITE, taskState->lastWeight.c);
+	taskState->bsdfPdfWProduct = 1.f;
 	taskState->initialPathReservoir.sumWeight = 0.0f;
 
 	// Initialize reservoir sampling seed
@@ -175,7 +176,7 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 	__global RespirReservoir* reservoir = &taskState->initialPathReservoir;
 
 	float3 pathContribution = SampleResult_GetSpectrum(&taskConfig->film, newSample, filmRadianceGroupScale);
-	float3 pathPdf = VLOAD3F(taskState->throughput.c) * VLOAD3F(taskState->lastWeight.c);
+	float3 pathPdf = VLOAD3F(taskState->throughput.c) * VLOAD3F(taskState->lastWeight.c) * taskState->bsdfPdfWProduct;
 
 	// correct zero components in pdf
 	if (pathPdf.x == 0) {
