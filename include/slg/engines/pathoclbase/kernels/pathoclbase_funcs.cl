@@ -176,8 +176,7 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 
 	const float3 pathContribution = SampleResult_GetUnscaledSpectrum(&taskConfig->film, newSample);
 	// ensure non-zero
-	// TODO: maybe a higher max is necessary?
-	const float3 pathPdf = clamp(VLOAD3F(taskState->throughput.c) * VLOAD3F(taskState->lastWeight.c), PARAM_RAY_EPSILON_MIN, WHITE);
+	const float3 pathPdf = clamp(VLOAD3F(taskState->throughput.c) * VLOAD3F(taskState->lastWeight.c), PARAM_RAY_EPSILON_MIN, 1e10f);
 
 	const float random = Rnd_FloatValue(&taskState->seedReservoirSampling);
 
