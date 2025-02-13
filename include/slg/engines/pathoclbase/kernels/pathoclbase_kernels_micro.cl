@@ -193,18 +193,8 @@ __kernel void AdvancePaths_MK_HIT_NOTHING(
 	}
 
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-	float3 filmRadianceGroupScale[FILM_MAX_RADIANCE_GROUP_COUNT];
-	filmRadianceGroupScale[0] = MAKE_FLOAT3(filmRadianceGroupScale0_R, filmRadianceGroupScale0_G, filmRadianceGroupScale0_B);
-	filmRadianceGroupScale[1] = MAKE_FLOAT3(filmRadianceGroupScale1_R, filmRadianceGroupScale1_G, filmRadianceGroupScale1_B);
-	filmRadianceGroupScale[2] = MAKE_FLOAT3(filmRadianceGroupScale2_R, filmRadianceGroupScale2_G, filmRadianceGroupScale2_B);
-	filmRadianceGroupScale[3] = MAKE_FLOAT3(filmRadianceGroupScale3_R, filmRadianceGroupScale3_G, filmRadianceGroupScale3_B);
-	filmRadianceGroupScale[4] = MAKE_FLOAT3(filmRadianceGroupScale4_R, filmRadianceGroupScale4_G, filmRadianceGroupScale4_B);
-	filmRadianceGroupScale[5] = MAKE_FLOAT3(filmRadianceGroupScale5_R, filmRadianceGroupScale5_G, filmRadianceGroupScale5_B);
-	filmRadianceGroupScale[6] = MAKE_FLOAT3(filmRadianceGroupScale6_R, filmRadianceGroupScale6_G, filmRadianceGroupScale6_B);
-	filmRadianceGroupScale[7] = MAKE_FLOAT3(filmRadianceGroupScale7_R, filmRadianceGroupScale7_G, filmRadianceGroupScale7_B);
-
 	// Add BSDF-importance sampled environment sample to reservoir
-	RespirReservoir_Update(taskConfig, taskState, sampleResult, filmRadianceGroupScale);
+	RespirReservoir_Update(taskConfig, taskState, sampleResult);
 	taskState->state = SYNC;
 #else
 	taskState->state = MK_SPLAT_SAMPLE;
@@ -328,18 +318,8 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 	}
 
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-	float3 filmRadianceGroupScale[FILM_MAX_RADIANCE_GROUP_COUNT];
-	filmRadianceGroupScale[0] = MAKE_FLOAT3(filmRadianceGroupScale0_R, filmRadianceGroupScale0_G, filmRadianceGroupScale0_B);
-	filmRadianceGroupScale[1] = MAKE_FLOAT3(filmRadianceGroupScale1_R, filmRadianceGroupScale1_G, filmRadianceGroupScale1_B);
-	filmRadianceGroupScale[2] = MAKE_FLOAT3(filmRadianceGroupScale2_R, filmRadianceGroupScale2_G, filmRadianceGroupScale2_B);
-	filmRadianceGroupScale[3] = MAKE_FLOAT3(filmRadianceGroupScale3_R, filmRadianceGroupScale3_G, filmRadianceGroupScale3_B);
-	filmRadianceGroupScale[4] = MAKE_FLOAT3(filmRadianceGroupScale4_R, filmRadianceGroupScale4_G, filmRadianceGroupScale4_B);
-	filmRadianceGroupScale[5] = MAKE_FLOAT3(filmRadianceGroupScale5_R, filmRadianceGroupScale5_G, filmRadianceGroupScale5_B);
-	filmRadianceGroupScale[6] = MAKE_FLOAT3(filmRadianceGroupScale6_R, filmRadianceGroupScale6_G, filmRadianceGroupScale6_B);
-	filmRadianceGroupScale[7] = MAKE_FLOAT3(filmRadianceGroupScale7_R, filmRadianceGroupScale7_G, filmRadianceGroupScale7_B);
-
 	// Add BSDF importance sampled light sample into the reservoir.
-	RespirReservoir_Update(taskConfig, taskState, sampleResult, filmRadianceGroupScale);
+	RespirReservoir_Update(taskConfig, taskState, sampleResult);
 #endif
 
 	//----------------------------------------------------------------------
@@ -580,17 +560,8 @@ __kernel void AdvancePaths_MK_RT_DL(
 			}
 
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-			float3 filmRadianceGroupScale[FILM_MAX_RADIANCE_GROUP_COUNT];
-			filmRadianceGroupScale[0] = MAKE_FLOAT3(filmRadianceGroupScale0_R, filmRadianceGroupScale0_G, filmRadianceGroupScale0_B);
-			filmRadianceGroupScale[1] = MAKE_FLOAT3(filmRadianceGroupScale1_R, filmRadianceGroupScale1_G, filmRadianceGroupScale1_B);
-			filmRadianceGroupScale[2] = MAKE_FLOAT3(filmRadianceGroupScale2_R, filmRadianceGroupScale2_G, filmRadianceGroupScale2_B);
-			filmRadianceGroupScale[3] = MAKE_FLOAT3(filmRadianceGroupScale3_R, filmRadianceGroupScale3_G, filmRadianceGroupScale3_B);
-			filmRadianceGroupScale[4] = MAKE_FLOAT3(filmRadianceGroupScale4_R, filmRadianceGroupScale4_G, filmRadianceGroupScale4_B);
-			filmRadianceGroupScale[5] = MAKE_FLOAT3(filmRadianceGroupScale5_R, filmRadianceGroupScale5_G, filmRadianceGroupScale5_B);
-			filmRadianceGroupScale[6] = MAKE_FLOAT3(filmRadianceGroupScale6_R, filmRadianceGroupScale6_G, filmRadianceGroupScale6_B);
-			filmRadianceGroupScale[7] = MAKE_FLOAT3(filmRadianceGroupScale7_R, filmRadianceGroupScale7_G, filmRadianceGroupScale7_B);
 			// Add NEE-illuminated sample into the reservoir.
-			RespirReservoir_Update(taskConfig, taskState, sampleResult, filmRadianceGroupScale);
+			RespirReservoir_Update(taskConfig, taskState, sampleResult);
 #endif
 
 			taskDirectLight->directLightResult = ILLUMINATED;

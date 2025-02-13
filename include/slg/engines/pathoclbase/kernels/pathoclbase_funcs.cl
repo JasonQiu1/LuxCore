@@ -171,15 +171,16 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 // Add a sample to the streaming reservoir.
 // Simply replace based on the new sample's weight and the reservoir's current sum weight.
 OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfiguration* restrict taskConfig, __global GPUTaskState* restrict taskState, 
-		__global SampleResult* restrict newSample, float3 filmRadianceGroupScale[FILM_MAX_RADIANCE_GROUP_COUNT]) {
+		__global SampleResult* restrict newSample) {
 	__global RespirReservoir* reservoir = &taskState->initialPathReservoir;
 
-	const float3 pathContribution = SampleResult_GetSpectrum(&taskConfig->film, newSample, filmRadianceGroupScale);
+	// TODO: get radiance group scales from denoiser to use here if a pipeline calls for it
+	const float3 pathContribution = SampleResult_GetUnscaledSpectrum(&taskConfig->film, newSample);
 	const float3 pathPdf = VLOAD3F(taskState->throughput.c) * VLOAD3F(taskState->lastWeight.c);
 	const float random = Rnd_FloatValue(&taskState->seedReservoirSampling);
 
 	// Weight of the sample is the luminance/graysacle of (path contribution / path PDF) 
-	const float weight = Spectrum_Y(pathContribution / pathPdf);
+	const float weight = Spectrum_Filter(pathContribution / pathPdf);
 	reservoir->sumWeight += weight;
 	if (random < (weight / reservoir->sumWeight)) {
 		reservoir->selectedSample.sampleResult = *newSample;
