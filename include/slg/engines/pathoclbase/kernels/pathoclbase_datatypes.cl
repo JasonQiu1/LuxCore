@@ -124,7 +124,7 @@ typedef struct {
 	Seed seedReservoirSampling;
 
 	// keep track of the MIS weights of the most recent direct lighting event
-	float lastWeight;
+	Spectrum lastWeight;
 
 	// Reservoir data structure for initial path resampling using RIS
 	RespirReservoir initialPathReservoir;

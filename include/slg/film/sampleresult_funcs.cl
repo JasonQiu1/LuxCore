@@ -149,22 +149,12 @@ OPENCL_FORCE_INLINE float3 SampleResult_GetSpectrum(__constant const Film* restr
 	return c;
 }
 
-OPENCL_FORCE_INLINE float SampleResult_GetRadianceY(__constant const Film* restrict film,
+OPENCL_FORCE_INLINE float SampleResult_GetUnscaledSpectrum(__constant const Film* restrict film,
 		__global SampleResult *sampleResult) {
-	float y = 0.f;
+	float3 c = BLACK;
 	
 	for (uint i = 0; i < film->radianceGroupCount; ++i)
-		y += Spectrum_Y(VLOAD3F(sampleResult->radiancePerPixelNormalized[i].c));
+		c += VLOAD3F(sampleResult->radiancePerPixelNormalized[i].c);
 
-	return y;
-}
-
-OPENCL_FORCE_INLINE float3 SampleResult_GetRadiance(__constant const Film* restrict film,
-		__global SampleResult *sampleResult) {
-	float3 radiance = BLACK;
-	
-	for (uint i = 0; i < film->radianceGroupCount; ++i)
-		radiance += VLOAD3F(sampleResult->radiancePerPixelNormalized[i].c);
-
-	return radiance;
+	return c;
 }

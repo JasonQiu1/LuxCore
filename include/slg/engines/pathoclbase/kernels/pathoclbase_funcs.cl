@@ -152,7 +152,7 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 	taskState->seedPassThroughEvent = initSeed;
 
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-	taskState->lastWeight = 1.0f;
+	taskState->lastWeight = WHITE;
 	taskState->initialPathReservoir.sumWeight = 0.0f;
 
 	// Initialize reservoir sampling seed
@@ -174,15 +174,13 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 		__global SampleResult* restrict newSample) {
 	__global RespirReservoir* reservoir = &taskState->initialPathReservoir;
 
-	const float3 pathPdf = VLOAD3F(taskState->throughput.c) * taskState->lastWeight;
-
+	// TODO: get radiance group scales from denoiser to use here if a pipeline calls for it
+	const float3 pathContribution = SampleResult_GetUnscaledSpectrum(taskConfig->film, newSample);
+	const float3 pathPdf = VLOAD3F(taskState->throughput.c) * VLOAD3F(taskState->lastWeight);
 	const float random = Rnd_FloatValue(&taskState->seedReservoirSampling);
 
-	const float3 pathContribution = SampleResult_GetRadiance(&taskConfig->film, newSample);
-
-	// Weight of the sample is path contribution / path PDF 
-	// TODO: verify that averaging weight from each color together to get the sample weight is unbiased
-	const float weight = Spectrum_Filter(pathContribution / pathPdf);
+	// Weight of the sample is the luminance/graysacle of (path contribution / path PDF) 
+	const float weight = Spectrum_Y(pathContribution / pathPdf);
 	reservoir->sumWeight += weight;
 	if (random < (weight / reservoir->sumWeight)) {
 		reservoir->selectedSample.sampleResult = *newSample;
@@ -245,7 +243,7 @@ OPENCL_FORCE_INLINE void DirectHitInfiniteLight(__constant const Film* restrict 
 			} else
 				weight = 1.f;
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-			taskState->lastWeight *= weight;
+			VSTORE3F(VLOAD3F(taskState->lastWeight) * weight, taskState->lastWeight);
 #endif
 
 			SampleResult_AddEmission(film, sampleResult, light->lightID, throughput, weight * envRadiance);
@@ -298,7 +296,7 @@ OPENCL_FORCE_INLINE void DirectHitFiniteLight(__constant const Film* restrict fi
 			weight = PowerHeuristic(pathInfo->lastBSDFPdfW * Light_GetAvgPassThroughTransparency(light LIGHTS_PARAM), directPdfW * lightPickProb);
 		}
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-		taskState->lastWeight *= weight;
+		VSTORE3F(VLOAD3F(taskState->lastWeight) * weight, taskState->lastWeight);
 #endif
 		SampleResult_AddEmission(film, sampleResult, BSDF_GetLightID(bsdf
 				MATERIALS_PARAM), VLOAD3F(taskState->throughput.c), weight * emittedRadiance);
@@ -422,7 +420,7 @@ OPENCL_FORCE_INLINE bool DirectLight_BSDFSampling(
 
 	const float weight = misEnabled ? PowerHeuristic(directLightSamplingPdfW, bsdfPdfW) : 1.f;
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-	taskState->lastWeight *= weight * factor * bsdfEval;
+	VSTORE3F(VLOAD3F(taskState->lastWeight) * weight * factor * bsdfEval, taskState->lastWeight);
 #endif
 
 	const float3 lightRadiance = VLOAD3F(info->lightRadiance.c);
