@@ -194,7 +194,7 @@ __kernel void AdvancePaths_MK_HIT_NOTHING(
 
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
 	// Add BSDF-importance sampled environment sample to reservoir
-	RespirReservoir_Update(taskConfig, taskState, sampleResult KERNEL_ARGS_FILM_DENOISER);
+	RespirReservoir_Update(taskConfig, taskState, sampleResult);
 	taskState->state = SYNC;
 #else
 	taskState->state = MK_SPLAT_SAMPLE;
@@ -319,7 +319,7 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
 	// Add BSDF importance sampled light sample into the reservoir.
-	RespirReservoir_Update(taskConfig, taskState, sampleResult KERNEL_ARGS_FILM_DENOISER);
+	RespirReservoir_Update(taskConfig, taskState, sampleResult);
 #endif
 
 	//----------------------------------------------------------------------
@@ -561,7 +561,7 @@ __kernel void AdvancePaths_MK_RT_DL(
 
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
 			// Add NEE-illuminated sample into the reservoir.
-			RespirReservoir_Update(taskConfig, taskState, sampleResult KERNEL_ARGS_FILM_DENOISER);
+			RespirReservoir_Update(taskConfig, taskState, sampleResult);
 #endif
 
 			taskDirectLight->directLightResult = ILLUMINATED;
