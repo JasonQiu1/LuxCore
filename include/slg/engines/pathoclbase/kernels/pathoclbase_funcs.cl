@@ -174,10 +174,10 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 		__global SampleResult* restrict newSample) {
 	__global RespirReservoir* reservoir = &taskState->initialPathReservoir;
 
-	// TODO: get radiance group scales from denoiser to use here if a pipeline calls for it
 	const float3 pathContribution = SampleResult_GetUnscaledSpectrum(&taskConfig->film, newSample);
 	// ensure non-zero
-	const float3 pathPdf = clamp(VLOAD3F(taskState->throughput.c) * VLOAD3F(taskState->lastWeight.c), FLT_MIN_10_EXP, FLT_MAX_10_EXP);
+	// TODO: maybe a higher max is necessary?
+	const float3 pathPdf = clamp(VLOAD3F(taskState->throughput.c) * VLOAD3F(taskState->lastWeight.c), PARAM_RAY_EPSILON_MIN, WHITE);
 
 	const float random = Rnd_FloatValue(&taskState->seedReservoirSampling);
 
