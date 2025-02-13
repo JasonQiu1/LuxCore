@@ -125,8 +125,6 @@ typedef struct {
 
 	// keep track of the MIS weights of the most recent direct lighting event
 	Spectrum lastWeight;
-	// product of all bsdfPdfW
-	float bsdfPdfWProduct;
 
 	// Reservoir data structure for initial path resampling using RIS
 	RespirReservoir initialPathReservoir;
