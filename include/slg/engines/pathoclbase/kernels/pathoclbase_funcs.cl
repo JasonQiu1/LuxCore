@@ -180,7 +180,7 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 	const float random = Rnd_FloatValue(&taskState->seedReservoirSampling);
 
 	// Weight of the sample is the luminance/graysacle of (path contribution / path PDF) 
-	const float weight = Spectrum_Y(pathContribution / pathPdf);
+	const float weight = Spectrum_Filter(pathContribution / pathPdf);
 	reservoir->sumWeight += weight;
 	if (random < (weight / reservoir->sumWeight)) {
 		reservoir->selectedSample.sampleResult = *newSample;
