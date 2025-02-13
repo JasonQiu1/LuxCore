@@ -150,7 +150,7 @@ OPENCL_FORCE_INLINE float3 SampleResult_GetSpectrum(__constant const Film* restr
 }
 
 OPENCL_FORCE_INLINE float SampleResult_GetRadianceY(__constant const Film* restrict film,
-        _global SampleResult *sampleResult) {
+        __global SampleResult *sampleResult) {
     float y = 0.f;
         
     for (uint i = 0; i < film->radianceGroupCount; ++i)
