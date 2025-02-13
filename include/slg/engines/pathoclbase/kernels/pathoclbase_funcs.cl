@@ -153,6 +153,7 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
 	VSTORE3F(WHITE, taskState->lastWeight.c);
+	taskState->bsdfPdfWProduct = 1.f;
 	taskState->initialPathReservoir.sumWeight = 0.0f;
 
 	// Initialize reservoir sampling seed
@@ -176,7 +177,7 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 
 	// TODO: get radiance group scales from denoiser to use here if a pipeline calls for it
 	const float3 pathContribution = SampleResult_GetUnscaledSpectrum(&taskConfig->film, newSample);
-	const float3 pathPdf = VLOAD3F(taskState->throughput.c) * VLOAD3F(taskState->lastWeight.c);
+	const float3 pathPdf = VLOAD3F(taskState->throughput.c) * VLOAD3F(taskState->lastWeight.c) * taskState->bsdfPdfWProduct;
 	const float random = Rnd_FloatValue(&taskState->seedReservoirSampling);
 
 	// Weight of the sample is the luminance/graysacle of (path contribution / path PDF) 
