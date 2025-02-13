@@ -149,7 +149,7 @@ OPENCL_FORCE_INLINE float3 SampleResult_GetSpectrum(__constant const Film* restr
 	return c;
 }
 
-OPENCL_FORCE_INLINE float SampleResult_GetUnscaledSpectrum(__constant const Film* restrict film,
+OPENCL_FORCE_INLINE float3 SampleResult_GetUnscaledSpectrum(__constant const Film* restrict film,
 		__global SampleResult *sampleResult) {
 	float3 c = BLACK;
 	
