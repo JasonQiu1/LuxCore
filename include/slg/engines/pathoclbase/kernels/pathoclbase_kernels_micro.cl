@@ -875,7 +875,6 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 		throughputFactor *= bsdfSample;
 
 		VSTORE3F(throughputFactor * VLOAD3F(taskState->throughput.c), taskState->throughput.c);
-		// TODO: try later VSTORE3F(VLOAD3F(taskState->lastWeight.c) * bsdfPdfW, taskState->lastWeight.c);
 
 		// This is valid for irradiance AOV only if it is not a SPECULAR material and
 		// first path vertex. Set or update sampleResult.irradiancePathThroughput
