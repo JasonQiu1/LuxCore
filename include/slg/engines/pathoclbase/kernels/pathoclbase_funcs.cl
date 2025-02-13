@@ -176,7 +176,9 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 
 	// TODO: get radiance group scales from denoiser to use here if a pipeline calls for it
 	const float3 pathContribution = SampleResult_GetUnscaledSpectrum(&taskConfig->film, newSample);
-	const float3 pathPdf = VLOAD3F(taskState->throughput.c) * VLOAD3F(taskState->lastWeight.c);
+	// ensure non-zero
+	const float3 pathPdf = clamp(VLOAD3F(taskState->throughput.c) * VLOAD3F(taskState->lastWeight.c), FLT_MIN_10_EXP, FLT_MAX_10_EXP);
+
 	const float random = Rnd_FloatValue(&taskState->seedReservoirSampling);
 
 	// Weight of the sample is the luminance/graysacle of (path contribution / path PDF) 
