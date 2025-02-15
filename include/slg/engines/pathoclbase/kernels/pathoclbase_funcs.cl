@@ -167,8 +167,17 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 // Utility functions
 //------------------------------------------------------------------------------
 
-#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-OPENCL_FORCE_INLINE void rectifyZeroComponents(float3& pathContribution, float3& pathPdf) {
+#if defined(RENDER_ENGINE_RESPIRPATHOCL)
+// Add a sample to the streaming reservoir.
+// Simply replace based on the new sample's weight and the reservoir's current sum weight.
+OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfiguration* restrict taskConfig, __global GPUTaskState* restrict taskState, 
+		__global SampleResult* restrict newSample) {
+	__global RespirReservoir* reservoir = &taskState->initialPathReservoir;
+
+	float3 pathContribution = SampleResult_GetUnscaledSpectrum(&taskConfig->film, newSample);
+	float3 pathPdf = VLOAD3F(taskState->throughput.c) * VLOAD3F(taskState->lastWeight.c);
+	
+	// correct zero components in pdf
 	if (pathPdf.x == 0) {
 		pathContribution.x = 0;
 		pathPdf.x = 1;
@@ -181,18 +190,6 @@ OPENCL_FORCE_INLINE void rectifyZeroComponents(float3& pathContribution, float3&
 		pathContribution.z = 0;
 		pathPdf.z = 1;
 	}
-}
-
-// Add a sample to the streaming reservoir.
-// Simply replace based on the new sample's weight and the reservoir's current sum weight.
-OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfiguration* restrict taskConfig, __global GPUTaskState* restrict taskState, 
-		__global SampleResult* restrict newSample) {
-	__global RespirReservoir* reservoir = &taskState->initialPathReservoir;
-
-	float3 pathContribution = SampleResult_GetUnscaledSpectrum(&taskConfig->film, newSample);
-	float3 pathPdf = VLOAD3F(taskState->throughput.c) * VLOAD3F(taskState->lastWeight.c);
-	// correct zero components in pdf
-	rectifyZeroComponents(&pathContribution, &pathPdf);
 
 	const float random = Rnd_FloatValue(&taskState->seedReservoirSampling);
 
