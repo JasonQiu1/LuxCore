@@ -200,7 +200,7 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 
 	const size_t gid = get_global_id(0);
 	if (gid == 100)
-		printf("SumWeight: %f\n", reservoir->sumWeight);
+		printf("Weight: %f, SumWeight: %f\n", weight, reservoir->sumWeight);
 
 	if (random < (weight / reservoir->sumWeight)) {
 		reservoir->selectedSample.sampleResult = *newSample;
