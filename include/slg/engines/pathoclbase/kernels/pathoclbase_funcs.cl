@@ -203,7 +203,7 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 	reservoir->sumWeight += weight;
 
 	if (random < (weight / reservoir->sumWeight)) {
-		for (u_int i = 0; i < taskState->film->radianceGroupCount; i++)
+		for (int i = 0; i < taskConfig->film->radianceGroupCount; i++)
 			VSTORE3F(WHITE, newSample->radiancePerPixelNormalized[i].c);
 		reservoir->selectedSample.sampleResult = *newSample;
 	}
