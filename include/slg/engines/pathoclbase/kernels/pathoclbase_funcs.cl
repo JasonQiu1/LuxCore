@@ -176,7 +176,7 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 	__global RespirReservoir* reservoir = &taskState->initialPathReservoir;
 
 	float3 pathContribution = SampleResult_GetSpectrum(&taskConfig->film, newSample, filmRadianceGroupScale);
-	float3 pathPdf = VLOAD3F(taskState->throughput.c);
+	float3 pathPdf = VLOAD3F(taskState->throughput.c) * VLOAD3F(taskState->lastWeight.c);
 
 	const size_t gid = get_global_id(0);
 	if (gid == 1)
@@ -203,6 +203,8 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 	reservoir->sumWeight += weight;
 
 	if (random < (weight / reservoir->sumWeight)) {
+		for (u_int i = 0; i < newSample->radiance.Size(); i++)
+			VSTORE3F(WHITE, newSample->radiance[i]);
 		reservoir->selectedSample.sampleResult = *newSample;
 	}
 }
