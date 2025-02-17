@@ -999,6 +999,7 @@ __kernel void AdvancePaths_MK_SPLAT_SAMPLE(
 	// Copy resampled sample from reservoir to sampleResultsBuff[gid] to be splatted like normal
 	*sampleResult = taskState->initialPathReservoir.selectedSample.sampleResult;
 	SampleResult_ClearRadiance(sampleResult);
+	VSTORE3F(BLACK, sampleResult->albedo.c);
 #endif
 
 	// Initialize Film radiance group pointer table
