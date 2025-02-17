@@ -1000,9 +1000,8 @@ __kernel void AdvancePaths_MK_SPLAT_SAMPLE(
 	*sampleResult = taskState->initialPathReservoir.selectedSample.sampleResult;
 	SampleResult_ClearRadiance(sampleResult);
 	VSTORE3F(BLACK, sampleResult->albedo.c);
+	SampleResult_Init(&taskConfig->film, sampleResult);
 #endif
-	SampleResult_ClearRadiance(sampleResult);
-	VSTORE3F(BLACK, sampleResult->albedo.c);
 
 	// Initialize Film radiance group pointer table
 	__global float *filmRadianceGroup[FILM_MAX_RADIANCE_GROUP_COUNT];
