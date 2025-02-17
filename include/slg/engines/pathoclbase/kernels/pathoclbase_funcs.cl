@@ -178,6 +178,10 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 	float3 pathContribution = SampleResult_GetSpectrum(&taskConfig->film, newSample, filmRadianceGroupScale);
 	float3 pathPdf = VLOAD3F(taskState->throughput.c);
 
+	const size_t gid = get_global_id(0);
+	if (gid == 1)
+		printf("contribution: %f, pdf: %f, SumWeight: %f\n", Spectrum_Filter(pathContribution), Spectrum_Filter(pathPdf), reservoir->sumWeight);
+
 	// correct zero components in pdf
 	if (pathPdf.x == 0) {
 		pathContribution.x = 0;
@@ -197,10 +201,6 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 	// Weight of the sample is the luminance/graysacle of (path contribution / path PDF) 
 	const float weight = Spectrum_Filter(pathContribution / pathPdf);
 	reservoir->sumWeight += weight;
-
-	const size_t gid = get_global_id(0);
-	if (gid == 1)
-		printf("Weight: %f, SumWeight: %f\n", weight, reservoir->sumWeight);
 
 	if (random < (weight / reservoir->sumWeight)) {
 		reservoir->selectedSample.sampleResult = *newSample;
