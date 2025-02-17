@@ -998,8 +998,7 @@ __kernel void AdvancePaths_MK_SPLAT_SAMPLE(
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
 	// Copy resampled sample from reservoir to sampleResultsBuff[gid] to be splatted like normal
 	*sampleResult = taskState->initialPathReservoir.selectedSample.sampleResult;
-	for (int i = 0; i < film.radianceGroupCount; i++)
-		VSTORE3F(WHITE, sampleResult->radiancePerPixelNormalized[i].c);
+	SampleResult_ClearRadiance(sampleResult);
 #endif
 
 	// Initialize Film radiance group pointer table
