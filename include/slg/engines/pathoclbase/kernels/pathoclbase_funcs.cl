@@ -118,8 +118,6 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
     sampleResult->isHoldout = FALSE;
 
     // Ensure the ray isn't traced by setting it to some non-intersectable state
-    VSTORE3F(BLACK, ray->o);
-    VSTORE3F(BLACK, ray->d);
     ray->mint = INFINITY;
     ray->maxt = INFINITY;
     ray->time = 0.f;
