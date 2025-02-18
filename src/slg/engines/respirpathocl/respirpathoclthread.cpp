@@ -308,6 +308,8 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 	threadFilms[0]->RecvFilm(intersectionDevice);
 	intersectionDevice->FinishQueue();
 	
+	engine->film->Clear();
+	threadFilms[0]->film->Clear();
 	threadDone = true;
 	
 	intersectionDevice->PopThreadCurrentDevice();
