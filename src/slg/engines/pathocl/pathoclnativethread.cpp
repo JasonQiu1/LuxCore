@@ -186,6 +186,8 @@ void PathOCLNativeRenderThread::RenderThreadImpl() {
 	if (engine->photonGICache)
 		engine->photonGICache->FinishUpdate(threadIndex);
 
+	engine->film->Clear();
+
 	//SLG_LOG("[PathOCLRenderEngine::" << threadIndex << "] Rendering thread halted");
 }
 
