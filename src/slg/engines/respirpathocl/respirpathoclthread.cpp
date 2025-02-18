@@ -298,6 +298,8 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 		}
         free(tasksState);
 
+		engine->film->Clear();
+
 	} catch (boost::thread_interrupted) {
 		SLG_LOG("[PathOCLRenderThread::" << threadIndex << "] Rendering thread halted");
 	}
