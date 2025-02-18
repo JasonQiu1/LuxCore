@@ -1002,6 +1002,7 @@ __kernel void AdvancePaths_MK_SPLAT_SAMPLE(
 	//VSTORE3F(BLACK, sampleResult->albedo.c);
 	SampleResult_Init(&taskConfig->film, sampleResult);
 #endif
+	SampleResult_Init(&taskConfig->film, sampleResult);
 
 	// Initialize Film radiance group pointer table
 	__global float *filmRadianceGroup[FILM_MAX_RADIANCE_GROUP_COUNT];
