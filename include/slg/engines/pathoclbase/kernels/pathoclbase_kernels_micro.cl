@@ -997,12 +997,8 @@ __kernel void AdvancePaths_MK_SPLAT_SAMPLE(
 
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
 	// Copy resampled sample from reservoir to sampleResultsBuff[gid] to be splatted like normal
-	//*sampleResult = taskState->initialPathReservoir.selectedSample.sampleResult;
-	//SampleResult_ClearRadiance(sampleResult);
-	//VSTORE3F(BLACK, sampleResult->albedo.c);
-	SampleResult_Init(&taskConfig->film, sampleResult);
+	*sampleResult = taskState->initialPathReservoir.selectedSample.sampleResult;
 #endif
-	SampleResult_Init(&taskConfig->film, sampleResult);
 
 	// Initialize Film radiance group pointer table
 	__global float *filmRadianceGroup[FILM_MAX_RADIANCE_GROUP_COUNT];
@@ -1053,12 +1049,11 @@ __kernel void AdvancePaths_MK_SPLAT_SAMPLE(
 	// Sampler splat sample
 	//--------------------------------------------------------------------------
 
-	SampleResult_ClearRadiance(sampleResult);
-	VSTORE3F(BLACK, sampleResult->albedo.c);
+	Sampler_SplatSample(taskConfig
+			SAMPLER_PARAM
+			FILM_PARAM);
 	taskStats[gid].sampleCount += 1;
 
-	SampleResult_ClearRadiance(sampleResult);
-	VSTORE3F(BLACK, sampleResult->albedo.c);
 	// Save the state
 	taskState->state = MK_NEXT_SAMPLE;
 
