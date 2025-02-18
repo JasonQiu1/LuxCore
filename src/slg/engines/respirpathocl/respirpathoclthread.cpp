@@ -75,234 +75,234 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
     // TODO: remove, since this should already be tracked in the film class I think
     u_int numFrames = 0;
 
-	try {
-		//----------------------------------------------------------------------
-		// Execute initialization kernels
-		//----------------------------------------------------------------------
+	// try {
+	// 	//----------------------------------------------------------------------
+	// 	// Execute initialization kernels
+	// 	//----------------------------------------------------------------------
 
-		// Clear the frame buffer
-		const u_int filmPixelCount = threadFilms[0]->film->GetWidth() * threadFilms[0]->film->GetHeight();
-		intersectionDevice->EnqueueKernel(filmClearKernel,
-			HardwareDeviceRange(RoundUp<u_int>(filmPixelCount, filmClearWorkGroupSize)),
-			HardwareDeviceRange(filmClearWorkGroupSize));
+	// 	// Clear the frame buffer
+	// 	const u_int filmPixelCount = threadFilms[0]->film->GetWidth() * threadFilms[0]->film->GetHeight();
+	// 	intersectionDevice->EnqueueKernel(filmClearKernel,
+	// 		HardwareDeviceRange(RoundUp<u_int>(filmPixelCount, filmClearWorkGroupSize)),
+	// 		HardwareDeviceRange(filmClearWorkGroupSize));
 
-		// Initialize random number generator seeds
-		intersectionDevice->EnqueueKernel(initSeedKernel,
-				HardwareDeviceRange(engine->taskCount), HardwareDeviceRange(initWorkGroupSize));
+	// 	// Initialize random number generator seeds
+	// 	intersectionDevice->EnqueueKernel(initSeedKernel,
+	// 			HardwareDeviceRange(engine->taskCount), HardwareDeviceRange(initWorkGroupSize));
 
-		// Initialize the tasks buffer
-		intersectionDevice->EnqueueKernel(initKernel,
-				HardwareDeviceRange(engine->taskCount), HardwareDeviceRange(initWorkGroupSize));
+	// 	// Initialize the tasks buffer
+	// 	intersectionDevice->EnqueueKernel(initKernel,
+	// 			HardwareDeviceRange(engine->taskCount), HardwareDeviceRange(initWorkGroupSize));
 
-		// Check if I have to load the start film
-		if (engine->hasStartFilm && (threadIndex == 0))
-			threadFilms[0]->SendFilm(intersectionDevice);
+	// 	// Check if I have to load the start film
+	// 	if (engine->hasStartFilm && (threadIndex == 0))
+	// 		threadFilms[0]->SendFilm(intersectionDevice);
 
-        slg::ocl::pathoclbase::RespirGPUTaskState* tasksState = (slg::ocl::pathoclbase::RespirGPUTaskState*)malloc(sizeof(*tasksState) * taskCount);
+    //     slg::ocl::pathoclbase::RespirGPUTaskState* tasksState = (slg::ocl::pathoclbase::RespirGPUTaskState*)malloc(sizeof(*tasksState) * taskCount);
 
-		//----------------------------------------------------------------------
-		// Rendering loop
-		//----------------------------------------------------------------------
+	// 	//----------------------------------------------------------------------
+	// 	// Rendering loop
+	// 	//----------------------------------------------------------------------
 
-		// The film refresh time target
-		const double targetTime = 0.2; // 200ms
+	// 	// The film refresh time target
+	// 	const double targetTime = 0.2; // 200ms
 
-        const u_int numSpatialReuseIterations = engine->numSpatialReuseIterations;
+    //     const u_int numSpatialReuseIterations = engine->numSpatialReuseIterations;
 
-		u_int iterations = 4;
+	// 	u_int iterations = 4;
 
-		double totalTransferTime = 0.0;
-		double totalKernelTime = 0.0;
+	// 	double totalTransferTime = 0.0;
+	// 	double totalKernelTime = 0.0;
 
-		while (!boost::this_thread::interruption_requested()) {
-			//if (threadIndex == 0)
-			//	SLG_LOG("[DEBUG] =================================");
+	// 	while (!boost::this_thread::interruption_requested()) {
+	// 		//if (threadIndex == 0)
+	// 		//	SLG_LOG("[DEBUG] =================================");
 
-			// Check if we are in pause mode
-			if (engine->pauseMode) {
-				// Check every 100ms if I have to continue the rendering
-				while (!boost::this_thread::interruption_requested() && engine->pauseMode)
-					boost::this_thread::sleep(boost::posix_time::millisec(100));
+	// 		// Check if we are in pause mode
+	// 		if (engine->pauseMode) {
+	// 			// Check every 100ms if I have to continue the rendering
+	// 			while (!boost::this_thread::interruption_requested() && engine->pauseMode)
+	// 				boost::this_thread::sleep(boost::posix_time::millisec(100));
 
-				if (boost::this_thread::interruption_requested())
-					break;
-			}
+	// 			if (boost::this_thread::interruption_requested())
+	// 				break;
+	// 		}
 
-			//------------------------------------------------------------------
+	// 		//------------------------------------------------------------------
 
-			const double timeTransferStart = WallClockTime();
+	// 		const double timeTransferStart = WallClockTime();
 
-			// Transfer the film only if I have already spent enough time running
-			// rendering kernels. This is very important when rendering very high
-			// resolution images (for instance at 4961x3508)
+	// 		// Transfer the film only if I have already spent enough time running
+	// 		// rendering kernels. This is very important when rendering very high
+	// 		// resolution images (for instance at 4961x3508)
 
-			if (totalTransferTime < totalKernelTime * (1.0 / 100.0)) {
-				// Async. transfer of the Film buffers
-				threadFilms[0]->RecvFilm(intersectionDevice);
+	// 		if (totalTransferTime < totalKernelTime * (1.0 / 100.0)) {
+	// 			// Async. transfer of the Film buffers
+	// 			threadFilms[0]->RecvFilm(intersectionDevice);
 
-				// Async. transfer of GPU task statistics
-				intersectionDevice->EnqueueReadBuffer(
-					taskStatsBuff,
-					CL_FALSE,
-					sizeof(slg::ocl::pathoclbase::GPUTaskStats) * taskCount,
-					gpuTaskStats);
+	// 			// Async. transfer of GPU task statistics
+	// 			intersectionDevice->EnqueueReadBuffer(
+	// 				taskStatsBuff,
+	// 				CL_FALSE,
+	// 				sizeof(slg::ocl::pathoclbase::GPUTaskStats) * taskCount,
+	// 				gpuTaskStats);
 
-				intersectionDevice->FinishQueue();
+	// 			intersectionDevice->FinishQueue();
 				
-				// I need to update the film samples count
+	// 			// I need to update the film samples count
 				
-				double totalCount = 0.0;
-				for (size_t i = 0; i < taskCount; ++i)
-					totalCount += gpuTaskStats[i].sampleCount;
-				threadFilms[0]->film->SetSampleCount(totalCount, totalCount, 0.0);
+	// 			double totalCount = 0.0;
+	// 			for (size_t i = 0; i < taskCount; ++i)
+	// 				totalCount += gpuTaskStats[i].sampleCount;
+	// 			threadFilms[0]->film->SetSampleCount(totalCount, totalCount, 0.0);
 
-				//SLG_LOG("[DEBUG] film transferred");
-			}
-			const double timeTransferEnd = WallClockTime();
-			totalTransferTime += timeTransferEnd - timeTransferStart;
+	// 			//SLG_LOG("[DEBUG] film transferred");
+	// 		}
+	// 		const double timeTransferEnd = WallClockTime();
+	// 		totalTransferTime += timeTransferEnd - timeTransferStart;
 
-			//------------------------------------------------------------------
-			// This is required for updating film denoiser parameter
-			if (threadFilms[0]->film->GetDenoiser().IsEnabled()) {
-				boost::unique_lock<boost::mutex> lock(engine->setKernelArgsMutex);
-				SetAllAdvancePathsKernelArgs(0);
-			}
+	// 		//------------------------------------------------------------------
+	// 		// This is required for updating film denoiser parameter
+	// 		if (threadFilms[0]->film->GetDenoiser().IsEnabled()) {
+	// 			boost::unique_lock<boost::mutex> lock(engine->setKernelArgsMutex);
+	// 			SetAllAdvancePathsKernelArgs(0);
+	// 		}
 
-            SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Beginning rendering for frame " << numFrames << ".");
+    //         SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Beginning rendering for frame " << numFrames << ".");
 
-			// Get next sample if this is not the first iteration of this loop.
-	        intersectionDevice->EnqueueKernel(advancePathsKernel_MK_NEXT_SAMPLE,
-			    HardwareDeviceRange(taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
+	// 		// Get next sample if this is not the first iteration of this loop.
+	//         intersectionDevice->EnqueueKernel(advancePathsKernel_MK_NEXT_SAMPLE,
+	// 		    HardwareDeviceRange(taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
 
-            // Generate camera rays for each pixel in this frame.
-            intersectionDevice->EnqueueKernel(advancePathsKernel_MK_GENERATE_CAMERA_RAY,
-			    HardwareDeviceRange(taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
+    //         // Generate camera rays for each pixel in this frame.
+    //         intersectionDevice->EnqueueKernel(advancePathsKernel_MK_GENERATE_CAMERA_RAY,
+	// 		    HardwareDeviceRange(taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
 
-            // Perform initial path resampling to get canonical samples for each pixel this frame.
-            bool isInitialPathResamplingDone = false;
-			bool firstLoop = false;
-            u_int totalIterationsThisFrame = 0;
+    //         // Perform initial path resampling to get canonical samples for each pixel this frame.
+    //         bool isInitialPathResamplingDone = false;
+	// 		bool firstLoop = false;
+    //         u_int totalIterationsThisFrame = 0;
 
-			SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Generating canonical initial path samples: " << taskCount);
-			while (!isInitialPathResamplingDone) {
-				SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Queuing advance paths kernels for " << iterations << " iterations");
+	// 		SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Generating canonical initial path samples: " << taskCount);
+	// 		while (!isInitialPathResamplingDone) {
+	// 			SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Queuing advance paths kernels for " << iterations << " iterations");
 
-                // Trace until all paths are completed for this frame.
-                for (u_int i = 0; i < iterations; ++i) {
-                    // Trace rays
-                    intersectionDevice->EnqueueTraceRayBuffer(raysBuff, hitsBuff, taskCount);
+    //             // Trace until all paths are completed for this frame.
+    //             for (u_int i = 0; i < iterations; ++i) {
+    //                 // Trace rays
+    //                 intersectionDevice->EnqueueTraceRayBuffer(raysBuff, hitsBuff, taskCount);
 
-                    // Advance to next path state
-                    EnqueueAdvancePathsKernel();
-                }
+    //                 // Advance to next path state
+    //                 EnqueueAdvancePathsKernel();
+    //             }
 
-				//SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Finished queuing advance paths kernels");
+	// 			//SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Finished queuing advance paths kernels");
 
-                // Wait for all kernels to finish running.
-			    intersectionDevice->FinishQueue();
+    //             // Wait for all kernels to finish running.
+	// 		    intersectionDevice->FinishQueue();
 
-				//SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] All advance paths kernels finished execution");
+	// 			//SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] All advance paths kernels finished execution");
 
-                // Check if initial path resampling for all pixels is complete
-                // TODO: move pathState to a separate buffer so minimal amount of memory needs to be read here
-                intersectionDevice->EnqueueReadBuffer(tasksStateBuff, true,
-                    sizeof(slg::ocl::pathoclbase::RespirGPUTaskState) * taskCount,
-                    tasksState);
+    //             // Check if initial path resampling for all pixels is complete
+    //             // TODO: move pathState to a separate buffer so minimal amount of memory needs to be read here
+    //             intersectionDevice->EnqueueReadBuffer(tasksStateBuff, true,
+    //                 sizeof(slg::ocl::pathoclbase::RespirGPUTaskState) * taskCount,
+    //                 tasksState);
 
-				//SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Checking whether initial path resampling is complete");
+	// 			//SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Checking whether initial path resampling is complete");
 
-                isInitialPathResamplingDone = true;
-                for (u_int i = 0; i < taskCount; i++) {
-					//SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] TaskState(" << i << ") PathState=" << tasksState[i].state);
-                    if (tasksState[i].state != slg::ocl::pathoclbase::PathState::SYNC) {
-						SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] TaskState(" << i << ") PathState=" << tasksState[i].state << " Continue advancing path");
-                        isInitialPathResamplingDone = false;
-                        break;
-                    }
-                }
+    //             isInitialPathResamplingDone = true;
+    //             for (u_int i = 0; i < taskCount; i++) {
+	// 				//SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] TaskState(" << i << ") PathState=" << tasksState[i].state);
+    //                 if (tasksState[i].state != slg::ocl::pathoclbase::PathState::SYNC) {
+	// 					SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] TaskState(" << i << ") PathState=" << tasksState[i].state << " Continue advancing path");
+    //                     isInitialPathResamplingDone = false;
+    //                     break;
+    //                 }
+    //             }
 
-                totalIterationsThisFrame += iterations;
+    //             totalIterationsThisFrame += iterations;
 
-				if (isInitialPathResamplingDone) {
-					break;
-				}
-				firstLoop = false;
-				iterations++;
-            }
+	// 			if (isInitialPathResamplingDone) {
+	// 				break;
+	// 			}
+	// 			firstLoop = false;
+	// 			iterations++;
+    //         }
 
-			if (firstLoop) {
-				iterations /= 2;
-			} else {
-				iterations = totalIterationsThisFrame / 2;
-			}
+	// 		if (firstLoop) {
+	// 			iterations /= 2;
+	// 		} else {
+	// 			iterations = totalIterationsThisFrame / 2;
+	// 		}
 
-			SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Initial path resampling is complete, performing spatial reuse");
+	// 		SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Initial path resampling is complete, performing spatial reuse");
             
-            // Perform spatial reuse.
-			if (numSpatialReuseIterations > 0) {
-				SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Spatial reuse is enabled, performing " << numSpatialReuseIterations << " iterations");
-				// Initialize spatial reuse iterations
-				intersectionDevice->EnqueueKernel(spatialReuseInitKernel,
-						HardwareDeviceRange(engine->taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
-				// Ensure all paths are synced before continuing
-				intersectionDevice->FinishQueue();
+    //         // Perform spatial reuse.
+	// 		if (numSpatialReuseIterations > 0) {
+	// 			SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Spatial reuse is enabled, performing " << numSpatialReuseIterations << " iterations");
+	// 			// Initialize spatial reuse iterations
+	// 			intersectionDevice->EnqueueKernel(spatialReuseInitKernel,
+	// 					HardwareDeviceRange(engine->taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
+	// 			// Ensure all paths are synced before continuing
+	// 			intersectionDevice->FinishQueue();
 
-				// Iterate x times
-				for (u_int i = 0; i < numSpatialReuseIterations; i++) {
-					// Select neighboring pixels to resample from.
-					intersectionDevice->EnqueueKernel(spatialReuseIterateKernel,
-						HardwareDeviceRange(taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
+	// 			// Iterate x times
+	// 			for (u_int i = 0; i < numSpatialReuseIterations; i++) {
+	// 				// Select neighboring pixels to resample from.
+	// 				intersectionDevice->EnqueueKernel(spatialReuseIterateKernel,
+	// 					HardwareDeviceRange(taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
 					
-					// TODO: When in shift mapping mode, do not need to perform MK_ILLUMINATE calculations.
-					// Only need to advance the random number by the amount it would use.
+	// 				// TODO: When in shift mapping mode, do not need to perform MK_ILLUMINATE calculations.
+	// 				// Only need to advance the random number by the amount it would use.
 					
-					// Since spatial reuse (shift mapping step) needs to retrace only paths already traced in this frame, 
-					// the max number of iterations possible is the amount required for 
-					// the path that took the most number of iterations in this frame.
-					SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Spatial reuse (iteration " << i << "): retracing paths");
-					for (u_int i = 0; i < totalIterationsThisFrame; ++i) {
-						// Trace rays
-						intersectionDevice->EnqueueTraceRayBuffer(raysBuff, hitsBuff, taskCount);
+	// 				// Since spatial reuse (shift mapping step) needs to retrace only paths already traced in this frame, 
+	// 				// the max number of iterations possible is the amount required for 
+	// 				// the path that took the most number of iterations in this frame.
+	// 				SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Spatial reuse (iteration " << i << "): retracing paths");
+	// 				for (u_int i = 0; i < totalIterationsThisFrame; ++i) {
+	// 					// Trace rays
+	// 					intersectionDevice->EnqueueTraceRayBuffer(raysBuff, hitsBuff, taskCount);
 
-						// Advance to next path state
-						EnqueueAdvancePathsKernel();
-					}
+	// 					// Advance to next path state
+	// 					EnqueueAdvancePathsKernel();
+	// 				}
 
-					// Ensure all paths are synced before continuing
-					intersectionDevice->FinishQueue();
-				}
-				// Set up for splatting
-				intersectionDevice->EnqueueKernel(spatialReuseDoneKernel,
-						HardwareDeviceRange(taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
-			} else {
-				SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Spatial reuse is disabled, configure with respirpathocl.spatialreuse.numiterations");
-			}
-			SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Spatial reuse passes are complete, splatting pixels");
+	// 				// Ensure all paths are synced before continuing
+	// 				intersectionDevice->FinishQueue();
+	// 			}
+	// 			// Set up for splatting
+	// 			intersectionDevice->EnqueueKernel(spatialReuseDoneKernel,
+	// 					HardwareDeviceRange(taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
+	// 		} else {
+	// 			SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Spatial reuse is disabled, configure with respirpathocl.spatialreuse.numiterations");
+	// 		}
+	// 		SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Spatial reuse passes are complete, splatting pixels");
 
-            // Splat pixels.
-			intersectionDevice->EnqueueKernel(spatialReuseSetSplatKernel,
-                    HardwareDeviceRange(engine->taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
-            intersectionDevice->EnqueueKernel(advancePathsKernel_MK_SPLAT_SAMPLE,
-			    HardwareDeviceRange(taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
+    //         // Splat pixels.
+	// 		intersectionDevice->EnqueueKernel(spatialReuseSetSplatKernel,
+    //                 HardwareDeviceRange(engine->taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
+    //         intersectionDevice->EnqueueKernel(advancePathsKernel_MK_SPLAT_SAMPLE,
+	// 		    HardwareDeviceRange(taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
 
-            numFrames++;
+    //         numFrames++;
 
-			/*if (threadIndex == 0)
-				SLG_LOG("[DEBUG] transfer time: " << (timeTransferEnd - timeTransferStart) * 1000.0 << "ms "
-						"kernel time: " << (timeKernelEnd - timeKernelStart) * 1000.0 << "ms "
-						"iterations: " << iterations << " #"<< taskCount << ")");*/
+	// 		/*if (threadIndex == 0)
+	// 			SLG_LOG("[DEBUG] transfer time: " << (timeTransferEnd - timeTransferStart) * 1000.0 << "ms "
+	// 					"kernel time: " << (timeKernelEnd - timeKernelStart) * 1000.0 << "ms "
+	// 					"iterations: " << iterations << " #"<< taskCount << ")");*/
 
-			// Check halt conditions
-			if (engine->film->GetConvergence() == 1.f)
-				break;
-		}
-        free(tasksState);
+	// 		// Check halt conditions
+	// 		if (engine->film->GetConvergence() == 1.f)
+	// 			break;
+	// 	}
+    //     free(tasksState);
 
-		engine->film->Clear();
+	// 	engine->film->Clear();
 
-	} catch (boost::thread_interrupted) {
-		SLG_LOG("[PathOCLRenderThread::" << threadIndex << "] Rendering thread halted");
-	}
+	// } catch (boost::thread_interrupted) {
+	// 	SLG_LOG("[PathOCLRenderThread::" << threadIndex << "] Rendering thread halted");
+	// }
     SLG_LOG("[PathOCLRespirRenderThread::" << threadIndex << "]: Rendered " << numFrames << " frames in total.");
 
 	threadFilms[0]->RecvFilm(intersectionDevice);
