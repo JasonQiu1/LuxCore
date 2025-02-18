@@ -118,15 +118,13 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
     sampleResult->isHoldout = FALSE;
 
     // Ensure the ray isn't traced by setting it to some non-intersectable state
-    ray->o = (float3)(0.f, 0.f, 0.f);
-    ray->d = (float3)(0.f, 0.f, 0.f);
+    VSTORE3F(BLACK, ray->o);
+    VSTORE3F(BLACK, ray->d);
     ray->mint = INFINITY;
     ray->maxt = INFINITY;
     ray->time = 0.f;
     ray->flags = RAY_FLAGS_MASKED;
 
-    // Indicate that no further processing is needed for this path
-    __global GPUTaskState *taskState = &tasksState[gid];
     taskState->state = MK_DONE;
 }
 
