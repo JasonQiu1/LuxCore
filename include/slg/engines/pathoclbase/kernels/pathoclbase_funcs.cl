@@ -102,66 +102,32 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 
 	EyePathInfo_Init(pathInfo);
 
-	InitSampleResult(taskConfig,
-			filmWidth, filmHeight,
-			filmSubRegion0, filmSubRegion1,
-			filmSubRegion2, filmSubRegion3,
-			pixelFilterDistribution
-			SAMPLER_PARAM);
+    // Set everything to black, making it seem as if no light is reaching the camera
+    VSTORE3F(BLACK, sampleResult->radiancePerPixelNormalized[0].c);
+    sampleResult->alpha = 0.f;
+    sampleResult->depth = INFINITY;
+    sampleResult->position.x = INFINITY;
+    sampleResult->position.y = INFINITY;
+    sampleResult->position.z = INFINITY;
+    sampleResult->geometryNormal.x = 0.f;
+    sampleResult->geometryNormal.y = 0.f;
+    sampleResult->geometryNormal.z = 0.f;
+    sampleResult->materialID = 0;
+    sampleResult->objectID = 0;
+    sampleResult->lastPathVertex = TRUE;
+    sampleResult->isHoldout = FALSE;
 
-	// Generate the came ray
-	const float timeSample = Sampler_GetSample(taskConfig, IDX_EYE_TIME SAMPLER_PARAM);
+    // Ensure the ray isn't traced by setting it to some non-intersectable state
+    ray->o = (float3)(0.f, 0.f, 0.f);
+    ray->d = (float3)(0.f, 0.f, 0.f);
+    ray->mint = INFINITY;
+    ray->maxt = INFINITY;
+    ray->time = 0.f;
+    ray->flags = RAY_FLAGS_MASKED;
 
-	const float dofSampleX = Sampler_GetSample(taskConfig, IDX_DOF_X SAMPLER_PARAM);
-	const float dofSampleY = Sampler_GetSample(taskConfig, IDX_DOF_Y SAMPLER_PARAM);
-
-#if defined(RENDER_ENGINE_TILEPATHOCL) || defined(RENDER_ENGINE_RTPATHOCL)
-	Camera_GenerateRay(camera, cameraBokehDistribution, cameraFilmWidth, cameraFilmHeight,
-			ray,
-			&pathInfo->volume,
-			sampleResult->filmX + tileStartX, sampleResult->filmY + tileStartY,
-			timeSample,
-			dofSampleX, dofSampleY);
-#else
-	Camera_GenerateRay(camera, cameraBokehDistribution, filmWidth, filmHeight,
-			ray,
-			&pathInfo->volume,
-			sampleResult->filmX, sampleResult->filmY,
-			timeSample,
-			dofSampleX, dofSampleY);
-#endif
-
-	// Initialize the path state
-	taskState->state = MK_RT_NEXT_VERTEX;
-	VSTORE3F(WHITE, taskState->throughput.c);
-	taskState->albedoToDo = true;
-	VSTORE3F(BLACK, sampleResult->albedo.c);  // Just in case albedoToDo is never true
-	VSTORE3F(BLACK, &sampleResult->shadingNormal.x);
-	taskState->photonGICacheEnabledOnLastHit = false;
-	taskState->photonGICausticCacheUsed = false;
-	taskState->photonGIShowIndirectPathMixUsed = false;
-	// Initialize the trough a shadow transparency flag used by Scene_Intersect()
-	taskState->throughShadowTransparency = false;
-
-	// Initialize the pass-through event seed
-	//
-	// Note: using the IDX_PASSTHROUGH of path depth 0
-	float seedValue = Sampler_GetSample(taskConfig, IDX_BSDF_OFFSET + IDX_PASSTHROUGH SAMPLER_PARAM);
-	Seed initSeed;
-	Rnd_InitFloat(seedValue, &initSeed);
-	taskState->seedPassThroughEvent = initSeed;
-
-#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-	VSTORE3F(WHITE, taskState->lastWeight.c);
-	taskState->bsdfPdfWProduct = 1.f;
-	taskState->initialPathReservoir.sumWeight = 0.0f;
-
-	// Initialize reservoir sampling seed
-	// TODO: Not sure the correct way to get an initial seed here. I just copied the above code for now.
-	seedValue = Sampler_GetSample(taskConfig, IDX_BSDF_OFFSET + IDX_PASSTHROUGH SAMPLER_PARAM);
-	Rnd_InitFloat(seedValue, &initSeed);
-	taskState->seedReservoirSampling = initSeed;
-#endif
+    // Indicate that no further processing is needed for this path
+    __global GPUTaskState *taskState = &tasksState[gid];
+    taskState->state = MK_DONE;
 }
 
 //------------------------------------------------------------------------------
