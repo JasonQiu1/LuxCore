@@ -142,37 +142,37 @@ void PathOCLNativeRenderThread::RenderThreadImpl() {
 	// Trace paths
 	//--------------------------------------------------------------------------
 
-// 	for (u_int steps = 0; !boost::this_thread::interruption_requested(); ++steps) {
-// 		// Check if we are in pause mode
-// 		if (engine->pauseMode) {
-// 			// Check every 100ms if I have to continue the rendering
-// 			while (!boost::this_thread::interruption_requested() && engine->pauseMode)
-// 				boost::this_thread::sleep(boost::posix_time::millisec(100));
+	for (u_int steps = 0; !boost::this_thread::interruption_requested(); ++steps) {
+		// Check if we are in pause mode
+		if (engine->pauseMode) {
+			// Check every 100ms if I have to continue the rendering
+			while (!boost::this_thread::interruption_requested() && engine->pauseMode)
+				boost::this_thread::sleep(boost::posix_time::millisec(100));
 
-// 			if (boost::this_thread::interruption_requested())
-// 				break;
-// 		}
+			if (boost::this_thread::interruption_requested())
+				break;
+		}
 
-// 		pathTracer.RenderSample(pathTracerThreadState);
+		pathTracer.RenderSample(pathTracerThreadState);
 
-// #ifdef WIN32
-// 		// Work around Windows bad scheduling
-// 		renderThread->yield();
-// #endif
+#ifdef WIN32
+		// Work around Windows bad scheduling
+		renderThread->yield();
+#endif
 
-// 		// Check halt conditions
-// 		if (engine->film->GetConvergence() == 1.f)
-// 			break;
+		// Check halt conditions
+		if (engine->film->GetConvergence() == 1.f)
+			break;
 
-// 		if (engine->photonGICache) {
-// 			try {
-// 				engine->photonGICache->Update(engine->renderOCLThreads.size() + threadIndex, engine->GetTotalEyeSPP());
-// 			} catch (boost::thread_interrupted &ti) {
-// 				// I have been interrupted, I must stop
-// 				break;
-// 			}
-// 		}
-// 	}
+		if (engine->photonGICache) {
+			try {
+				engine->photonGICache->Update(engine->renderOCLThreads.size() + threadIndex, engine->GetTotalEyeSPP());
+			} catch (boost::thread_interrupted &ti) {
+				// I have been interrupted, I must stop
+				break;
+			}
+		}
+	}
 
 	delete eyeSampler;
 	delete lightSampler;
@@ -186,7 +186,7 @@ void PathOCLNativeRenderThread::RenderThreadImpl() {
 	if (engine->photonGICache)
 		engine->photonGICache->FinishUpdate(threadIndex);
 
-	engine->film->Clear();
+	film->Clear();
 
 	//SLG_LOG("[PathOCLRenderEngine::" << threadIndex << "] Rendering thread halted");
 }
