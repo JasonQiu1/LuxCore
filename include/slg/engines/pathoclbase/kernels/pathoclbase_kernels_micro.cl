@@ -1055,9 +1055,6 @@ __kernel void AdvancePaths_MK_SPLAT_SAMPLE(
 
 	SampleResult_ClearRadiance(sampleResult);
 	VSTORE3F(BLACK, sampleResult->albedo.c);
-	Sampler_SplatSample(taskConfig
-			SAMPLER_PARAM
-			FILM_PARAM);
 	taskStats[gid].sampleCount += 1;
 
 	SampleResult_ClearRadiance(sampleResult);
