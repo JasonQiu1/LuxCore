@@ -123,7 +123,7 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
     ray->time = 0.f;
     ray->flags = RAY_FLAGS_MASKED;
 
-    taskState->state = MK_DONE;
+    taskState->state = SYNC;
 }
 
 //------------------------------------------------------------------------------
