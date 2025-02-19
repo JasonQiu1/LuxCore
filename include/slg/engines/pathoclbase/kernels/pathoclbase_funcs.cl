@@ -209,6 +209,8 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 
 	reservoir->sumWeight += weight;
 	if (random < (weight / reservoir->sumWeight)) {
+		// make sure that the final result is only affected by radiance
+		SampleResult_ClearRadiance(newSample)
 		reservoir->selectedSample.sampleResult = *newSample;
 	}
 }
