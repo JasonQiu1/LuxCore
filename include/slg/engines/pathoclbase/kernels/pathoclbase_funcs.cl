@@ -199,10 +199,10 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 
 	const size_t gid = get_global_id(0);
 	if (gid == 1) {
-		printf("contribution: %v3f, pdf: %v3f, throughput: %v3f, lastweight: %v3f, bsdfWProduct: %v3f\n", 
+		printf("contribution: %2.2v3hlf, pdf: %2.2v3hlf, throughput: %2.2v3hlf, lastweight: %2.2v3hlf, bsdfWProduct: %2.2v3hlf\n", 
 			pathContribution, pathPdf, VLOAD3F(taskState->throughput.c), VLOAD3F(taskState->lastWeight.c), taskState->bsdfPdfWProduct);
 	}
-	
+
 	reservoir->sumWeight += weight;
 	if (random < (weight / reservoir->sumWeight)) {
 		reservoir->selectedSample.sampleResult = *newSample;
