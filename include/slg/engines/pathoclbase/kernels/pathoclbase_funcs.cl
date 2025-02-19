@@ -177,7 +177,7 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 
 	const size_t gid = get_global_id(0);
 	if (gid == 1) {
-		print("film radiance group scale: %v3f, %v3f", filmRadianceGroupScale[0], filmRadianceGroupScale[1])
+		printf("film radiance group scale: %v3f, %v3f", filmRadianceGroupScale[0], filmRadianceGroupScale[1]);
 	}
 
 	float3 pathContribution = SampleResult_GetSpectrum(&taskConfig->film, newSample, filmRadianceGroupScale);
