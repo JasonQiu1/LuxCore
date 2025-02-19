@@ -285,6 +285,31 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
             intersectionDevice->EnqueueKernel(advancePathsKernel_MK_SPLAT_SAMPLE,
 			    HardwareDeviceRange(taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
 
+
+			// Transfer film from thread to CPU
+			if (true) {
+				// Async. transfer of the Film buffers
+				threadFilms[0]->RecvFilm(intersectionDevice);
+
+				// Async. transfer of GPU task statistics
+				intersectionDevice->EnqueueReadBuffer(
+					taskStatsBuff,
+					CL_FALSE,
+					sizeof(slg::ocl::pathoclbase::GPUTaskStats) * taskCount,
+					gpuTaskStats);
+
+				intersectionDevice->FinishQueue();
+				
+				// I need to update the film samples count
+				
+				double totalCount = 0.0;
+				for (size_t i = 0; i < taskCount; ++i)
+					totalCount += gpuTaskStats[i].sampleCount;
+				threadFilms[0]->film->SetSampleCount(totalCount, totalCount, 0.0);
+
+				//SLG_LOG("[DEBUG] film transferred");
+			}
+
             numFrames++;
 
 			/*if (threadIndex == 0)
