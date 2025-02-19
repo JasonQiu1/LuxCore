@@ -172,15 +172,10 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 // Add a sample to the streaming reservoir.
 // Simply replace based on the new sample's weight and the reservoir's current sum weight.
 OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfiguration* restrict taskConfig, __global GPUTaskState* restrict taskState, 
-		__global SampleResult* restrict newSample, float3 filmRadianceGroupScale[FILM_MAX_RADIANCE_GROUP_COUNT]) {
+		__global SampleResult* restrict newSample) {
 	__global RespirReservoir* reservoir = &taskState->initialPathReservoir;
 
-	const size_t gid = get_global_id(0);
-	if (gid == 1) {
-		printf("film radiance group scale: %v3f, %v3f", filmRadianceGroupScale[0], filmRadianceGroupScale[1]);
-	}
-
-	float3 pathContribution = SampleResult_GetSpectrum(&taskConfig->film, newSample, filmRadianceGroupScale);
+	float3 pathContribution = SampleResult_GetUnscaledSpectrum(&taskConfig->film, newSample);
 	float3 pathPdf = VLOAD3F(taskState->throughput.c) * VLOAD3F(taskState->lastWeight.c) * taskState->bsdfPdfWProduct;
 
 	// correct zero components in pdf
@@ -201,6 +196,13 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 
 	// Weight of the sample is the luminance/graysacle of (path contribution / path PDF) 
 	const float weight = Spectrum_Filter(pathContribution / pathPdf);
+
+	const size_t gid = get_global_id(0);
+	if (gid == 1) {
+		printf("contribution: %v3f, pdf: %v3f, throughput: %v3f, lastweight: %v3f, bsdfWProduct: %v3f\n", 
+			pathContribution, pathPdf, VLOAD3F(taskState->throughput.c), VLOAD3F(taskState->lastWeight.c), taskState->bsdfPdfWProduct);
+	}
+	
 	reservoir->sumWeight += weight;
 	if (random < (weight / reservoir->sumWeight)) {
 		reservoir->selectedSample.sampleResult = *newSample;
