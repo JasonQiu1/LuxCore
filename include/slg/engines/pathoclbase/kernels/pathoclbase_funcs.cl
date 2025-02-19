@@ -175,7 +175,12 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 		__global SampleResult* restrict newSample, float3 filmRadianceGroupScale[FILM_MAX_RADIANCE_GROUP_COUNT]) {
 	__global RespirReservoir* reservoir = &taskState->initialPathReservoir;
 
-	float3 pathContribution = SampleResult_GetUnscaledSpectrum(&taskConfig->film, newSample);
+	const size_t gid = get_global_id(0);
+	if (gid == 1) {
+		print("film radiance group scale: %v3f, %v3f", filmRadianceGroupScale[0], filmRadianceGroupScale[1])
+	}
+
+	float3 pathContribution = SampleResult_GetSpectrum(&taskConfig->film, newSample, filmRadianceGroupScale);
 	float3 pathPdf = VLOAD3F(taskState->throughput.c) * VLOAD3F(taskState->lastWeight.c) * taskState->bsdfPdfWProduct;
 
 	// correct zero components in pdf
