@@ -674,7 +674,7 @@ __kernel void Init(
 #endif
 
 		// Generate the eye path
-		GenerateEyePath(taskConfig,
+		GenerateEyePath(task, taskConfig,
 				taskDirectLight, taskState,
 				camera,
 				cameraBokehDistribution,
