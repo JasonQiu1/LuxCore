@@ -156,7 +156,7 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 	VSTORE3F(WHITE, taskState->lastWeight.c);
 	taskState->bsdfPdfWProduct = 1.f;
 	taskState->initialPathReservoir.sumWeight = 0.0f;
-	SampleResult_Init(&taskConfig->film, &taskState->initialPathReservoir.selectedSample.sampleResult);
+	// SampleResult_Init(&taskConfig->film, &taskState->initialPathReservoir.selectedSample.sampleResult);
 
 	// Initialize reservoir sampling seed
 	Rnd_InitFloat(Rnd_FloatValue(&task->seed), &initSeed);
