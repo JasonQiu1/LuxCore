@@ -79,6 +79,7 @@ OPENCL_FORCE_INLINE void InitSampleResult(
 }
 
 OPENCL_FORCE_INLINE void GenerateEyePath(
+		__global GPUTask *task, 
 		__constant const GPUTaskConfiguration* restrict taskConfig,
 		__global GPUTaskDirectLight *taskDirectLight,
 		__global GPUTaskState *taskState,
@@ -158,9 +159,7 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 	SampleResult_Init(&taskConfig->film, &taskState->initialPathReservoir.selectedSample.sampleResult);
 
 	// Initialize reservoir sampling seed
-	// TODO: Not sure the correct way to get an initial seed here. I just copied the above code for now.
-	seedValue = Sampler_GetSample(taskConfig, IDX_BSDF_OFFSET + IDX_PASSTHROUGH SAMPLER_PARAM);
-	Rnd_InitFloat(seedValue, &initSeed);
+	Rnd_InitFloat(Rnd_FloatValue(&task->seed), &initSeed);
 	taskState->seedReservoirSampling = initSeed;
 #endif
 }

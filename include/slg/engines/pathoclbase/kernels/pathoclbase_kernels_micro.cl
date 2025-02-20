@@ -1146,7 +1146,7 @@ __kernel void AdvancePaths_MK_GENERATE_CAMERA_RAY(
 	// Re-initialize the volume information
 	PathVolumeInfo_Init(&pathInfo->volume);
 
-	GenerateEyePath(taskConfig,
+	GenerateEyePath(task, taskConfig,
 			&tasksDirectLight[gid], taskState,
 			camera,
 			cameraBokehDistribution,
