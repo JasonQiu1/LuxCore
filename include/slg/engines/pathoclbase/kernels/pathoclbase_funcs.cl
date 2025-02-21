@@ -156,8 +156,7 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 	VSTORE3F(WHITE, taskState->lastWeight.c);
 	taskState->bsdfPdfWProduct = 1.f;
 	taskState->initialPathReservoir.sumWeight = 0.0f;
-	SampleResult_Init(&taskConfig->film, &taskState->initialPathReservoir.selectedSample.sampleResult);
-	taskState->initialPathReservoir.selectedSample.sampleResult.lastPathVertex = (taskConfig->pathTracer.maxPathDepth.depth == 1);
+	taskState->initialPathReservoir.selectedSample.sampleResult = sampleResult;
 #endif
 }
 
