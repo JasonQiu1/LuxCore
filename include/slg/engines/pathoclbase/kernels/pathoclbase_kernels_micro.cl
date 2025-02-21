@@ -953,6 +953,9 @@ __kernel void AdvancePaths_MK_SPLAT_SAMPLE(
 	//--------------------------------------------------------------------------
 
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
+	// DEBUG: add final sample result to buffer
+	RespirReservoir_Update(taskConfig, taskState, sampleResult);
+
 	// Copy resampled sample from reservoir to sampleResultsBuff[gid] to be splatted like normal
 	*sampleResult = taskState->initialPathReservoir.selectedSample.sampleResult;
 #endif
