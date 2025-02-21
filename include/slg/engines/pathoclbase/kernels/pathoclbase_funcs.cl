@@ -157,10 +157,6 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 	taskState->bsdfPdfWProduct = 1.f;
 	taskState->initialPathReservoir.sumWeight = 0.0f;
 	SampleResult_Init(&taskConfig->film, &taskState->initialPathReservoir.selectedSample.sampleResult);
-
-	// Initialize reservoir sampling seed
-	Rnd_InitFloat(Rnd_FloatValue(&task->seed), &initSeed);
-	taskState->seedReservoirSampling = initSeed;
 #endif
 }
 
@@ -691,6 +687,11 @@ __kernel void Init(
 		// Mark the ray like like one to NOT trace
 		rays[gid].flags = RAY_FLAGS_MASKED;
 	}
+
+#if defined(RENDER_ENGINE_RESPIRPATHOCL)
+	// Initialize reservoir sampling seed
+	Rnd_InitFloat(Rnd_FloatValue(&task->seed), &taskState->seedReservoirSampling);
+#endif
 
 	// Save the seed
 	task->seed = seedValue;
