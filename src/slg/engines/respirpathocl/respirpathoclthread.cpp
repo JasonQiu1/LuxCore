@@ -129,39 +129,6 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 			}
 
 			//------------------------------------------------------------------
-
-			const double timeTransferStart = WallClockTime();
-
-			// Transfer the film only if I have already spent enough time running
-			// rendering kernels. This is very important when rendering very high
-			// resolution images (for instance at 4961x3508)
-
-			if (totalTransferTime < totalKernelTime * (1.0 / 100.0)) {
-				// Async. transfer of the Film buffers
-				threadFilms[0]->RecvFilm(intersectionDevice);
-
-				// Async. transfer of GPU task statistics
-				intersectionDevice->EnqueueReadBuffer(
-					taskStatsBuff,
-					CL_FALSE,
-					sizeof(slg::ocl::pathoclbase::GPUTaskStats) * taskCount,
-					gpuTaskStats);
-
-				intersectionDevice->FinishQueue();
-				
-				// I need to update the film samples count
-				
-				double totalCount = 0.0;
-				for (size_t i = 0; i < taskCount; ++i)
-					totalCount += gpuTaskStats[i].sampleCount;
-				threadFilms[0]->film->SetSampleCount(totalCount, totalCount, 0.0);
-
-				//SLG_LOG("[DEBUG] film transferred");
-			}
-			const double timeTransferEnd = WallClockTime();
-			totalTransferTime += timeTransferEnd - timeTransferStart;
-
-			//------------------------------------------------------------------
 			// This is required for updating film denoiser parameter
 			if (threadFilms[0]->film->GetDenoiser().IsEnabled()) {
 				boost::unique_lock<boost::mutex> lock(engine->setKernelArgsMutex);
@@ -169,6 +136,8 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 			}
 
             SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Beginning rendering for frame " << numFrames << ".");
+
+			const double timeKernelStart = WallClockTime();
 
 			// Get next sample if this is not the first iteration of this loop.
 	        intersectionDevice->EnqueueKernel(advancePathsKernel_MK_NEXT_SAMPLE,
@@ -284,10 +253,19 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
                     HardwareDeviceRange(engine->taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
             intersectionDevice->EnqueueKernel(advancePathsKernel_MK_SPLAT_SAMPLE,
 			    HardwareDeviceRange(taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
+			
+			const double timeKernelEnd = WallClockTime();
+			totalKernelTime += timeKernelEnd - timeKernelStart;
 
+			//------------------------------------------------------------------
 
-			// Transfer film from thread to CPU
-			if (true) {
+			const double timeTransferStart = WallClockTime();
+
+			// Transfer the film from GPU to CPU only if I have already spent enough time running
+			// rendering kernels. This is very important when rendering very high
+			// resolution images (for instance at 4961x3508)
+
+			if (totalTransferTime < totalKernelTime * (1.0 / 100.0)) {
 				// Async. transfer of the Film buffers
 				threadFilms[0]->RecvFilm(intersectionDevice);
 
@@ -309,6 +287,8 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 
 				//SLG_LOG("[DEBUG] film transferred");
 			}
+			const double timeTransferEnd = WallClockTime();
+			totalTransferTime += timeTransferEnd - timeTransferStart;
 
             numFrames++;
 
