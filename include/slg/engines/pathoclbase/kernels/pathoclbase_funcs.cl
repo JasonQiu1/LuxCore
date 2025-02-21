@@ -190,7 +190,7 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 
 	const size_t gid = get_global_id(0);
 	if (gid == 1) {
-		float3 selectedContribution = SampleResult_GetUnscaledSpectrum(&taskConfig->film, reservoir->selectedSample.sampleResult);
+		float3 selectedContribution = SampleResult_GetUnscaledSpectrum(&taskConfig->film, &reservoir->selectedSample.sampleResult);
 
 		printf("contribution: (%f, %f, %f), pdf: (%f, %f, %f), throughput: (%f, %f, %f), lastweight: (%f, %f, %f), bsdfWProduct: %f, weight: %f, sumweight: %f, random: %f, replacement chance: %f, selected: (%f, %f, %f)\n\n", 
 			pathContribution.x, pathContribution.y, pathContribution.z,
