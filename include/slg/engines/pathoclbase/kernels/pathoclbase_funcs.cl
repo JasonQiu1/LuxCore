@@ -182,13 +182,16 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 	// = (unnorm path contribution / path PDF) / path PDF
 	const float weight = Spectrum_Filter(pathContribution / pathPdf);
 
+	const size_t gid = get_global_id(0);
+
 	reservoir->sumWeight += weight;
 	if (random < (weight / reservoir->sumWeight)) {
 		reservoir->selectedSample.sampleResult = *newSample;
-		printf("made replacement");
+		if (gid == 1) {
+			printf("made replacement");
+		}
 	}
 
-	const size_t gid = get_global_id(0);
 	if (gid == 1) {
 		float3 selectedContribution = SampleResult_GetUnscaledSpectrum(&taskConfig->film, &reservoir->selectedSample.sampleResult);
 
