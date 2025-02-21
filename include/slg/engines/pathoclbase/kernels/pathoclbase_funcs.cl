@@ -189,18 +189,22 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 	reservoir->sumWeight += weight;
 	if (random < (weight / reservoir->sumWeight)) {
 		reservoir->selectedSample.sampleResult = *newSample;
+		printf("made replacement");
 	}
 
 	const size_t gid = get_global_id(0);
 	if (gid == 1) {
-		printf("contribution: (%f, %f, %f), pdf: (%f, %f, %f), throughput: (%f, %f, %f), lastweight: (%f, %f, %f), bsdfWProduct: %f, weight: %f, sumweight: %f, random: %f, replacement chance: %f\n\n", 
+		float3 selectedContribution = SampleResult_GetUnscaledSpectrum(&taskConfig->film, reservoir->selectedSample.sampleResult);
+
+		printf("contribution: (%f, %f, %f), pdf: (%f, %f, %f), throughput: (%f, %f, %f), lastweight: (%f, %f, %f), bsdfWProduct: %f, weight: %f, sumweight: %f, random: %f, replacement chance: %f, selected: (%f, %f, %f)\n\n", 
 			pathContribution.x, pathContribution.y, pathContribution.z,
 			pathPdf.x, pathPdf.y, pathPdf.z,
 			taskState->throughput.c[0], taskState->throughput.c[1], taskState->throughput.c[2],
 			taskState->lastWeight.c[0], taskState->lastWeight.c[1], taskState->lastWeight.c[2],
 			taskState->bsdfPdfWProduct,
 			weight, reservoir->sumWeight,
-			random, weight / reservoir->sumWeight);
+			random, weight / reservoir->sumWeight,
+			selectedContribution.x, selectedContribution.y, selectedContribution.z);
 	}
 }
 #endif
