@@ -175,6 +175,20 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 	float3 pathContribution = SampleResult_GetUnscaledSpectrum(&taskConfig->film, newSample);
 	float3 pathPdf = VLOAD3F(taskState->throughput.c) * VLOAD3F(taskState->lastWeight.c);
 
+	// correct zero components in pdf
+	if (pathPdf.x == 0) {
+		pathContribution.x = 0;
+		pathPdf.x = 1;
+	}
+	if (pathPdf.y == 0) {
+		pathContribution.y = 0;
+		pathPdf.y = 1;
+	}
+	if (pathPdf.z == 0) {
+		pathContribution.z = 0;
+		pathPdf.z = 1;
+	}
+
 	const float random = Rnd_FloatValue(&taskState->seedReservoirSampling);
 
 	// Weight of the sample is the grayscale of 
