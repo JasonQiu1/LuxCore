@@ -198,7 +198,7 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 	// Weight of the sample is the grayscale of 
 	// (path contribution / path PDF)
 	// = (unnorm path contribution / path PDF) / path PDF
-	const float weight = Spectrum_Filter(pathContribution / pathPdf / pathPdf);
+	const float weight = Spectrum_Filter(pathContribution / pathPdf);
 
 	reservoir->sumWeight += weight;
 	if (random < (weight / reservoir->sumWeight)) {
