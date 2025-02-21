@@ -22,6 +22,8 @@
 //  PARAM_RAY_EPSILON_MIN
 //  PARAM_RAY_EPSILON_MAX
 
+// #define DEBUG
+
 /*void MangleMemory(__global unsigned char *ptr, const size_t size) {
 	Seed seed;
 	Rnd_Init(7 + get_global_id(0), &seed);
@@ -196,16 +198,21 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 	// = (unnorm path contribution / path PDF) / path PDF
 	const float weight = Spectrum_Filter(pathContribution / pathPdf);
 
+#ifdef DEBUG
 	const size_t gid = get_global_id(0);
+#endif
 
 	reservoir->sumWeight += weight;
 	if (random < (weight / reservoir->sumWeight)) {
 		reservoir->selectedSample.sampleResult = *newSample;
+#ifdef DEBUG
 		if (gid == 1) {
 			printf("made replacement\n");
 		}
+#endif
 	}
 
+#ifdef DEBUG
 	if (gid == 1) {
 		float3 selectedContribution = SampleResult_GetUnscaledSpectrum(&taskConfig->film, &reservoir->selectedSample.sampleResult);
 
@@ -219,6 +226,7 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 			random, weight / reservoir->sumWeight,
 			selectedContribution.x, selectedContribution.y, selectedContribution.z);
 	}
+#endif
 }
 #endif
 
