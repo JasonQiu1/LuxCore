@@ -200,12 +200,12 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 	const size_t gid = get_global_id(0);
 
 	reservoir->sumWeight += weight;
-	if (random < (weight / reservoir->sumWeight)) {
+	// if (random < (weight / reservoir->sumWeight)) {
 		reservoir->selectedSample.sampleResult = *newSample;
 		if (gid == 1) {
 			printf("made replacement\n");
 		}
-	}
+	// }
 
 	if (gid == 1) {
 		float3 selectedContribution = SampleResult_GetUnscaledSpectrum(&taskConfig->film, &reservoir->selectedSample.sampleResult);
