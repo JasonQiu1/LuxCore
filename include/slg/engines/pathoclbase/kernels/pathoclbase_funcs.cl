@@ -202,7 +202,7 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 	if (random < (weight / reservoir->sumWeight)) {
 		reservoir->selectedSample.sampleResult = *newSample;
 		if (gid == 1) {
-			printf("made replacement");
+			printf("made replacement\n");
 		}
 	}
 
