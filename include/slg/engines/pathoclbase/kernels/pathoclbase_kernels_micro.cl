@@ -22,8 +22,8 @@
 // AdvancePaths (Micro-Kernels)
 //------------------------------------------------------------------------------
 
-// #define DEBUG_PRINTF_KERNEL_NAME 1
-// #define DEBUG_GID 1
+#define DEBUG_PRINTF_KERNEL_NAME 1
+#define DEBUG_GID 1
 
 //------------------------------------------------------------------------------
 // Evaluation of the Path finite state machine.
@@ -47,8 +47,6 @@ __kernel void AdvancePaths_MK_RT_NEXT_VERTEX(
 #if defined(DEBUG_PRINTF_KERNEL_NAME)
 	if (gid == DEBUG_GID)
 		printf("Kernel: AdvancePaths_MK_RT_NEXT_VERTEX(state = %d)\n", pathState);
-	else
-		return;
 #endif
 	if (pathState != MK_RT_NEXT_VERTEX)
 		return;
@@ -123,8 +121,6 @@ __kernel void AdvancePaths_MK_HIT_NOTHING(
 #if defined(DEBUG_PRINTF_KERNEL_NAME)
 	if (gid == DEBUG_GID)
 		printf("Kernel: AdvancePaths_MK_HIT_NOTHING(state = %d)\n", pathState);
-	else
-		return;
 #endif
 	if (pathState != MK_HIT_NOTHING)
 		return;
@@ -219,8 +215,6 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 #if defined(DEBUG_PRINTF_KERNEL_NAME)
 	if (gid == DEBUG_GID)
 		printf("Kernel: AdvancePaths_MK_HIT_OBJECT(state = %d)\n", pathState);
-	else
-		return;
 #endif
 	if (pathState != MK_HIT_OBJECT)
 		return;
@@ -481,8 +475,6 @@ __kernel void AdvancePaths_MK_RT_DL(
 #if defined(DEBUG_PRINTF_KERNEL_NAME)
 	if (gid == DEBUG_GID)
 		printf("Kernel: AdvancePaths_MK_RT_DL(state = %d)\n", pathState);
-	else
-		return;
 #endif
 	if (pathState != MK_RT_DL)
 		return;
@@ -604,8 +596,6 @@ __kernel void AdvancePaths_MK_DL_ILLUMINATE(
 #if defined(DEBUG_PRINTF_KERNEL_NAME)
 	if (gid == DEBUG_GID)
 		printf("Kernel: AdvancePaths_MK_DL_ILLUMINATE(state = %d)\n", pathState);
-	else
-		return;
 #endif
 	if (pathState != MK_DL_ILLUMINATE)
 		return;
@@ -692,8 +682,6 @@ __kernel void AdvancePaths_MK_DL_SAMPLE_BSDF(
 #if defined(DEBUG_PRINTF_KERNEL_NAME)
 	if (gid == DEBUG_GID)
 		printf("Kernel: AdvancePaths_MK_DL_SAMPLE_BSDF(state = %d)\n", pathState);
-	else
-		return;
 #endif
 	if (pathState != MK_DL_SAMPLE_BSDF)
 		return;
@@ -781,8 +769,6 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 #if defined(DEBUG_PRINTF_KERNEL_NAME)
 	if (gid == DEBUG_GID)
 		printf("Kernel: AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(state = %d)\n", pathState);
-	else
-		return;
 #endif
 	if (pathState != MK_GENERATE_NEXT_VERTEX_RAY)
 		return;
@@ -947,8 +933,6 @@ __kernel void AdvancePaths_MK_SPLAT_SAMPLE(
 #if defined(DEBUG_PRINTF_KERNEL_NAME)
 	if (gid == DEBUG_GID)
 		printf("Kernel: AdvancePaths_MK_SPLAT_SAMPLE(state = %d)\n", pathState);
-	else
-		return;
 #endif
 	if (pathState != MK_SPLAT_SAMPLE)
 		return;
@@ -1056,8 +1040,6 @@ __kernel void AdvancePaths_MK_NEXT_SAMPLE(
 #if defined(DEBUG_PRINTF_KERNEL_NAME)
 	if (gid == DEBUG_GID)
 		printf("Kernel: AdvancePaths_MK_NEXT_SAMPLE(state = %d)\n", pathState);
-	else
-		return;
 #endif
 	if (pathState != MK_NEXT_SAMPLE)
 		return;
@@ -1121,8 +1103,6 @@ __kernel void AdvancePaths_MK_GENERATE_CAMERA_RAY(
 #if defined(DEBUG_PRINTF_KERNEL_NAME)
 	if (gid == DEBUG_GID)
 		printf("Kernel: AdvancePaths_MK_GENERATE_CAMERA_RAY(state = %d)\n", pathState);
-	else
-		return;
 #endif
 	if (pathState != MK_GENERATE_CAMERA_RAY)
 		return;
@@ -1183,8 +1163,6 @@ __kernel void SpatialReuse_Init(
 #if defined(DEBUG_PRINTF_KERNEL_NAME)
 	if (gid == DEBUG_GID)
 		printf("Kernel: SpatialReuse_Init(state = %d)\n", taskState->state);
-	else
-		return;
 #endif
 
 	//--------------------------------------------------------------------------
@@ -1225,8 +1203,6 @@ __kernel void SpatialReuse_Iterate(
 #if defined(DEBUG_PRINTF_KERNEL_NAME)
 	if (gid == DEBUG_GID)
 		printf("Kernel: SpatialReuse_Iterate(state = %d)\n", taskState->state);
-	else
-		return;
 #endif
 
 	//--------------------------------------------------------------------------
@@ -1266,8 +1242,6 @@ __kernel void SpatialReuse_Done(
 #if defined(DEBUG_PRINTF_KERNEL_NAME)
 	if (gid == DEBUG_GID)
 		printf("Kernel: SpatialReuse_Done(state = %d)\n", taskState->state);
-	else
-		return;
 #endif
 
 	//--------------------------------------------------------------------------
@@ -1306,8 +1280,6 @@ __kernel void SpatialReuse_SetSplat(
 #if defined(DEBUG_PRINTF_KERNEL_NAME)
 	if (gid == DEBUG_GID)
 		printf("Kernel: SpatialReuse_Splat(state = %d)\n", taskState->state);
-	else
-		return;
 #endif
 
 	taskState->state = MK_SPLAT_SAMPLE;
