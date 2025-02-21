@@ -309,12 +309,11 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 				bsdf,
 				sampleResult
 				LIGHTS_PARAM);
-	}
-
 #if defined(RENDER_ENGINE_RESPIRPATHOCL)
-	// Add BSDF importance sampled light sample into the reservoir.
-	RespirReservoir_Update(taskConfig, taskState, sampleResult);
+		// Add BSDF importance sampled light sample into the reservoir.
+		RespirReservoir_Update(taskConfig, taskState, sampleResult);
 #endif
+	}
 
 	//----------------------------------------------------------------------
 	// Check if I can use the photon cache
