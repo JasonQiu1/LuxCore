@@ -175,7 +175,7 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 
 	// normalized path contribution
 	float3 pathContribution = SampleResult_GetUnscaledSpectrum(&taskConfig->film, newSample);
-	float3 pathPdf = VLOAD3F(taskState->lastWeight.c);
+	float3 pathPdf = WHITE;
 
 	// correct zero components in pdf
 	if (pathPdf.x == 0) {
