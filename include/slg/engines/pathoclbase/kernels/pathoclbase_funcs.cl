@@ -22,6 +22,8 @@
 //  PARAM_RAY_EPSILON_MIN
 //  PARAM_RAY_EPSILON_MAX
 
+// #define DEBUG
+
 /*void MangleMemory(__global unsigned char *ptr, const size_t size) {
 	Seed seed;
 	Rnd_Init(7 + get_global_id(0), &seed);
@@ -79,6 +81,7 @@ OPENCL_FORCE_INLINE void InitSampleResult(
 }
 
 OPENCL_FORCE_INLINE void GenerateEyePath(
+		__global GPUTask *task, 
 		__constant const GPUTaskConfiguration* restrict taskConfig,
 		__global GPUTaskDirectLight *taskDirectLight,
 		__global GPUTaskState *taskState,
@@ -152,14 +155,10 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 	taskState->seedPassThroughEvent = initSeed;
 
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-	VSTORE3F(BLACK, taskState->lastWeight.c);
+	VSTORE3F(WHITE, taskState->lastWeight.c);
+	taskState->bsdfPdfWProduct = 1.f;
 	taskState->initialPathReservoir.sumWeight = 0.0f;
-
-	// Initialize reservoir sampling seed
-	// TODO: Not sure the correct way to get an initial seed here. I just copied the above code for now.
-	seedValue = Sampler_GetSample(taskConfig, IDX_BSDF_OFFSET + IDX_PASSTHROUGH SAMPLER_PARAM);
-	Rnd_InitFloat(seedValue, &initSeed);
-	taskState->seedReservoirSampling = initSeed;
+	taskState->initialPathReservoir.selectedSample.sampleResult = *sampleResult;
 #endif
 }
 
@@ -167,38 +166,67 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 // Utility functions
 //------------------------------------------------------------------------------
 
-#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
+#if defined(RENDER_ENGINE_RESPIRPATHOCL)
 // Add a sample to the streaming reservoir.
 // Simply replace based on the new sample's weight and the reservoir's current sum weight.
 OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfiguration* restrict taskConfig, __global GPUTaskState* restrict taskState, 
 		__global SampleResult* restrict newSample) {
 	__global RespirReservoir* reservoir = &taskState->initialPathReservoir;
+
+	// normalized path contribution
+	float3 pathContribution = SampleResult_GetUnscaledSpectrum(&taskConfig->film, newSample);
+	float3 pathPdf = WHITE;
+
+	// correct zero components in pdf
+	if (pathPdf.x == 0) {
+		pathContribution.x = 0;
+		pathPdf.x = 1;
+	}
+	if (pathPdf.y == 0) {
+		pathContribution.y = 0;
+		pathPdf.y = 1;
+	}
+	if (pathPdf.z == 0) {
+		pathContribution.z = 0;
+		pathPdf.z = 1;
+	}
+
 	const float random = Rnd_FloatValue(&taskState->seedReservoirSampling);
 
-	float3 pathPdf = VLOAD3F(taskState->throughput.c) * VLOAD3F(taskState->lastWeight.c);
+	// Weight of the sample is the grayscale of 
+	// (path contribution / path PDF)
+	// = (unnorm path contribution / path PDF) / path PDF
+	const float weight = Spectrum_Filter(pathContribution / pathPdf);
 
-	float3 pathContribution = SampleResult_GetRadiance(&taskConfig->film, newSample);
+#ifdef DEBUG
+	const size_t gid = get_global_id(0);
+#endif
 
-	// Weight of the sample is path contribution / path PDF 
-	if (pathPdf.x == 0.0) {
-		pathContribution.x = 0.0;
-		pathPdf.x = 1.0;
-	}
-	if (pathPdf.y == 0.0) {
-		pathContribution.y = 0.0;
-		pathPdf.y = 1.0;
-	}
-	if (pathPdf.z == 0.0) {
-		pathContribution.z = 0.0;
-		pathPdf.z = 1.0;
-	}
-	
-	// TODO: verify that averaging weight from each color together to get the sample weight is unbiased
-	const float weight = Spectrum_Filter(pathContribution);
 	reservoir->sumWeight += weight;
 	if (random < (weight / reservoir->sumWeight)) {
 		reservoir->selectedSample.sampleResult = *newSample;
+#ifdef DEBUG
+		if (gid == 1) {
+			printf("made replacement\n");
+		}
+#endif
 	}
+
+#ifdef DEBUG
+	if (gid == 1) {
+		float3 selectedContribution = SampleResult_GetUnscaledSpectrum(&taskConfig->film, &reservoir->selectedSample.sampleResult);
+
+		printf("contribution: (%f, %f, %f), pdf: (%f, %f, %f), throughput: (%f, %f, %f), lastweight: (%f, %f, %f), bsdfWProduct: %f, weight: %f, sumweight: %f, random: %f, replacement chance: %f, selected: (%f, %f, %f)\n\n", 
+			pathContribution.x, pathContribution.y, pathContribution.z,
+			pathPdf.x, pathPdf.y, pathPdf.z,
+			taskState->throughput.c[0], taskState->throughput.c[1], taskState->throughput.c[2],
+			taskState->lastWeight.c[0], taskState->lastWeight.c[1], taskState->lastWeight.c[2],
+			taskState->bsdfPdfWProduct,
+			weight, reservoir->sumWeight,
+			random, weight / reservoir->sumWeight,
+			selectedContribution.x, selectedContribution.y, selectedContribution.z);
+	}
+#endif
 }
 #endif
 
@@ -257,7 +285,7 @@ OPENCL_FORCE_INLINE void DirectHitInfiniteLight(__constant const Film* restrict 
 			} else
 				weight = 1.f;
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-			VSTORE3F(weight * WHITE, taskState->lastWeight.c);
+			VSTORE3F(VLOAD3F(taskState->lastWeight.c) * weight, taskState->lastWeight.c);
 #endif
 
 			SampleResult_AddEmission(film, sampleResult, light->lightID, throughput, weight * envRadiance);
@@ -310,7 +338,7 @@ OPENCL_FORCE_INLINE void DirectHitFiniteLight(__constant const Film* restrict fi
 			weight = PowerHeuristic(pathInfo->lastBSDFPdfW * Light_GetAvgPassThroughTransparency(light LIGHTS_PARAM), directPdfW * lightPickProb);
 		}
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-		VSTORE3F(weight * WHITE, taskState->lastWeight.c);
+		VSTORE3F(VLOAD3F(taskState->lastWeight.c) * weight, taskState->lastWeight.c);
 #endif
 		SampleResult_AddEmission(film, sampleResult, BSDF_GetLightID(bsdf
 				MATERIALS_PARAM), VLOAD3F(taskState->throughput.c), weight * emittedRadiance);
@@ -434,7 +462,7 @@ OPENCL_FORCE_INLINE bool DirectLight_BSDFSampling(
 
 	const float weight = misEnabled ? PowerHeuristic(directLightSamplingPdfW, bsdfPdfW) : 1.f;
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-	VSTORE3F(weight * WHITE, taskState->lastWeight.c);
+	VSTORE3F(VLOAD3F(taskState->lastWeight.c) * weight * factor * bsdfEval, taskState->lastWeight.c);
 #endif
 
 	const float3 lightRadiance = VLOAD3F(info->lightRadiance.c);
@@ -661,7 +689,7 @@ __kernel void Init(
 #endif
 
 		// Generate the eye path
-		GenerateEyePath(taskConfig,
+		GenerateEyePath(task, taskConfig,
 				taskDirectLight, taskState,
 				camera,
 				cameraBokehDistribution,
@@ -684,6 +712,11 @@ __kernel void Init(
 		// Mark the ray like like one to NOT trace
 		rays[gid].flags = RAY_FLAGS_MASKED;
 	}
+
+#if defined(RENDER_ENGINE_RESPIRPATHOCL)
+	// Initialize reservoir sampling seed
+	Rnd_InitFloat(Rnd_FloatValue(&task->seed), &taskState->seedReservoirSampling);
+#endif
 
 	// Save the seed
 	task->seed = seedValue;

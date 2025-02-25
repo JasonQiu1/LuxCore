@@ -29,6 +29,7 @@ typedef struct {
 	float filmX, filmY;
 
 	Spectrum radiancePerPixelNormalized[FILM_MAX_RADIANCE_GROUP_COUNT];
+	Spectrum radiancePerPixelUnnormalized[FILM_MAX_RADIANCE_GROUP_COUNT];
 	float alpha;
 	float depth;
 	Point position;

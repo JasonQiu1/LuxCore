@@ -44,15 +44,13 @@ __kernel void AdvancePaths_MK_RT_NEXT_VERTEX(
 	// Read the path state
 	__global GPUTaskState *taskState = &tasksState[gid];
 	PathState pathState = taskState->state;
-#if defined(DEBUG_PRINTF_KERNEL_NAME)
-	if (gid == DEBUG_GID)
-		printf("Kernel: AdvancePaths_MK_RT_NEXT_VERTEX(state = %d)\n", pathState);
-	else
-		return;
-#endif
 	if (pathState != MK_RT_NEXT_VERTEX)
 		return;
 
+		#if defined(DEBUG_PRINTF_KERNEL_NAME)
+		if (gid == DEBUG_GID)
+			printf("Kernel: AdvancePaths_MK_RT_NEXT_VERTEX(state = %d)\n", pathState);
+	#endif
 	//--------------------------------------------------------------------------
 	// Start of variables setup
 	//--------------------------------------------------------------------------
@@ -120,15 +118,13 @@ __kernel void AdvancePaths_MK_HIT_NOTHING(
 	// Read the path state
 	__global GPUTaskState *taskState = &tasksState[gid];
 	PathState pathState = taskState->state;
-#if defined(DEBUG_PRINTF_KERNEL_NAME)
-	if (gid == DEBUG_GID)
-		printf("Kernel: AdvancePaths_MK_HIT_NOTHING(state = %d)\n", pathState);
-	else
-		return;
-#endif
 	if (pathState != MK_HIT_NOTHING)
 		return;
 
+		#if defined(DEBUG_PRINTF_KERNEL_NAME)
+		if (gid == DEBUG_GID)
+			printf("Kernel: AdvancePaths_MK_HIT_NOTHING(state = %d)\n", pathState);
+	#endif
 	//--------------------------------------------------------------------------
 	// Start of variables setup
 	//--------------------------------------------------------------------------
@@ -216,15 +212,13 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 	// Read the path state
 	__global GPUTaskState *taskState = &tasksState[gid];
 	PathState pathState = taskState->state;
-#if defined(DEBUG_PRINTF_KERNEL_NAME)
-	if (gid == DEBUG_GID)
-		printf("Kernel: AdvancePaths_MK_HIT_OBJECT(state = %d)\n", pathState);
-	else
-		return;
-#endif
 	if (pathState != MK_HIT_OBJECT)
 		return;
 
+		#if defined(DEBUG_PRINTF_KERNEL_NAME)
+		if (gid == DEBUG_GID)
+			printf("Kernel: AdvancePaths_MK_HIT_OBJECT(state = %d)\n", pathState);
+	#endif
 	//--------------------------------------------------------------------------
 	// Start of variables setup
 	//--------------------------------------------------------------------------
@@ -315,6 +309,10 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 				bsdf,
 				sampleResult
 				LIGHTS_PARAM);
+#if defined(RENDER_ENGINE_RESPIRPATHOCL)
+		// Add BSDF importance sampled light sample into the reservoir.
+		RespirReservoir_Update(taskConfig, taskState, sampleResult);
+#endif
 	}
 
 	//----------------------------------------------------------------------
@@ -478,15 +476,13 @@ __kernel void AdvancePaths_MK_RT_DL(
 	__global GPUTask *task = &tasks[gid];
 	__global GPUTaskState *taskState = &tasksState[gid];
 	PathState pathState = taskState->state;
-#if defined(DEBUG_PRINTF_KERNEL_NAME)
-	if (gid == DEBUG_GID)
-		printf("Kernel: AdvancePaths_MK_RT_DL(state = %d)\n", pathState);
-	else
-		return;
-#endif
 	if (pathState != MK_RT_DL)
 		return;
 
+		#if defined(DEBUG_PRINTF_KERNEL_NAME)
+		if (gid == DEBUG_GID)
+			printf("Kernel: AdvancePaths_MK_RT_DL(state = %d)\n", pathState);
+	#endif
  	//--------------------------------------------------------------------------
 	// Start of variables setup
 	//--------------------------------------------------------------------------
@@ -606,15 +602,13 @@ __kernel void AdvancePaths_MK_DL_ILLUMINATE(
 	__global GPUTask *task = &tasks[gid];
 	__global GPUTaskState *taskState = &tasksState[gid];
 	PathState pathState = taskState->state;
-#if defined(DEBUG_PRINTF_KERNEL_NAME)
-	if (gid == DEBUG_GID)
-		printf("Kernel: AdvancePaths_MK_DL_ILLUMINATE(state = %d)\n", pathState);
-	else
-		return;
-#endif
 	if (pathState != MK_DL_ILLUMINATE)
 		return;
 
+		#if defined(DEBUG_PRINTF_KERNEL_NAME)
+		if (gid == DEBUG_GID)
+			printf("Kernel: AdvancePaths_MK_DL_ILLUMINATE(state = %d)\n", pathState);
+	#endif
  	//--------------------------------------------------------------------------
 	// Start of variables setup
 	//--------------------------------------------------------------------------
@@ -694,15 +688,13 @@ __kernel void AdvancePaths_MK_DL_SAMPLE_BSDF(
 	// Read the path state
 	__global GPUTaskState *taskState = &tasksState[gid];
 	PathState pathState = taskState->state;
-#if defined(DEBUG_PRINTF_KERNEL_NAME)
-	if (gid == DEBUG_GID)
-		printf("Kernel: AdvancePaths_MK_DL_SAMPLE_BSDF(state = %d)\n", pathState);
-	else
-		return;
-#endif
 	if (pathState != MK_DL_SAMPLE_BSDF)
 		return;
 
+		#if defined(DEBUG_PRINTF_KERNEL_NAME)
+		if (gid == DEBUG_GID)
+			printf("Kernel: AdvancePaths_MK_DL_SAMPLE_BSDF(state = %d)\n", pathState);
+	#endif
  	//--------------------------------------------------------------------------
 	// Start of variables setup
 	//--------------------------------------------------------------------------
@@ -783,15 +775,13 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 	__global GPUTask *task = &tasks[gid];
 	__global GPUTaskState *taskState = &tasksState[gid];
 	PathState pathState = taskState->state;
-#if defined(DEBUG_PRINTF_KERNEL_NAME)
-	if (gid == DEBUG_GID)
-		printf("Kernel: AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(state = %d)\n", pathState);
-	else
-		return;
-#endif
 	if (pathState != MK_GENERATE_NEXT_VERTEX_RAY)
 		return;
 
+		#if defined(DEBUG_PRINTF_KERNEL_NAME)
+		if (gid == DEBUG_GID)
+			printf("Kernel: AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(state = %d)\n", pathState);
+	#endif
  	//--------------------------------------------------------------------------
 	// Start of variables setup
 	//--------------------------------------------------------------------------
@@ -881,6 +871,10 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 
 		VSTORE3F(throughputFactor * VLOAD3F(taskState->throughput.c), taskState->throughput.c);
 
+#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
+		taskState->bsdfPdfWProduct *= bsdfPdfW;
+#endif
+
 		// This is valid for irradiance AOV only if it is not a SPECULAR material and
 		// first path vertex. Set or update sampleResult.irradiancePathThroughput
 		if (sampleResult->firstPathVertex) {
@@ -946,15 +940,13 @@ __kernel void AdvancePaths_MK_SPLAT_SAMPLE(
 	__global GPUTask *task = &tasks[gid];
 	__global GPUTaskState *taskState = &tasksState[gid];
 	PathState pathState = taskState->state;
-#if defined(DEBUG_PRINTF_KERNEL_NAME)
-	if (gid == DEBUG_GID)
-		printf("Kernel: AdvancePaths_MK_SPLAT_SAMPLE(state = %d)\n", pathState);
-	else
-		return;
-#endif
 	if (pathState != MK_SPLAT_SAMPLE)
 		return;
 
+		#if defined(DEBUG_PRINTF_KERNEL_NAME)
+		if (gid == DEBUG_GID)
+			printf("Kernel: AdvancePaths_MK_SPLAT_SAMPLE(state = %d)\n", pathState);
+	#endif
 	//--------------------------------------------------------------------------
 	// Start of variables setup
 	//--------------------------------------------------------------------------
@@ -1055,15 +1047,13 @@ __kernel void AdvancePaths_MK_NEXT_SAMPLE(
 	__global GPUTask *task = &tasks[gid];
 	__global GPUTaskState *taskState = &tasksState[gid];
 	PathState pathState = taskState->state;
-#if defined(DEBUG_PRINTF_KERNEL_NAME)
-	if (gid == DEBUG_GID)
-		printf("Kernel: AdvancePaths_MK_NEXT_SAMPLE(state = %d)\n", pathState);
-	else
-		return;
-#endif
 	if (pathState != MK_NEXT_SAMPLE)
 		return;
 
+		#if defined(DEBUG_PRINTF_KERNEL_NAME)
+		if (gid == DEBUG_GID)
+			printf("Kernel: AdvancePaths_MK_NEXT_SAMPLE(state = %d)\n", pathState);
+	#endif
 	//--------------------------------------------------------------------------
 	// Start of variables setup
 	//--------------------------------------------------------------------------
@@ -1120,15 +1110,13 @@ __kernel void AdvancePaths_MK_GENERATE_CAMERA_RAY(
 	__global GPUTask *task = &tasks[gid];
 	__global GPUTaskState *taskState = &tasksState[gid];
 	PathState pathState = taskState->state;
-#if defined(DEBUG_PRINTF_KERNEL_NAME)
-	if (gid == DEBUG_GID)
-		printf("Kernel: AdvancePaths_MK_GENERATE_CAMERA_RAY(state = %d)\n", pathState);
-	else
-		return;
-#endif
 	if (pathState != MK_GENERATE_CAMERA_RAY)
 		return;
 
+#if defined(DEBUG_PRINTF_KERNEL_NAME)
+		if (gid == DEBUG_GID)
+			printf("Kernel: AdvancePaths_MK_GENERATE_CAMERA_RAY(state = %d)\n", pathState);
+#endif
 	//--------------------------------------------------------------------------
 	// Start of variables setup
 	//--------------------------------------------------------------------------
@@ -1148,7 +1136,7 @@ __kernel void AdvancePaths_MK_GENERATE_CAMERA_RAY(
 	// Re-initialize the volume information
 	PathVolumeInfo_Init(&pathInfo->volume);
 
-	GenerateEyePath(taskConfig,
+	GenerateEyePath(task, taskConfig,
 			&tasksDirectLight[gid], taskState,
 			camera,
 			cameraBokehDistribution,
@@ -1185,8 +1173,6 @@ __kernel void SpatialReuse_Init(
 #if defined(DEBUG_PRINTF_KERNEL_NAME)
 	if (gid == DEBUG_GID)
 		printf("Kernel: SpatialReuse_Init(state = %d)\n", taskState->state);
-	else
-		return;
 #endif
 
 	//--------------------------------------------------------------------------
@@ -1224,12 +1210,6 @@ __kernel void SpatialReuse_Iterate(
 	// Read the path state
 	__global GPUTask *task = &tasks[gid];
 	__global GPUTaskState *taskState = &tasksState[gid];
-#if defined(DEBUG_PRINTF_KERNEL_NAME)
-	if (gid == DEBUG_GID)
-		printf("Kernel: SpatialReuse_Iterate(state = %d)\n", taskState->state);
-	else
-		return;
-#endif
 
 	//--------------------------------------------------------------------------
 	// Start of variables setup
@@ -1265,12 +1245,6 @@ __kernel void SpatialReuse_Done(
 	// Read the path state
 	__global GPUTask *task = &tasks[gid];
 	__global GPUTaskState *taskState = &tasksState[gid];
-#if defined(DEBUG_PRINTF_KERNEL_NAME)
-	if (gid == DEBUG_GID)
-		printf("Kernel: SpatialReuse_Done(state = %d)\n", taskState->state);
-	else
-		return;
-#endif
 
 	//--------------------------------------------------------------------------
 	// Start of variables setup
@@ -1305,12 +1279,6 @@ __kernel void SpatialReuse_SetSplat(
 
 	// Read the path state
 	__global GPUTaskState *taskState = &tasksState[gid];
-#if defined(DEBUG_PRINTF_KERNEL_NAME)
-	if (gid == DEBUG_GID)
-		printf("Kernel: SpatialReuse_Splat(state = %d)\n", taskState->state);
-	else
-		return;
-#endif
 
 	taskState->state = MK_SPLAT_SAMPLE;
 }
