@@ -1257,7 +1257,7 @@ __kernel void SpatialReuse_Iterate(
 
 	// RIS all of them
 	for (uint i = 0; i < numNeighbors; i++) {
-		RespirReservoir_SpatialUpdate(reservoir, neighbors[i, &task->seed, film]);
+		RespirReservoir_SpatialUpdate(reservoir, neighbors[i], &task->seed, film);
 	}
 
 	// DEBUG: sanity check to make sure shifting from one pixel to the same one gets the exact same result
