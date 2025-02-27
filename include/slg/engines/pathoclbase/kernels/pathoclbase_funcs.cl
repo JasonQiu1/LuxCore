@@ -235,11 +235,11 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 #endif
 }
 
-OPENCL_FORCE_INLINE bool CheckSampleResultsAdjacent(__constant const SampleResult* a, __constant const SampleResult* b) {
+OPENCL_FORCE_INLINE bool CheckSampleResultsAdjacent(__constant const SampleResult* a, __constant const SampleResult* b, int spatialRadius) {
     int dx = a->pixelX - b->pixelX;
     int dy = a->pixelY - b->pixelY;
     
-    return (dx >= -1 && dx <= 1) && (dy >= -1 && dy <= 1) && !(dx == 0 && dy == 0);
+    return (dx >= -spatialRadius && dx <= spatialRadius) && (dy >= -spatialRadius && dy <= spatialRadius) && !(dx == 0 && dy == 0);
 }
 
 // // Find the 3x3 neighbors around the pixel this work-item is handling for now
@@ -249,7 +249,7 @@ OPENCL_FORCE_INLINE RespirReservoir** Respir_GetNeighboringReservoirs(__constant
 	// collect all respir reservoirs with distance 1 from current pixel x and pixel y
 	*numNeighbors = 0;
 	for (uint i = 0; i < bufferSize; i++) {
-		if (CheckSampleResultsAdjacent(sampleResult, &tasksState[i].initialPathReservoir.selectedSample.sampleResult)) {
+		if (CheckSampleResultsAdjacent(sampleResult, &tasksState[i].initialPathReservoir.selectedSample.sampleResult, 4)) {
 			out[(*numNeighbors)++] = &tasksState[i].initialPathReservoir;
 		}
 	}
