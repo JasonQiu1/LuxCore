@@ -1253,7 +1253,7 @@ __kernel void SpatialReuse_Iterate(
 	__global RespirReservoir* neighbors[8];
 	uint numNeighbors = 0;
 	Respir_GetNeighboringReservoirs(sampleResult, tasksState, bufferSize, 
-		neighbors, numNeighbors);
+		neighbors, &numNeighbors);
 	
 	if (gid == 0) {
 		printf("# spatial neighbors: %i\n", numNeighbors);
