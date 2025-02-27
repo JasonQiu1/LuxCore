@@ -256,10 +256,6 @@ OPENCL_FORCE_INLINE	void RespirReservoir_SpatialUpdate(__global RespirReservoir*
 			Radiance_Add(film, &offset->selectedSample.prefixRadiance, 
 				&base->selectedSample.reconnectionVertex.postfixRadiance, 
 				offset->selectedSample.sampleResult.radiancePerPixelNormalized);
-
-			// DEBUG: sanity check, make sure that prefixRadiance is same as DL
-			Radiance_Copy(film, &offset->selectedSample.prefixRadiance, 
-				offset->selectedSample.sampleResult.radiancePerPixelNormalized);
 		// }
 	}
 }
