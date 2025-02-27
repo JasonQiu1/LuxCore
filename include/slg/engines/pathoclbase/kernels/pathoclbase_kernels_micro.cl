@@ -851,7 +851,7 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 		Radiance_Copy(
 			&taskConfig->film,
 			sampleResult.radiancePerPixelNormalized,
-			taskState->initialPathReservoir.selectedSample.prefixRadiance
+			&taskState->initialPathReservoir.selectedSample.prefixRadiance
 		);
 #endif
 	}
@@ -978,8 +978,8 @@ __kernel void AdvancePaths_MK_SPLAT_SAMPLE(
 	Radiance_Sub(
 		film,
 		sampleResult.radiancePerPixelNormalized,
-		taskState->initialPathReservoir.selectedSample.prefixRadiance,
-		taskState->initialPathReservoir.selectedSample.reconnectionVertex.postfixRadiance
+		&taskState->initialPathReservoir.selectedSample.prefixRadiance,
+		&taskState->initialPathReservoir.selectedSample.reconnectionVertex.postfixRadiance
 	);
 
 	// Copy resampled sample from reservoir to sampleResultsBuff[gid] to be splatted like normal

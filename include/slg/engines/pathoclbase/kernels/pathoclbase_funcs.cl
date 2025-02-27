@@ -238,7 +238,7 @@ OPENCL_FORCE_INLINE	void RespirReservoir_SpatialUpdate(__global RespirReservoir*
 		__global RespirReservoir* base, __global Seed* seed, __constant Film* film) {
 	// Resample the offset reservoir
 	offset->sumWeight += base->sumWeight;
-	if (Rnd_FloatValue(seed) < offset->weight / base->sumWeight) {
+	if (Rnd_FloatValue(seed) < offset->selectedWeight / base->sumWeight) {
 		// Using the simplest but biased reconnection shift mapping for now
 		// TODO: upgrade to hybrid shift mapping
 		// TODO: If not good/invalid reconnection vertex, then skip
@@ -251,8 +251,8 @@ OPENCL_FORCE_INLINE	void RespirReservoir_SpatialUpdate(__global RespirReservoir*
 
 			// recalculate sample throughput to get the new sample weight
 			Radiance_Add(film, &offset->selectedSample.prefixRadiance, 
-				base->selectedSample.reconnectionVertex.postfixRadiance, 
-				&offset->selectedSample.radiancePerPixelNormalized)
+				&base->selectedSample.reconnectionVertex.postfixRadiance, 
+				offset->selectedSample.sampleResult.radiancePerPixelNormalized)
 		// }
 	}
 }
