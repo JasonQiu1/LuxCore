@@ -241,7 +241,7 @@ OPENCL_FORCE_INLINE	void RespirReservoir_SpatialUpdate(__global RespirReservoir*
 		__global RespirReservoir* base, __global Seed* seed, __constant const Film* film) {
 	// Resample the offset reservoir
 	offset->sumWeight += base->sumWeight;
-	if (Rnd_FloatValue(seed) < offset->selectedWeight / base->sumWeight) {
+	if (Rnd_FloatValue(seed) < base->selectedWeight / offset->sumWeight) {
 		// Using the simplest but biased reconnection shift mapping for now
 		// TODO: upgrade to hybrid shift mapping
 		// TODO: If not good/invalid reconnection vertex, then skip
