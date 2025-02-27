@@ -189,3 +189,24 @@ for (uint i = 0; i < film->radianceGroupCount; ++i)
 
 return c;
 }
+
+OPENCL_FORCE_INLINE void Radiance_Add(__constant const Film* restrict film, 
+	__global Spectrum* a, __global Spectrum* b, __global Spectrum* out) {
+	for (uint i = 0; i < film->radianceGroupCount; i++) {
+		out[i] = a[i] + b[i];
+	}
+}
+
+OPENCL_FORCE_INLINE void Radiance_Sub(__constant const Film* restrict film, 
+	__global Spectrum* a, __global Spectrum* b, __global Spectrum* out) {
+	for (uint i = 0; i < film->radianceGroupCount; i++) {
+		out[i] = a[i] - b[i];
+	}
+}
+
+OPENCL_FORCE_INLINE void Radiance_Copy(__constant const Film* restrict film, 
+	__global Spectrum* radiance, __global Spectrum* out) {
+	for (uint i = 0; i < film->radianceGroupCount; i++) {
+		out[i] = radiance[i];
+	}
+}

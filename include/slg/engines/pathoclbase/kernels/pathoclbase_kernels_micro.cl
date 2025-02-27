@@ -843,8 +843,18 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 		}
 	}
 
-	if (sampleResult->firstPathVertex)
+	if (sampleResult->firstPathVertex) {
 		sampleResult->firstPathVertexEvent = bsdfEvent;
+
+#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
+		// Cache radiance from primary path vertex for RIS
+		Radiance_Copy(
+			&taskConfig->film,
+			sampleResult.radiancePerPixelNormalized,
+			taskState->initialPathReservoir.selectedSample.prefixRadiance
+		);
+#endif
+	}
 
 	EyePathInfo_AddVertex(pathInfo, bsdf, bsdfEvent, bsdfPdfW,
 			taskConfig->pathTracer.hybridBackForward.glossinessThreshold
@@ -964,6 +974,14 @@ __kernel void AdvancePaths_MK_SPLAT_SAMPLE(
 	//--------------------------------------------------------------------------
 
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
+	// Cache data for RIS
+	Radiance_Sub(
+		film,
+		sampleResult.radiancePerPixelNormalized,
+		taskState->initialPathReservoir.selectedSample.prefixRadiance,
+		taskState->initialPathReservoir.selectedSample.reconnectionVertex.postfixRadiance
+	);
+
 	// Copy resampled sample from reservoir to sampleResultsBuff[gid] to be splatted like normal
 	*sampleResult = taskState->initialPathReservoir.selectedSample.sampleResult;
 #endif
@@ -1207,7 +1225,7 @@ __kernel void SpatialReuse_Iterate(
 		) {
 	const size_t gid = get_global_id(0);
 
-	// Read the path state
+	__global SampleResult *sampleResult = &sampleResultsBuff[gid];
 	__global GPUTask *task = &tasks[gid];
 	__global GPUTaskState *taskState = &tasksState[gid];
 
@@ -1224,7 +1242,9 @@ __kernel void SpatialReuse_Iterate(
 	// End of variables setup
 	//--------------------------------------------------------------------------
 
-	// TODO: IMPLEMENT SPATIAL RESAMPLING
+	// DEBUG: sanity check to make sure shifting from one pixel to the same one gets the exact same result
+	// TODO: remove after verifying this is good
+	RespirReservoir_SpatialUpdate(&taskState->respirReservoir, &taskState->respirReservoir, &taskConfig->seed, &taskConfig->film);
 
 	//--------------------------------------------------------------------------
 

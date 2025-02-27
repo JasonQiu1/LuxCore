@@ -196,6 +196,8 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 	// Weight of the sample is the grayscale of 
 	// (path contribution / path PDF)
 	// = (unnorm path contribution / path PDF) / path PDF
+
+	// TODO: current calculation is (pathContribution * path PDF) / path PDF which is probably wrong
 	const float weight = Spectrum_Filter(pathContribution / pathPdf);
 
 #ifdef DEBUG
@@ -205,6 +207,7 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 	reservoir->sumWeight += weight;
 	if (random < (weight / reservoir->sumWeight)) {
 		reservoir->selectedSample.sampleResult = *newSample;
+		reservoir->selectedWeight = weight;
 #ifdef DEBUG
 		if (gid == 1) {
 			printf("made replacement\n");
@@ -228,6 +231,32 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 	}
 #endif
 }
+
+// Resample the offset path onto the base path. 
+// If successful, perform a shift map from the offset path to the base path at the reconnection vertex.
+OPENCL_FORCE_INLINE	void RespirReservoir_SpatialUpdate(__global RespirReservoir* offset,
+		__global RespirReservoir* base, __global Seed* seed, __constant Film* film) {
+	// Resample the offset reservoir
+	offset->sumWeight += base->sumWeight;
+	if (Rnd_FloatValue(seed) < offset->weight / base->sumWeight) {
+		// Using the simplest but biased reconnection shift mapping for now
+		// TODO: upgrade to hybrid shift mapping
+		// TODO: If not good/invalid reconnection vertex, then skip
+
+		// Do visibility check from base primary hit vertex to offset secondary hit vertex
+			// set offset reconnection vertex to base reconnection vertex
+			offset->selectedSample.reconnectionVertex = base->selectedSample.reconnectionVertex;
+
+			// calculate jacobian determinant
+
+			// recalculate sample throughput to get the new sample weight
+			Radiance_Add(film, &offset->selectedSample.prefixRadiance, 
+				base->selectedSample.reconnectionVertex.postfixRadiance, 
+				&offset->selectedSample.radiancePerPixelNormalized)
+		// }
+	}
+}
+
 #endif
 
 OPENCL_FORCE_INLINE bool CheckDirectHitVisibilityFlags(__global const LightSource* restrict lightSource,
