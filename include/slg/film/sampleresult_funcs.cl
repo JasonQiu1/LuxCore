@@ -190,6 +190,17 @@ for (uint i = 0; i < film->radianceGroupCount; ++i)
 return c;
 }
 
+OPENCL_FORCE_INLINE void Radiance_Clear(__global Spectrum* radiance) {
+	VSTORE3F(BLACK, radiance[0].c);
+	VSTORE3F(BLACK, radiance[1].c);
+	VSTORE3F(BLACK, radiance[2].c);
+	VSTORE3F(BLACK, radiance[3].c);
+	VSTORE3F(BLACK, radiance[4].c);
+	VSTORE3F(BLACK, radiance[5].c);
+	VSTORE3F(BLACK, radiance[6].c);
+	VSTORE3F(BLACK, radiance[7].c);
+}
+
 OPENCL_FORCE_INLINE void Radiance_Add(__constant const Film* restrict film, 
 	__global Spectrum* a, __global Spectrum* b, __global Spectrum* out) {
 	for (uint i = 0; i < film->radianceGroupCount; i++) {

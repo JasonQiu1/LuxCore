@@ -160,10 +160,8 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 	taskState->initialPathReservoir.sumWeight = 0.0f;
 	taskState->initialPathReservoir.selectedWeight = 0.0f;
 	taskState->initialPathReservoir.selectedSample.sampleResult = *sampleResult;
-	Radiance_Copy(taskState->initialPathReservoir.selectedSample.sampleResult.radiancePerPixelNormalized, 
-		taskState->initialPathReservoir.selectedSample.prefixRadiance);
-	Radiance_Copy(taskState->initialPathReservoir.selectedSample.sampleResult.radiancePerPixelNormalized, 
-		taskState->initialPathReservoir.selectedSample.reconnectionVertex.postfixRadiance);
+	Radiance_Clear(taskState->initialPathReservoir.selectedSample.prefixRadiance);
+	Radiance_Clear(taskState->initialPathReservoir.selectedSample.reconnectionVertex.postfixRadiance);
 #endif
 }
 
