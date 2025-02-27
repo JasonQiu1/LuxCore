@@ -235,7 +235,7 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 // Resample the offset path onto the base path. 
 // If successful, perform a shift map from the offset path to the base path at the reconnection vertex.
 OPENCL_FORCE_INLINE	void RespirReservoir_SpatialUpdate(__global RespirReservoir* offset,
-		__global RespirReservoir* base, __global Seed* seed, __constant Film* film) {
+		__global RespirReservoir* base, __global Seed* seed, __constant const Film* film) {
 	// Resample the offset reservoir
 	offset->sumWeight += base->sumWeight;
 	if (Rnd_FloatValue(seed) < offset->selectedWeight / base->sumWeight) {
