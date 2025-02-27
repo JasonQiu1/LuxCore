@@ -1165,6 +1165,7 @@ __kernel void AdvancePaths_MK_GENERATE_CAMERA_RAY(
 #endif
 }
 
+#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
 // SPATIAL REUSE KERNELS BELOW
 
 //------------------------------------------------------------------------------
@@ -1306,3 +1307,4 @@ __kernel void SpatialReuse_SetSplat(
 
 	taskState->state = MK_SPLAT_SAMPLE;
 }
+#endif
