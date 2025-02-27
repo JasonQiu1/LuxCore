@@ -974,14 +974,6 @@ __kernel void AdvancePaths_MK_SPLAT_SAMPLE(
 	//--------------------------------------------------------------------------
 
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-	// Cache data for RIS
-	Radiance_Sub(
-		film,
-		sampleResult->radiancePerPixelNormalized,
-		&taskState->initialPathReservoir.selectedSample.prefixRadiance,
-		&taskState->initialPathReservoir.selectedSample.reconnectionVertex.postfixRadiance
-	);
-
 	// Copy resampled sample from reservoir to sampleResultsBuff[gid] to be splatted like normal
 	*sampleResult = taskState->initialPathReservoir.selectedSample.sampleResult;
 #endif
@@ -1197,6 +1189,9 @@ __kernel void SpatialReuse_Init(
 	// Start of variables setup
 	//--------------------------------------------------------------------------
 
+	__constant const Film* restrict film = &taskConfig->film;
+	__global RespirReservoir* reservoir = &taskState->initialPathReservoir;
+
 	// Read the seed
 	Seed seedValue = task->seed;
 	// This trick is required by SAMPLER_PARAM macro
@@ -1206,7 +1201,13 @@ __kernel void SpatialReuse_Init(
 	// End of variables setup
 	//--------------------------------------------------------------------------
 
-	// TODO: INITIALIZE SPATIAL REUSE PASS
+	// Cache data for RIS
+	Radiance_Sub(
+		film,
+		sampleResult->radiancePerPixelNormalized,
+		&reservoir->selectedSample.prefixRadiance,
+		&reservoir->selectedSample.reconnectionVertex.postfixRadiance
+	);
 
 	//--------------------------------------------------------------------------
 
@@ -1234,6 +1235,7 @@ __kernel void SpatialReuse_Iterate(
 	//--------------------------------------------------------------------------
 
 	__constant const Film* restrict film = &taskConfig->film;
+	__global RespirReservoir* reservoir = &taskState->initialPathReservoir;
 
 	// Read the seed
 	Seed seedValue = task->seed;
@@ -1246,7 +1248,7 @@ __kernel void SpatialReuse_Iterate(
 
 	// DEBUG: sanity check to make sure shifting from one pixel to the same one gets the exact same result
 	// TODO: remove after verifying this is good
-	RespirReservoir_SpatialUpdate(&taskState->initialPathReservoir, &taskState->initialPathReservoir, &task->seed, film);
+	RespirReservoir_SpatialUpdate(reservoir, reservoir, &task->seed, film);
 
 	//--------------------------------------------------------------------------
 
