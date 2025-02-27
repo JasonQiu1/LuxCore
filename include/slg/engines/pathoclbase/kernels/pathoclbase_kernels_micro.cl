@@ -1233,6 +1233,8 @@ __kernel void SpatialReuse_Iterate(
 	// Start of variables setup
 	//--------------------------------------------------------------------------
 
+	__constant const Film* restrict film = &taskConfig->film
+
 	// Read the seed
 	Seed seedValue = task->seed;
 	// This trick is required by SAMPLER_PARAM macro
@@ -1244,7 +1246,7 @@ __kernel void SpatialReuse_Iterate(
 
 	// DEBUG: sanity check to make sure shifting from one pixel to the same one gets the exact same result
 	// TODO: remove after verifying this is good
-	RespirReservoir_SpatialUpdate(&taskState->respirReservoir, &taskState->respirReservoir, &taskConfig->seed, &taskConfig->film);
+	RespirReservoir_SpatialUpdate(&taskState->initialPathReservoir, &taskState->initialPathReservoir, seed, film);
 
 	//--------------------------------------------------------------------------
 
