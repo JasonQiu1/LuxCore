@@ -1283,12 +1283,8 @@ __kernel void SpatialReuse_Done(
 	//--------------------------------------------------------------------------
 	// End of variables setup
 	//--------------------------------------------------------------------------
-	
-	__constant const Film* restrict film = &taskConfig->film;
-	__global RespirReservoir* reservoir = &taskState->initialPathReservoir;
-	Radiance_Copy(film, 
-		reservoir->selectedSample.prefixRadiance, 
-		reservoir->selectedSample.sampleResult.radiancePerPixelNormalized);
+
+	// TODO: SET UP SPLATTING FROM SPATIAL REUSE PASSES
 
 	//--------------------------------------------------------------------------
 
