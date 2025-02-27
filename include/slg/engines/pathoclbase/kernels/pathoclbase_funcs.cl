@@ -160,8 +160,10 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 	taskState->initialPathReservoir.sumWeight = 0.0f;
 	taskState->initialPathReservoir.selectedWeight = 0.0f;
 	taskState->initialPathReservoir.selectedSample.sampleResult = *sampleResult;
-	VSTORE3F(BLACK, taskState->initialPathReservoir.selectedSample.prefixRadiance.c);
-	VSTORE3F(BLACK, taskState->initialPathReservoir.selectedSample.reconnectionVertex.postfixRadiance.c);
+	Radiance_Copy(taskState->initialPathReservoir.selectedSample.sampleResult.radiancePerPixelNormalized, 
+		taskState->initialPathReservoir.selectedSample.prefixRadiance);
+	Radiance_Copy(taskState->initialPathReservoir.selectedSample.sampleResult.radiancePerPixelNormalized, 
+		taskState->initialPathReservoir.selectedSample.reconnectionVertex.postfixRadiance);
 #endif
 }
 
@@ -254,9 +256,8 @@ OPENCL_FORCE_INLINE	void RespirReservoir_SpatialUpdate(__global RespirReservoir*
 
 			// recalculate sample throughput to get the new sample weight
 			Radiance_Add(film, &offset->selectedSample.prefixRadiance, 
-				&base->selectedSample.reconnectionVertex.postfixRadiance, 
-				offset->selectedSample.sampleResult.radiancePerPixelNormalized);
-		// }
+				base->selectedSample.reconnectionVertex.postfixRadiance, 
+				offset->selectedSample.sampleResult.radiancePerPixelNormalized);		// }
 	}
 }
 

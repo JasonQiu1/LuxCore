@@ -851,7 +851,7 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 		Radiance_Copy(
 			&taskConfig->film,
 			sampleResult->radiancePerPixelNormalized,
-			&taskState->initialPathReservoir.selectedSample.prefixRadiance
+			taskState->initialPathReservoir.selectedSample.prefixRadiance
 		);
 #endif
 	}
@@ -1206,8 +1206,8 @@ __kernel void SpatialReuse_Init(
 	Radiance_Sub(
 		film,
 		sampleResult->radiancePerPixelNormalized,
-		&reservoir->selectedSample.prefixRadiance,
-		&reservoir->selectedSample.reconnectionVertex.postfixRadiance
+		reservoir->selectedSample.prefixRadiance,
+		reservoir->selectedSample.reconnectionVertex.postfixRadiance
 	);
 
 	//--------------------------------------------------------------------------

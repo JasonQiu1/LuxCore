@@ -90,7 +90,7 @@ typedef struct {
 typedef struct {
 	float incidentAngle; // the incident angle coming out of the reconnection vertex in the base path
 	uint pathLength; // the length of the path at the reconnection vertex
-	Spectrum postfixRadiance; // the radiance of the path of the path at the reconnection vertex and after
+	Spectrum postfixRadiance[FILM_MAX_RADIANCE_GROUP_COUNT]; // the radiance of the path of the path at the reconnection vertex and after
 	// TODO: find out if LuxCoreRender has multi-lobed materials
 	// uint prevLobeIndex; // the sampled lobe index of the material at the previous vertex 
 	// uint currLobeIndex; // the sampled lobe index of the material at the reconnection vertex
@@ -99,7 +99,7 @@ typedef struct {
 // Stores reuse information about a selected ReSPIR sample. (spatial reuse only)
 typedef struct {
 	ReconnectionVertex reconnectionVertex; // the chosen reconnection vertex for this path
-	Spectrum prefixRadiance; // the radiance of the path at the vertices before the reconnection vertex
+	Spectrum prefixRadiance[FILM_MAX_RADIANCE_GROUP_COUNT]; // the radiance of the path at the vertices before the reconnection vertex
 	SampleResult sampleResult; // the cached sampleresult data of the entire path
 	Seed seedInitial; // the initial GPUTask seed at the beginning of tracing this path
 	Seed seedReconnectionVertex; // the GPUTask seed right after tracing the reconnection vertex
