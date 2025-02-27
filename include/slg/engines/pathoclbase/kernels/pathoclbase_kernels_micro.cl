@@ -1254,6 +1254,10 @@ __kernel void SpatialReuse_Iterate(
 	uint numNeighbors = 0;
 	Respir_GetNeighboringReservoirs(sampleResult, tasksState, bufferSize, 
 		neighbors, numNeighbors);
+	
+	if (gid == 0) {
+		printf("# spatial neighbors: %i\n", numNeighbors);
+	}
 
 	// RIS all of them
 	for (uint i = 0; i < numNeighbors; i++) {

@@ -264,6 +264,9 @@ OPENCL_FORCE_INLINE	void RespirReservoir_SpatialUpdate(__global RespirReservoir*
 	// Resample the offset reservoir
 	offset->sumWeight += base->sumWeight;
 	if (Rnd_FloatValue(seed) < base->selectedWeight / offset->sumWeight) {
+		if (get_global_idi(0) == 1) {
+			printf("Spatial resampling succeeded.\n");
+		}
 		// Using the simplest but biased reconnection shift mapping for now
 		// TODO: upgrade to hybrid shift mapping
 		// TODO: If not good/invalid reconnection vertex, then skip
