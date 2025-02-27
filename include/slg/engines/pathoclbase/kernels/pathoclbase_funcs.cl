@@ -235,7 +235,7 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 #endif
 }
 
-OPENCL_FORCE_INLINE bool CheckSampleResultsAdjacent(__global SampleResult* a, __global SampleResult* b) {
+OPENCL_FORCE_INLINE bool CheckSampleResultsAdjacent(__constant const SampleResult* a, __constant const SampleResult* b) {
     int dx = a->pixelX - b->pixelX;
     int dy = a->pixelY - b->pixelY;
     
@@ -244,8 +244,8 @@ OPENCL_FORCE_INLINE bool CheckSampleResultsAdjacent(__global SampleResult* a, __
 
 // // Find the 3x3 neighbors around the pixel this work-item is handling for now
 // // TODO: upgrade to n-rooks sampling around pixel and customizable spatial radius and number of spatial neighbors
-OPENCL_FORCE_INLINE RespirReservoir** Respir_GetNeighboringReservoirs(__global SampleResult* sampleResult, 
-		__global GPUTaskState* tasksState, uint bufferSize, RespirReservoir** out, uint& numNeighbors) {
+OPENCL_FORCE_INLINE RespirReservoir** Respir_GetNeighboringReservoirs(__constant const SampleResult* sampleResult, 
+		__constant const GPUTaskState* tasksState, uint bufferSize, __global RespirReservoir** out, uint& numNeighbors) {
 	// collect all respir reservoirs with distance 1 from current pixel x and pixel y
 	numNeighbors = 0;
 	for (uint i = 0; i < bufferSize; i++) {
@@ -260,7 +260,7 @@ OPENCL_FORCE_INLINE RespirReservoir** Respir_GetNeighboringReservoirs(__global S
 // Resample the offset path onto the base path. 
 // If successful, perform a shift map from the offset path to the base path at the reconnection vertex.
 OPENCL_FORCE_INLINE	void RespirReservoir_SpatialUpdate(__global RespirReservoir* offset,
-		__global RespirReservoir* base, __global Seed* seed, __constant const Film* film) {
+		__constant const RespirReservoir* base, __global Seed* seed, __constant const Film* film) {
 	// Resample the offset reservoir
 	offset->sumWeight += base->sumWeight;
 	if (Rnd_FloatValue(seed) < base->selectedWeight / offset->sumWeight) {
