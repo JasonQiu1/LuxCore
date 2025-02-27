@@ -1203,8 +1203,7 @@ __kernel void SpatialReuse_Init(
 	//--------------------------------------------------------------------------
 
 	// Cache data for RIS
-	Radiance_Sub(
-		film,
+	Radiance_Sub(film,
 		sampleResult->radiancePerPixelNormalized,
 		reservoir->selectedSample.prefixRadiance,
 		reservoir->selectedSample.reconnectionVertex.postfixRadiance
