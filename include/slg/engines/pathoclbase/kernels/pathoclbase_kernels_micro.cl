@@ -1251,7 +1251,7 @@ __kernel void SpatialReuse_Iterate(
 	// TODO: configuration of spatial radius and number of neighbors
 	const uint bufferSize = get_global_size(0);
 #define SPATIAL_RADIUS 4
-	__global RespirReservoir* neighbors[SPATIAL_RADIUS * SPATIAL_RADIUS];
+	__global RespirReservoir* neighbors[SPATIAL_RADIUS * SPATIAL_RADIUS * 4];
 	uint numNeighbors = 0;
 	Respir_GetNeighboringReservoirs(sampleResult, tasksState, bufferSize, 
 		SPATIAL_RADIUS, neighbors, &numNeighbors);
