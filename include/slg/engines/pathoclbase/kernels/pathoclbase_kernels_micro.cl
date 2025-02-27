@@ -1188,7 +1188,7 @@ __kernel void SpatialReuse_Init(
 	//--------------------------------------------------------------------------
 	// Start of variables setup
 	//--------------------------------------------------------------------------
-
+	__global SampleResult *sampleResult = &sampleResultsBuff[gid];
 	__constant const Film* restrict film = &taskConfig->film;
 	__global RespirReservoir* reservoir = &taskState->initialPathReservoir;
 
