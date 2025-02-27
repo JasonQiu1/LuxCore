@@ -1252,7 +1252,7 @@ __kernel void SpatialReuse_Iterate(
 	const uint bufferSize = get_global_size(0);
 #define SPATIAL_RADIUS 4
 #define SPATIAL_LENGTH (SPATIAL_RADIUS * SPATIAL_RADIUS + 1)
-	__global RespirReservoir* neighbors[SPATIAL_LENGTH * SPATIAL_LENGTH];
+	RespirReservoir* neighbors[SPATIAL_LENGTH * SPATIAL_LENGTH];
 	uint numNeighbors = 0;
 	Respir_GetNeighboringReservoirs(sampleResult, tasksState, bufferSize, 
 		SPATIAL_RADIUS, neighbors, &numNeighbors);
