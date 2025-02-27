@@ -245,11 +245,11 @@ OPENCL_FORCE_INLINE bool CheckSampleResultsAdjacent(__constant const SampleResul
 // // Find the 3x3 neighbors around the pixel this work-item is handling for now
 // // TODO: upgrade to n-rooks sampling around pixel and customizable spatial radius and number of spatial neighbors
 OPENCL_FORCE_INLINE RespirReservoir** Respir_GetNeighboringReservoirs(__constant const SampleResult* sampleResult, 
-		__constant GPUTaskState* tasksState, uint bufferSize, __global RespirReservoir** out, uint* numNeighbors) {
+		__constant GPUTaskState* tasksState, uint bufferSize, const int spatialRadius, __global RespirReservoir** out, uint* numNeighbors) {
 	// collect all respir reservoirs with distance 1 from current pixel x and pixel y
 	*numNeighbors = 0;
 	for (uint i = 0; i < bufferSize; i++) {
-		if (CheckSampleResultsAdjacent(sampleResult, &tasksState[i].initialPathReservoir.selectedSample.sampleResult, 4)) {
+		if (CheckSampleResultsAdjacent(sampleResult, &tasksState[i].initialPathReservoir.selectedSample.sampleResult, spatialRadius)) {
 			out[(*numNeighbors)++] = &tasksState[i].initialPathReservoir;
 		}
 	}

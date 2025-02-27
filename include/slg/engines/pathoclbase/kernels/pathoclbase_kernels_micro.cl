@@ -1250,10 +1250,11 @@ __kernel void SpatialReuse_Iterate(
 	// Get pixels around this point
 	// TODO: configuration of spatial radius and number of neighbors
 	const uint bufferSize = get_global_size(0);
-	__global RespirReservoir* neighbors[8];
+#define SPATIAL_RADIUS 4
+	__global RespirReservoir* neighbors[SPATIAL_RADIUS * SPATIAL_RADIUS];
 	uint numNeighbors = 0;
 	Respir_GetNeighboringReservoirs(sampleResult, tasksState, bufferSize, 
-		neighbors, &numNeighbors);
+		SPATIAL_RADIUS, neighbors, &numNeighbors);
 	
 	if (gid == 0) {
 		printf("# spatial neighbors: %i\n", numNeighbors);
