@@ -1247,9 +1247,20 @@ __kernel void SpatialReuse_Iterate(
 	// End of variables setup
 	//--------------------------------------------------------------------------
 
+	// Get pixels around this point
+	// TODO: configuration of spatial radius and number of neighbors
+	RespirReservoir*[8] neighbors;
+	uint numNeighbors = 0;
+	Respir_GetNeighboringReservoirs(sampleResult, sampleResultsBuff, neighbors, &numNeighbors);
+
+	// RIS all of them
+	for (uint i = 0; i < numNeighbors; i++) {
+		RespirReservoir_SpatialUpdate(&taskState->respirReservoir, neighbors[i]);
+	}
+
 	// DEBUG: sanity check to make sure shifting from one pixel to the same one gets the exact same result
 	// TODO: remove after verifying this is good
-	RespirReservoir_SpatialUpdate(reservoir, reservoir, &task->seed, film);
+	// RespirReservoir_SpatialUpdate(reservoir, reservoir, &task->seed, film);
 
 	//--------------------------------------------------------------------------
 

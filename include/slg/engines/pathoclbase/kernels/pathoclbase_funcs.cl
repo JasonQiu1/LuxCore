@@ -235,6 +235,29 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 #endif
 }
 
+OPENCL_FORCE_INLINE bool CheckSampleResultsAdjacent(__global SampleResult* a, __global SampleResult* b) {
+    int dx = a->pixelX - b->pixelX;
+    int dy = a->pixelY - b->pixelY;
+    
+    return (dx >= -1 && dx <= 1) && (dy >= -1 && dy <= 1) && !(dx == 0 && dy == 0);
+}
+
+// // Find the 3x3 neighbors around the pixel this work-item is handling for now
+// // TODO: upgrade to n-rooks sampling around pixel and customizable spatial radius and number of spatial neighbors
+OPENCL_FORCE_INLINE RespirReservoir** Respir_GetNeighboringReservoirs(__global SampleResult* sampleResult, 
+		__global SampleResult *sampleResultsBuff, RespirReservoir** out, uint& numNeighbors) {
+	// collect all respir reservoirs with distance 1 from current pixel x and pixel y
+	const uint totalWorkItems = get_global_size(0);
+	numNeighbors = 0;
+	for (uint i = 0; i < totalWorkItems; i++) {
+		if (CheckSampleResultsAdjacent(sampleResult, sampleResultsBuff[i])) {
+			out[numNeighbors++] = sampleResultsBuff[i];
+		}
+	}
+
+	return out;
+}
+
 // Resample the offset path onto the base path. 
 // If successful, perform a shift map from the offset path to the base path at the reconnection vertex.
 OPENCL_FORCE_INLINE	void RespirReservoir_SpatialUpdate(__global RespirReservoir* offset,
@@ -247,6 +270,27 @@ OPENCL_FORCE_INLINE	void RespirReservoir_SpatialUpdate(__global RespirReservoir*
 		// TODO: If not good/invalid reconnection vertex, then skip
 
 		// Do visibility check from base primary hit vertex to offset secondary hit vertex
+		// initialize ray
+
+		// bool continueToTrace = true;
+		// while (continueToTrace) {
+		// 	continueToTrace = Scene_Intersect(taskConfig,
+		// 		EYE_RAY | SHADOW_RAY,
+		// 		&throughShadowTransparency,
+		// 		&directLightVolInfos[gid],
+		// 		&task->tmpHitPoint,
+		// 		passThroughEvent,
+		// 		&rays[gid], &rayHits[gid], &task->tmpBsdf,
+		// 		&connectionThroughput, WHITE,
+		// 		NULL,
+		// 		true
+		// 		MATERIALS_PARAM
+		// 	);
+		// }
+
+		// const bool rayMiss = (rayHits[gid].meshIndex == NULL_INDEX);
+		// only resample if visibility check passes (AKA ray misses)
+		// if (rayMiss) {
 			// set offset reconnection vertex to base reconnection vertex
 			offset->selectedSample.reconnectionVertex = base->selectedSample.reconnectionVertex;
 
