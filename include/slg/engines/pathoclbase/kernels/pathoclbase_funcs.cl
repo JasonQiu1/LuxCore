@@ -160,8 +160,8 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 	taskState->initialPathReservoir.sumWeight = 0.0f;
 	taskState->initialPathReservoir.selectedWeight = 0.0f;
 	taskState->initialPathReservoir.selectedSample.sampleResult = *sampleResult;
-	VSTORE3F(BLACK, taskState->initialPathReservoir.selectedSample.prefixRadiance);
-	VSTORE3F(BLACK, taskState->initialPathReservoir.selectedSample.reconnectionVertex.postfixRadiance);
+	VSTORE3F(BLACK, taskState->initialPathReservoir.selectedSample.prefixRadiance.c);
+	VSTORE3F(BLACK, taskState->initialPathReservoir.selectedSample.reconnectionVertex.postfixRadiance.c);
 #endif
 }
 
