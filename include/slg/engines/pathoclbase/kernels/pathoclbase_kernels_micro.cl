@@ -850,7 +850,7 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 		// Cache radiance from primary path vertex for RIS
 		Radiance_Copy(
 			&taskConfig->film,
-			sampleResult.radiancePerPixelNormalized,
+			sampleResult->radiancePerPixelNormalized,
 			&taskState->initialPathReservoir.selectedSample.prefixRadiance
 		);
 #endif
@@ -977,7 +977,7 @@ __kernel void AdvancePaths_MK_SPLAT_SAMPLE(
 	// Cache data for RIS
 	Radiance_Sub(
 		film,
-		sampleResult.radiancePerPixelNormalized,
+		sampleResult->radiancePerPixelNormalized,
 		&taskState->initialPathReservoir.selectedSample.prefixRadiance,
 		&taskState->initialPathReservoir.selectedSample.reconnectionVertex.postfixRadiance
 	);

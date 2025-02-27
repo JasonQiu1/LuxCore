@@ -252,7 +252,7 @@ OPENCL_FORCE_INLINE	void RespirReservoir_SpatialUpdate(__global RespirReservoir*
 			// recalculate sample throughput to get the new sample weight
 			Radiance_Add(film, &offset->selectedSample.prefixRadiance, 
 				&base->selectedSample.reconnectionVertex.postfixRadiance, 
-				offset->selectedSample.sampleResult.radiancePerPixelNormalized)
+				offset->selectedSample.sampleResult.radiancePerPixelNormalized);
 		// }
 	}
 }
