@@ -1253,7 +1253,7 @@ __kernel void SpatialReuse_Iterate(
 	__global RespirReservoir* neighbors[8];
 	uint numNeighbors = 0;
 	Respir_GetNeighboringReservoirs(sampleResult, tasksState, bufferSize, 
-		neighbors, &numNeighbors);
+		neighbors, numNeighbors);
 
 	// RIS all of them
 	for (uint i = 0; i < numNeighbors; i++) {
