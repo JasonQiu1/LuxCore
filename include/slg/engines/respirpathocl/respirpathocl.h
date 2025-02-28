@@ -51,11 +51,14 @@ protected:
     void SetAdvancePathsKernelArgs(luxrays::HardwareDeviceKernel *advancePathsKernel, const u_int filmIndex) override;
     void SetAllAdvancePathsKernelArgs(const u_int filmIndex) override;
     void EnqueueAdvancePathsKernel() override;
+	bool CheckSyncedPathStates(ocl::pathoclbase::RespirGPUTaskState* tasksStateReadBuffer, 
+		const u_int taskCount, ocl::pathoclbase::PathState targetState);
 
-	luxrays::HardwareDeviceKernel *spatialReuseInitKernel;
-	luxrays::HardwareDeviceKernel *spatialReuseIterateKernel;
-	luxrays::HardwareDeviceKernel *spatialReuseDoneKernel;
-	luxrays::HardwareDeviceKernel *spatialReuseSetSplatKernel;
+	luxrays::HardwareDeviceKernel* spatialReuseInitKernel;
+	luxrays::HardwareDeviceKernel* spatialReuseResampleNeighborKernel;
+	luxrays::HardwareDeviceKernel* spatialReuseCheckVisibilityKernel;
+	luxrays::HardwareDeviceKernel* spatialReuseFinishIterationKernel;
+	luxrays::HardwareDeviceKernel* spatialReuseSetSplatKernel;
 };
 
 //------------------------------------------------------------------------------

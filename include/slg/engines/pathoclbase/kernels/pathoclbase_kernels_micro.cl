@@ -853,6 +853,15 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 			sampleResult->radiancePerPixelNormalized,
 			taskState->initialPathReservoir.selectedSample.prefixRadiance
 		);
+		// Cache bsdf hit point of the first path vertex (vertex right before reconnection vertex)
+		taskState->initialPathReservoir.selectedSample.prefixBsdf = bsdf;
+		// Cache hit time of first path vertex
+		taskState->initialPathReservoir.selectedSample.hitTime = ray->time;
+	}
+
+	if (pathInfo->depth.depth == 2) {
+		// Cache hit point on reconnection vertex (secondary path vertex for reconnection shift)
+		taskState->initialPathReservoir.selectedSample.reconnectionVertex.hitPoint = bsdf->hitPoint.p;
 #endif
 	}
 
@@ -1192,6 +1201,7 @@ __kernel void SpatialReuse_Init(
 	__global SampleResult *sampleResult = &sampleResultsBuff[gid];
 	__constant const Film* restrict film = &taskConfig->film;
 	__global RespirReservoir* reservoir = &taskState->initialPathReservoir;
+	__global const Ray* ray = &rays[gid];
 
 	// Read the seed
 	Seed seedValue = task->seed;
@@ -1202,6 +1212,12 @@ __kernel void SpatialReuse_Init(
 	// End of variables setup
 	//--------------------------------------------------------------------------
 
+	// Initialize Respir state
+	taskState->doResample = false;
+
+	// Save ray time state
+	taskState->timeBeforeSpatialResample = ray->time;
+
 	// Cache data for RIS
 	Radiance_Sub(
 		film,
@@ -1210,26 +1226,34 @@ __kernel void SpatialReuse_Init(
 		reservoir->selectedSample.reconnectionVertex.postfixRadiance
 	);
 
+	taskState->state = SR_RESAMPLE_NEIGHBOR;
+
 	//--------------------------------------------------------------------------
 
 	// Save the seed
 	task->seed = seedValue;
 }
 
-
 //------------------------------------------------------------------------------
-// SpatialReuse_Iterate Kernel
+// SpatialReuse_ResampleNeighbor Kernel
 //
-// Performs a single iteration of spatial reuse on the current frame, storing into the respir reservoir buffers.
+// Resamples neighbors until reservoir replacement succeeds.
+//
+// FROM: SpatialReuse_CheckVisibility (succeed or fail)
+// TO: SpatialReuse_CheckVisibility (if resampling succeeds for a neighbor)
+// TO: SpatialReuse_ResampleNeighbor (if no more neighbors)
 //------------------------------------------------------------------------------
-__kernel void SpatialReuse_Iterate(
+__kernel void SpatialReuse_ResampleNeighbor(
 		KERNEL_ARGS
 		) {
 	const size_t gid = get_global_id(0);
 
-	__global SampleResult *sampleResult = &sampleResultsBuff[gid];
 	__global GPUTask *task = &tasks[gid];
 	__global GPUTaskState *taskState = &tasksState[gid];
+	if (taskState->state != SR_RESAMPLE_NEIGHBOR)
+		return;
+	__global SampleResult *sampleResult = &sampleResultsBuff[gid];
+
 
 	//--------------------------------------------------------------------------
 	// Start of variables setup
@@ -1249,21 +1273,19 @@ __kernel void SpatialReuse_Iterate(
 
 	// Get pixels around this point
 	// TODO: configuration of spatial radius and number of neighbors
-	const uint bufferSize = get_global_size(0);
 #define SPATIAL_RADIUS 4
-#define SPATIAL_LENGTH (SPATIAL_RADIUS * SPATIAL_RADIUS + 1)
-	RespirReservoir* neighbors[SPATIAL_LENGTH * SPATIAL_LENGTH];
-	uint numNeighbors = 0;
-	Respir_GetNeighboringReservoirs(sampleResult, tasksState, bufferSize, 
-		SPATIAL_RADIUS, neighbors, &numNeighbors);
-	
-	if (gid == 0) {
-		printf("# spatial neighbors: %i\n", numNeighbors);
+	// Resample neighbors until one succeeds, then check its visibility
+	while (Respir_UpdateNextNeighborGid(taskState, sampleResultsBuff, SPATIAL_RADIUS)) {
+		// There is a neighbor
+		if (RespirReservoir_SpatialUpdate(tasksState, &rays[gid], &task->seed, film)) {
+			// Resampling succeeds, we need to check visibility from offset prereconnection vertex to base reconnection vertex
+			taskState->state = SPATIALREUSE_CHECK_VISIBILITY;
+			break;
+		}
 	}
-
-	// RIS all of them
-	for (uint i = 0; i < numNeighbors; i++) {
-		RespirReservoir_SpatialUpdate(reservoir, neighbors[i], &task->seed, film);
+	if (taskState->state != SR_CHECK_VISIBILITY) {
+		// If no more neighbors, then this spatial iteration is finished 
+		taskState->state = SYNC;
 	}
 
 	// DEBUG: sanity check to make sure shifting from one pixel to the same one gets the exact same result
@@ -1277,11 +1299,137 @@ __kernel void SpatialReuse_Iterate(
 }
 
 //------------------------------------------------------------------------------
-// SpatialReuse_Done Kernel
+// SpatialReuse_CheckVisibility Kernel
 //
-// Completes the spatial reuse pass and sets up for splatting.
+// Checks if the shadow ray shot for reconnection is blocked or not.
 //------------------------------------------------------------------------------
-__kernel void SpatialReuse_Done(
+__kernel void SpatialReuse_CheckVisibility(
+	KERNEL_ARGS
+	) {
+	const size_t gid = get_global_id(0);
+
+	// Read the path state
+	__global GPUTask *task = &tasks[gid];
+	__global GPUTaskState *taskState = &tasksState[gid];
+	if (taskState->state != SR_CHECK_VISIBILITY) {
+		return;
+	}
+
+	//--------------------------------------------------------------------------
+	// Start of variables setup
+	//--------------------------------------------------------------------------
+
+	__global GPUTaskDirectLight *taskDirectLight = &tasksDirectLight[gid];
+	__constant const Scene* restrict scene = &taskConfig->scene;
+	__global SampleResult *sampleResult = &sampleResultsBuff[gid];
+
+	// Initialize image maps page pointer table
+	INIT_IMAGEMAPS_PAGES
+	
+	//--------------------------------------------------------------------------
+	// End of variables setup
+	//--------------------------------------------------------------------------
+
+	float3 connectionThroughput = WHITE;
+
+	// TODO: SAVE THE PASSTHROUGH SEED WHEN CACHING RECONNECTION VERTEX
+	Seed seedPassThroughEvent = taskDirectLight->seedPassThroughEvent;
+	const float passThroughEvent = Rnd_FloatValue(&seedPassThroughEvent);
+	taskDirectLight->seedPassThroughEvent = seedPassThroughEvent;
+
+	// TODO: SAVE THE THROUGHSHADOWTRANSPARENCY WHEN CACHING (?)
+	int throughShadowTransparency = taskDirectLight->throughShadowTransparency;
+	const bool continueToTrace =
+		Scene_Intersect(taskConfig,
+			EYE_RAY | SHADOW_RAY,
+			&throughShadowTransparency,
+			&directLightVolInfos[gid],
+			&task->tmpHitPoint,
+			passThroughEvent,
+			&rays[gid], &rayHits[gid], &task->tmpBsdf,
+			&connectionThroughput, WHITE,
+			NULL,
+			true
+			MATERIALS_PARAM
+			);
+	taskDirectLight->throughShadowTransparency = throughShadowTransparency;
+	VSTORE3F(connectionThroughput * VLOAD3F(taskDirectLight->illumInfo.lightRadiance.c), taskDirectLight->illumInfo.lightRadiance.c);
+	VSTORE3F(connectionThroughput * VLOAD3F(taskDirectLight->illumInfo.lightIrradiance.c), taskDirectLight->illumInfo.lightIrradiance.c);
+
+	// add connectionThroughput contribution to pathThroughput when resampling
+	VSTORE3F(connectionThroughput * VLOAD3F(taskState->lastWeight.c), taskState->lastWeight.c);
+
+	const bool rayMiss = (rayHits[gid].meshIndex == NULL_INDEX);
+
+	// If continueToTrace, there is nothing to do, just keep the same state
+	if (!continueToTrace) {
+		if (rayMiss) {
+			// Nothing was hit, the light source is visible
+
+			__global BSDF *bsdf = &taskState->bsdf;
+
+			if (!BSDF_IsShadowCatcher(bsdf MATERIALS_PARAM)) {
+				const float3 lightRadiance = VLOAD3F(taskDirectLight->illumInfo.lightRadiance.c);
+				SampleResult_AddDirectLight(&taskConfig->film,
+						sampleResult, taskDirectLight->illumInfo.lightID,
+						BSDF_GetEventTypes(bsdf
+							MATERIALS_PARAM),
+						VLOAD3F(taskState->throughput.c), lightRadiance,
+						1.f);
+
+				// The first path vertex is not handled by AddDirectLight(). This is valid
+				// for irradiance AOV only if it is not a SPECULAR material.
+				//
+				// Note: irradiance samples the light sources only here (i.e. no
+				// direct hit, no MIS, it would be useless)
+				if ((sampleResult->firstPathVertex) && !(BSDF_GetEventTypes(bsdf
+							MATERIALS_PARAM) & SPECULAR)) {
+					const float3 irradiance = (M_1_PI_F * fabs(dot(
+								VLOAD3F(&bsdf->hitPoint.shadeN.x),
+								VLOAD3F(&rays[gid].d.x)))) *
+							VLOAD3F(taskDirectLight->illumInfo.lightIrradiance.c);
+					VSTORE3F(irradiance, sampleResult->irradiance.c);
+				}
+			}
+
+			RespirReservoir* offset = &taskState->initialPathReservoir;
+			RespirReservoir* base = &tasksState[taskState->neighborGid].initialPathReservoir;
+
+			// visible
+			// set offset reconnection vertex to base reconnection vertex
+			offset->selectedSample.reconnectionVertex = base->selectedSample.reconnectionVertex;
+
+			// calculate jacobian determinant
+
+			// recalculate sample throughput to get the new sample weight
+			Radiance_Add(film,
+				offset->selectedSample.prefixRadiance, 
+				base->selectedSample.reconnectionVertex.postfixRadiance, 
+				offset->selectedSample.sampleResult.radiancePerPixelNormalized);
+				
+			offset->selectedWeight = Spectrum_Filter(SampleResult_GetUnscaledSpectrum(film, &offset->selectedSample.sampleResult));
+
+			taskDirectLight->directLightResult = ILLUMINATED;
+		} else {
+			// not visible
+			taskDirectLight->directLightResult = SHADOWED;
+		}
+
+		taskState->state = SYNC;
+	}
+
+	//--------------------------------------------------------------------------
+
+	// Save the seed
+	task->seed = seedValue;
+}
+
+//------------------------------------------------------------------------------
+// SpatialReuse_FinishIteration Kernel
+//
+// Completes the spatial reuse iteration.
+//------------------------------------------------------------------------------
+__kernel void SpatialReuse_FinishIteration(
 		KERNEL_ARGS
 		) {
 	const size_t gid = get_global_id(0);
@@ -1303,8 +1451,6 @@ __kernel void SpatialReuse_Done(
 	// End of variables setup
 	//--------------------------------------------------------------------------
 
-	// TODO: SET UP SPLATTING FROM SPATIAL REUSE PASSES
-
 	//--------------------------------------------------------------------------
 
 	// Save the seed
@@ -1323,6 +1469,10 @@ __kernel void SpatialReuse_SetSplat(
 
 	// Read the path state
 	__global GPUTaskState *taskState = &tasksState[gid];
+	__global Ray* ray = &rays[gid];
+	
+	// maintain integrity of pathtraacer by using time from before spatial reuse
+	ray->time = taskState->timeBeforeSpatialReuse;
 
 	taskState->state = MK_SPLAT_SAMPLE;
 }

@@ -176,13 +176,17 @@ void RespirPathOCLRenderThread::InitKernels() {
 
 	const double tSpatialReuseStart = WallClockTime();
 	SLG_LOG("[RespirPathOCLThread::" << threadIndex << "] Compiling kernels ");
+	// TODO: use a different workgroup size and kernel arguments for spatial reuse in the future to optimize performance.
 	CompileKernel(intersectionDevice, program, &spatialReuseInitKernel, &workGroupSize,
 			"SpatialReuse_Init");
 	advancePathsWorkGroupSize = Min(advancePathsWorkGroupSize, workGroupSize);
-	CompileKernel(intersectionDevice, program, &spatialReuseIterateKernel, &workGroupSize,
-			"SpatialReuse_Iterate");
+	CompileKernel(intersectionDevice, program, &spatialReuseResampleNeighborKernel, &workGroupSize,
+			"SpatialReuse_ResampleNeighbor");
 	advancePathsWorkGroupSize = Min(advancePathsWorkGroupSize, workGroupSize);
-	CompileKernel(intersectionDevice, program, &spatialReuseDoneKernel, &workGroupSize,
+	CompileKernel(intersectionDevice, program, &spatialReuseCheckVisibilityKernel, &workGroupSize,
+		"SpatialReuse_CheckVisibility");
+	advancePathsWorkGroupSize = Min(advancePathsWorkGroupSize, workGroupSize);
+	CompileKernel(intersectionDevice, program, &spatialReuseFinishIterationKernel, &workGroupSize,
 			"SpatialReuse_Done");
 	advancePathsWorkGroupSize = Min(advancePathsWorkGroupSize, workGroupSize);
 	CompileKernel(intersectionDevice, program, &spatialReuseSetSplatKernel, &workGroupSize,
@@ -207,10 +211,12 @@ void RespirPathOCLRenderThread::SetAllAdvancePathsKernelArgs(const u_int filmInd
     PathOCLOpenCLRenderThread::SetAllAdvancePathsKernelArgs(filmIndex);
 	if (spatialReuseInitKernel)
 		SetAdvancePathsKernelArgs(spatialReuseInitKernel, filmIndex);
-	if (spatialReuseIterateKernel)
-		SetAdvancePathsKernelArgs(spatialReuseIterateKernel, filmIndex);
-	if (spatialReuseDoneKernel)
-		SetAdvancePathsKernelArgs(spatialReuseDoneKernel, filmIndex);
+	if (spatialReuseResampleNeighborKernel)
+		SetAdvancePathsKernelArgs(spatialReuseResampleNeighborKernel, filmIndex);
+	if (spatialReuseCheckVisibilityKernel)
+		SetAdvancePathsKernelArgs(spatialReuseCheckVisibilityKernel, filmIndex);
+	if (spatialReuseFinishIterationKernel)
+		SetAdvancePathsKernelArgs(spatialReuseFinishIterationKernel, filmIndex);
 	if (spatialReuseSetSplatKernel)
 		SetAdvancePathsKernelArgs(spatialReuseSetSplatKernel, filmIndex);
 }

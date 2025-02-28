@@ -235,32 +235,47 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 #endif
 }
 
-OPENCL_FORCE_INLINE bool CheckSampleResultsAdjacent(__constant const SampleResult* a, __constant const SampleResult* b, int spatialRadius) {
+OPENCL_FORCE_INLINE bool SampleResult_CheckInRange(__constant const SampleResult* a, 
+		__constant const SampleResult* b, int spatialRadius) {
     int dx = a->pixelX - b->pixelX;
     int dy = a->pixelY - b->pixelY;
     
     return (dx >= -spatialRadius && dx <= spatialRadius) && (dy >= -spatialRadius && dy <= spatialRadius) && !(dx == 0 && dy == 0);
 }
 
-// // Find the 3x3 neighbors around the pixel this work-item is handling for now
-// // TODO: upgrade to n-rooks sampling around pixel and customizable spatial radius and number of spatial neighbors
-OPENCL_FORCE_INLINE RespirReservoir** Respir_GetNeighboringReservoirs(__constant const SampleResult* sampleResult, 
-		__constant GPUTaskState* tasksState, uint bufferSize, const int spatialRadius, RespirReservoir** out, uint* numNeighbors) {
-	// collect all respir reservoirs with distance 1 from current pixel x and pixel y
-	*numNeighbors = 0;
-	for (uint i = 0; i < bufferSize; i++) {
-		if (CheckSampleResultsAdjacent(sampleResult, &tasksState[i].initialPathReservoir.selectedSample.sampleResult, spatialRadius)) {
-			out[(*numNeighbors)++] = &tasksState[i].initialPathReservoir;
+// Find the spatial neighbors around the pixel this work-item is handling for now
+// Spatial radius is the square grid distance, not circle distance
+// Advances taskState->neighborGid to the next neighbor.
+// Return true if a neighbor was found, otherwise false.
+// TODO: upgrade to n-rooks sampling around pixel and customizable spatial radius and number of spatial neighbors
+OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(__global GPUTaskState taskState, 
+		__global SampleResult* sampleResultsBuff, const int spatialRadius) {
+	__constant const uint bufferSize = get_global_size(0);
+	const uint gid = get_global_id(0);
+	// Assume that the current neighborGid is already a neighbor that has been resampled, skip it to find the next one
+	taskState->neighborGid++;
+	while (taskState->neighborGid < bufferSize) {
+		// Keep in mind the sample results in the buffer are different from those in the reservoir, but we're only checking pixel coordinates here so it's ok
+		if (SampleResult_CheckInRange(&sampleResultsBuff[gid], &sampleResultsBuff[taskState->neighborSearchIndex], spatialRadius)) {
+			return true;
 		}
+		taskState->neighborGid++;
 	}
-
-	return out;
+	
+	return false;
 }
 
 // Resample the offset path onto the base path. 
-// If successful, perform a shift map from the offset path to the base path at the reconnection vertex.
-OPENCL_FORCE_INLINE	void RespirReservoir_SpatialUpdate(__global RespirReservoir* offset,
-		__constant const RespirReservoir* base, __global Seed* seed, __constant const Film* film) {
+// If successful, set up shadow ray from the offset path to the base path at the reconnection vertex.
+OPENCL_FORCE_INLINE	void RespirReservoir_SpatialUpdate(__global GPUTaskState* tasksState, 
+		__global Ray* ray, __global Seed* seed, __constant const Film* film) {	
+	const uint gid = get_global_id(0);
+	// the offset path is the current path we're working on
+	TaskState* offsetTaskState = tasksState[gid];
+	RespirReservoir* offset = offsetTaskState->initialPathReservoir;
+	// the base path is the neighboring path we're resampling
+	TaskState* baseTaskState = tasksState[offsetTaskState->neighborGid];
+	RespirReservoir* base = baseTaskState->initialPathReservoir;
 	// Resample the offset reservoir
 	offset->sumWeight += base->sumWeight;
 	if (Rnd_FloatValue(seed) < base->selectedWeight / offset->sumWeight) {
@@ -272,39 +287,12 @@ OPENCL_FORCE_INLINE	void RespirReservoir_SpatialUpdate(__global RespirReservoir*
 		// TODO: If not good/invalid reconnection vertex, then skip
 
 		// Do visibility check from base primary hit vertex to offset secondary hit vertex
-		// initialize ray
-
-		// bool continueToTrace = true;
-		// while (continueToTrace) {
-		// 	continueToTrace = Scene_Intersect(taskConfig,
-		// 		EYE_RAY | SHADOW_RAY,
-		// 		&throughShadowTransparency,
-		// 		&directLightVolInfos[gid],
-		// 		&task->tmpHitPoint,
-		// 		passThroughEvent,
-		// 		&rays[gid], &rayHits[gid], &task->tmpBsdf,
-		// 		&connectionThroughput, WHITE,
-		// 		NULL,
-		// 		true
-		// 		MATERIALS_PARAM
-		// 	);
-		// }
-
-		// const bool rayMiss = (rayHits[gid].meshIndex == NULL_INDEX);
-		// only resample if visibility check passes (AKA ray misses)
-		// if (rayMiss) {
-			// set offset reconnection vertex to base reconnection vertex
-			offset->selectedSample.reconnectionVertex = base->selectedSample.reconnectionVertex;
-
-			// calculate jacobian determinant
-
-			// recalculate sample throughput to get the new sample weight
-			Radiance_Add(film,
-				offset->selectedSample.prefixRadiance, 
-				base->selectedSample.reconnectionVertex.postfixRadiance, 
-				offset->selectedSample.sampleResult.radiancePerPixelNormalized);
-				
-			offset->selectedWeight = Spectrum_Filter(SampleResult_GetUnscaledSpectrum(film, &offset->selectedSample.sampleResult));
+		// set up shadow ray
+		float3 dir = VLOAD3F(base->selectedSample.reconnectionVertex.hitPoint) - VLOAD3F(offset->selectedSample.prefixBsdf.hitPoint.p);
+		const float3 dir_mag_squared = dot(dir, dir)
+		const float3 dir_mag = sqrt(dir_mag_squared)
+		dir /= dir_mag;
+		Ray_Init2(ray, BSDF_GetRayOrigin(offset->selectedSample.prefixBsdf, dir), dir, offset->selectedSample.hitTime);
 	}
 }
 

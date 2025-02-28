@@ -51,7 +51,9 @@ typedef enum {
 	MK_NEXT_SAMPLE = 8,
 	MK_GENERATE_CAMERA_RAY = 9,
 	MK_DONE = 10,
-	SYNC = 11
+	SYNC = 11,
+	SR_RESAMPLE_NEIGHBOR = 12,
+	SR_CHECK_VISIBILITY = 13
 } PathState;
 
 typedef struct {
@@ -91,6 +93,7 @@ typedef struct {
 	float incidentAngle; // the incident angle coming out of the reconnection vertex in the base path
 	uint pathLength; // the length of the path at the reconnection vertex
 	Spectrum postfixRadiance[FILM_MAX_RADIANCE_GROUP_COUNT]; // the radiance of the path of the path at the reconnection vertex and after
+	Point hitpoint; // contains info on the exact hit point on the reconnection vertex
 	// TODO: find out if LuxCoreRender has multi-lobed materials
 	// uint prevLobeIndex; // the sampled lobe index of the material at the previous vertex 
 	// uint currLobeIndex; // the sampled lobe index of the material at the reconnection vertex
@@ -101,6 +104,8 @@ typedef struct {
 	ReconnectionVertex reconnectionVertex; // the chosen reconnection vertex for this path
 	Spectrum prefixRadiance[FILM_MAX_RADIANCE_GROUP_COUNT]; // the radiance of the path at the vertices before the reconnection vertex
 	SampleResult sampleResult; // the cached sampleresult data of the entire path
+	BSDF prefixBsdf; // the BSDF point where the vertex before the reconnection vertex was hit
+	float hitTime; // time the reconnection vertex was hit. we use this to shoot a visibility ray backwards to the connecting offset path vertex
 	Seed seedInitial; // the initial GPUTask seed at the beginning of tracing this path
 	Seed seedReconnectionVertex; // the GPUTask seed right after tracing the reconnection vertex
 	uint pathLength; // the length of the path
@@ -128,9 +133,14 @@ typedef struct {
 	Spectrum lastWeight;
 	// product of all bsdfPdfW
 	float bsdfPdfWProduct;
-
+	
+	// TODO: MOVE INTO SEPARATE BUFFER IN THE FUTURE
+	uint timeBeforeSpatialReuse; // save time before spatial reuse to make sure rays after spatial reuse are using the correct time
+	// stores the current index of sampleResultsBuff/taskStates buffer that we find neighbors through
+	uint neighborGid;
 	// Reservoir data structure for initial path resampling using RIS
 	RespirReservoir initialPathReservoir;
+	// TODO: store spatialRadius from CPU in the future instead of as a hard-coded macro
 	
 	int albedoToDo, photonGICacheEnabledOnLastHit,
 			photonGICausticCacheUsed, photonGIShowIndirectPathMixUsed,

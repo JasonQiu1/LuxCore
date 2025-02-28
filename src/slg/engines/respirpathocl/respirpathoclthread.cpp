@@ -43,15 +43,15 @@ RespirPathOCLRenderThread::RespirPathOCLRenderThread(const u_int index, luxrays:
         RespirPathOCLRenderEngine *re)
     : PathOCLOpenCLRenderThread(index, device, re) {
     spatialReuseInitKernel = nullptr;
-	spatialReuseIterateKernel = nullptr;
-	spatialReuseDoneKernel = nullptr;
+	spatialReuseResampleNeighborKernel = nullptr;
+	spatialReuseFinishIterationKernel = nullptr;
 	spatialReuseSetSplatKernel = nullptr;
 }
 
 RespirPathOCLRenderThread::~RespirPathOCLRenderThread() {
     delete spatialReuseInitKernel;
-	delete spatialReuseIterateKernel;
-	delete spatialReuseDoneKernel;
+	delete spatialReuseResampleNeighborKernel;
+	delete spatialReuseFinishIterationKernel;
 	delete spatialReuseSetSplatKernel;
 }
 
@@ -61,6 +61,24 @@ void RespirPathOCLRenderThread::StartRenderThread() {
 
 void RespirPathOCLRenderThread::GetThreadFilmSize(u_int *filmWidth, u_int *filmHeight, u_int *filmSubRegion) {
     PathOCLOpenCLRenderThread::GetThreadFilmSize(filmWidth, filmHeight, filmSubRegion);
+}
+
+// Check that all path states are equal to the target
+bool RespirPathOCLRenderThread::CheckSyncedPathStates(slg::ocl::pathoclbase::RespirGPUTaskState* tasksStateReadBuffer, 
+		const u_int taskCount, slg::ocl::pathoclbase::PathState targetState) {
+	// TODO: move pathState to a separate buffer so minimal amount of memory needs to be read here
+	intersectionDevice->EnqueueReadBuffer(tasksStateBuff, true,
+		sizeof(slg::ocl::pathoclbase::RespirGPUTaskState) * taskCount,
+		tasksStateReadBuffer);
+
+	for (u_int i = 0; i < taskCount; i++) {
+		//SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] TaskState(" << i << ") PathState=" << tasksState[i].state);
+		if (tasksStateReadBuffer[i].state != targetState) {
+			SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] TaskState(" << i << ") PathState=" << tasksStateReadBuffer[i].state << " Not synced.");
+			return false;
+		}
+	}
+	return true;
 }
 
 void RespirPathOCLRenderThread::RenderThreadImpl() {
@@ -98,7 +116,7 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 		if (engine->hasStartFilm && (threadIndex == 0))
 			threadFilms[0]->SendFilm(intersectionDevice);
 
-        slg::ocl::pathoclbase::RespirGPUTaskState* tasksState = (slg::ocl::pathoclbase::RespirGPUTaskState*)malloc(sizeof(*tasksState) * taskCount);
+        slg::ocl::pathoclbase::RespirGPUTaskState* tasksStateReadBuffer = (slg::ocl::pathoclbase::RespirGPUTaskState*)malloc(sizeof(*tasksStateReadBuffer) * taskCount);
 
 		//----------------------------------------------------------------------
 		// Rendering loop
@@ -167,28 +185,11 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 
 				//SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Finished queuing advance paths kernels");
 
-                // Wait for all kernels to finish running.
-			    intersectionDevice->FinishQueue();
-
 				//SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] All advance paths kernels finished execution");
 
                 // Check if initial path resampling for all pixels is complete
-                // TODO: move pathState to a separate buffer so minimal amount of memory needs to be read here
-                intersectionDevice->EnqueueReadBuffer(tasksStateBuff, true,
-                    sizeof(slg::ocl::pathoclbase::RespirGPUTaskState) * taskCount,
-                    tasksState);
-
-				//SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Checking whether initial path resampling is complete");
-
-                isInitialPathResamplingDone = true;
-                for (u_int i = 0; i < taskCount; i++) {
-					//SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] TaskState(" << i << ") PathState=" << tasksState[i].state);
-                    if (tasksState[i].state != slg::ocl::pathoclbase::PathState::SYNC) {
-						SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] TaskState(" << i << ") PathState=" << tasksState[i].state << " Continue advancing path");
-                        isInitialPathResamplingDone = false;
-                        break;
-                    }
-                }
+				// This is blocking and waits for queue to finish
+                isInitialPathResamplingDone = CheckSyncedPathStates(tasksStateReadBuffer, taskCount, slg::ocl::pathoclbase::PathState::SYNC);
 
                 totalIterationsThisFrame += iterations;
 
@@ -204,42 +205,48 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
             // Perform spatial reuse.
 			if (numSpatialReuseIterations > 0) {
 				SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Spatial reuse is enabled, performing " << numSpatialReuseIterations << " iterations");
-				// Initialize spatial reuse iterations
+				// Initialize variables and find spatial neighbors
 				intersectionDevice->EnqueueKernel(spatialReuseInitKernel,
 						HardwareDeviceRange(engine->taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
 				// Ensure all paths are synced before continuing
 				intersectionDevice->FinishQueue();
-
-				// Iterate x times
-				for (u_int i = 0; i < numSpatialReuseIterations; i++) {
-					// Select neighboring pixels to resample from.
-					intersectionDevice->EnqueueKernel(spatialReuseIterateKernel,
-						HardwareDeviceRange(taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
-					
-					// TODO: When in shift mapping mode, do not need to perform MK_ILLUMINATE calculations.
-					// Only need to advance the random number by the amount it would use.
-					
-					// Since spatial reuse (shift mapping step) needs to retrace only paths already traced in this frame, 
-					// the max number of iterations possible is the amount required for 
-					// the path that took the most number of iterations in this frame.
-					SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Spatial reuse (iteration " << i << "): retracing paths");
-					for (u_int i = 0; i < totalIterationsThisFrame; ++i) {
-						// Trace rays
-						intersectionDevice->EnqueueTraceRayBuffer(raysBuff, hitsBuff, taskCount);
-
-						// Advance to next path state
-						EnqueueAdvancePathsKernel();
-					}
-
-					// Ensure all paths are synced before continuing
-					intersectionDevice->FinishQueue();
-				}
-				// Set up for splatting
-				intersectionDevice->EnqueueKernel(spatialReuseDoneKernel,
-						HardwareDeviceRange(taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
 			} else {
 				SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Spatial reuse is disabled, configure with respirpathocl.spatialreuse.numiterations");
 			}
+
+			// Iterate x times
+			for (u_int i = 0; i < numSpatialReuseIterations; i++) {
+				SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Beginning spatial reuse iteration " << i);
+				bool isSpatialReuseDone = false;
+				// Resample neighboring pixels
+				while (!isSpatialReuseDone) {
+					// Resample next neighboring pixel
+					intersectionDevice->EnqueueKernel(spatialReuseResampleNeighborKernel,
+						HardwareDeviceRange(taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
+					
+					SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Spatial reuse (iteration " << i << "): tracing shadow paths");
+					// Evaluate visibility if resampling succeeds
+					for (u_int i = 0; i < totalIterationsThisFrame; ++i) {
+						// Trace shadow rays to reconnection vertices
+						intersectionDevice->EnqueueTraceRayBuffer(raysBuff, hitsBuff, taskCount);
+
+						// Check visibility and update reservoirs if successful
+						intersectionDevice->EnqueueKernel(spatialReuseCheckVisibilityKernel,
+							HardwareDeviceRange(taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
+					}
+
+					// This is blocking and waits for queue to finish
+					isSpatialReuseDone = CheckSyncedPathStates(tasksStateReadBuffer, taskCount, slg::ocl::pathoclbase::PathState::SYNC);
+				}
+				
+				// Finish the iteration
+				intersectionDevice->EnqueueKernel(spatialReuseFinishIterationKernel,
+					HardwareDeviceRange(taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
+
+				// Ensure all paths are synced before continuing
+				intersectionDevice->FinishQueue();
+			}
+			
 			SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Spatial reuse passes are complete, splatting pixels");
 
             // Splat pixels.
@@ -295,7 +302,7 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 			if (engine->film->GetConvergence() == 1.f)
 				break;
 		}
-        free(tasksState);
+        free(tasksStateReadBuffer);
 
 	} catch (boost::thread_interrupted) {
 		SLG_LOG("[PathOCLRenderThread::" << threadIndex << "] Rendering thread halted");
