@@ -49,7 +49,6 @@ void PathOCLBaseOCLRenderThread::CompileKernel(HardwareIntersectionDevice *devic
 	delete *kernel;
 	SLG_LOG("[PathOCLBaseRenderThread::" << threadIndex << "] Compiling " << name << " Kernel");
 	device->GetKernel(program, kernel, name.c_str());
-	SLG_LOG("Got kernel");
 
 	if (device->GetDeviceDesc()->GetForceWorkGroupSize() > 0)
 		*workGroupSize = device->GetDeviceDesc()->GetForceWorkGroupSize();
