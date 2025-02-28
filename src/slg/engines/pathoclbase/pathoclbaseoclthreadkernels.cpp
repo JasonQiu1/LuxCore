@@ -54,7 +54,7 @@ void PathOCLBaseOCLRenderThread::CompileKernel(HardwareIntersectionDevice *devic
 	if (device->GetDeviceDesc()->GetForceWorkGroupSize() > 0) {
 		SLG_LOG("force workgroup size");
 		*workGroupSize = device->GetDeviceDesc()->GetForceWorkGroupSize();
-		SLG_LOG("got force workgroup size " << *workGroupSize);
+		SLG_LOG("got force workgroup size " << &workGroupSize);
 	} else {
 		SLG_LOG("not force workgroup size");
 		*workGroupSize = device->GetKernelWorkGroupSize(*kernel); 
