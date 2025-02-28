@@ -256,7 +256,7 @@ OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(__global GPUTaskState* tas
 	taskState->neighborGid++;
 	while (taskState->neighborGid < bufferSize) {
 		// Keep in mind the sample results in the buffer are different from those in the reservoir, but we're only checking pixel coordinates here so it's ok
-		if (SampleResult_CheckInRange(&sampleResultsBuff[gid], &sampleResultsBuff[taskState->neighborSearchIndex], spatialRadius)) {
+		if (SampleResult_CheckInRange(&sampleResultsBuff[gid], &sampleResultsBuff[taskState->neighborGid], spatialRadius)) {
 			return true;
 		}
 		taskState->neighborGid++;
@@ -289,8 +289,8 @@ OPENCL_FORCE_INLINE	void RespirReservoir_SpatialUpdate(__global GPUTaskState* ta
 		// Do visibility check from base primary hit vertex to offset secondary hit vertex
 		// set up shadow ray
 		float3 dir = VLOAD3F(&base->selectedSample.reconnectionVertex.hitPoint.x) - VLOAD3F(&offset->selectedSample.prefixBsdf.hitPoint.p.x);
-		const float3 dir_mag_squared = dot(dir, dir);
-		const float3 dir_mag = sqrt(dir_mag_squared);
+		const float dir_mag_squared = dot(dir, dir);
+		const float dir_mag = sqrt(dir_mag_squared);
 		dir /= dir_mag;
 		Ray_Init2(ray, BSDF_GetRayOrigin(&offset->selectedSample.prefixBsdf, dir), dir, offset->selectedSample.hitTime);
 	}
