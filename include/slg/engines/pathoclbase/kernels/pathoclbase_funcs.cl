@@ -248,7 +248,7 @@ OPENCL_FORCE_INLINE bool SampleResult_CheckInRange(__constant const SampleResult
 // Advances taskState->neighborGid to the next neighbor.
 // Return true if a neighbor was found, otherwise false.
 // TODO: upgrade to n-rooks sampling around pixel and customizable spatial radius and number of spatial neighbors
-OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(__global GPUTaskState taskState, 
+OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(__global GPUTaskState* taskState, 
 		__global SampleResult* sampleResultsBuff, const int spatialRadius) {
 	__constant const uint bufferSize = get_global_size(0);
 	const uint gid = get_global_id(0);
@@ -271,11 +271,11 @@ OPENCL_FORCE_INLINE	void RespirReservoir_SpatialUpdate(__global GPUTaskState* ta
 		__global Ray* ray, __global Seed* seed, __constant const Film* film) {	
 	const uint gid = get_global_id(0);
 	// the offset path is the current path we're working on
-	TaskState* offsetTaskState = tasksState[gid];
-	RespirReservoir* offset = offsetTaskState->initialPathReservoir;
+	GPUTaskState* offsetTaskState = &tasksState[gid];
+	RespirReservoir* offset = &offsetTaskState->initialPathReservoir;
 	// the base path is the neighboring path we're resampling
-	TaskState* baseTaskState = tasksState[offsetTaskState->neighborGid];
-	RespirReservoir* base = baseTaskState->initialPathReservoir;
+	GPUTaskState* baseTaskState = &tasksState[offsetTaskState->neighborGid];
+	RespirReservoir* base = &baseTaskState->initialPathReservoir;
 	// Resample the offset reservoir
 	offset->sumWeight += base->sumWeight;
 	if (Rnd_FloatValue(seed) < base->selectedWeight / offset->sumWeight) {
@@ -288,11 +288,11 @@ OPENCL_FORCE_INLINE	void RespirReservoir_SpatialUpdate(__global GPUTaskState* ta
 
 		// Do visibility check from base primary hit vertex to offset secondary hit vertex
 		// set up shadow ray
-		float3 dir = VLOAD3F(base->selectedSample.reconnectionVertex.hitPoint) - VLOAD3F(offset->selectedSample.prefixBsdf.hitPoint.p);
-		const float3 dir_mag_squared = dot(dir, dir)
-		const float3 dir_mag = sqrt(dir_mag_squared)
+		float3 dir = VLOAD3F(&base->selectedSample.reconnectionVertex.hitPoint.x) - VLOAD3F(&offset->selectedSample.prefixBsdf.hitPoint.p.x);
+		const float3 dir_mag_squared = dot(dir, dir);
+		const float3 dir_mag = sqrt(dir_mag_squared);
 		dir /= dir_mag;
-		Ray_Init2(ray, BSDF_GetRayOrigin(offset->selectedSample.prefixBsdf, dir), dir, offset->selectedSample.hitTime);
+		Ray_Init2(ray, BSDF_GetRayOrigin(&offset->selectedSample.prefixBsdf, dir), dir, offset->selectedSample.hitTime);
 	}
 }
 

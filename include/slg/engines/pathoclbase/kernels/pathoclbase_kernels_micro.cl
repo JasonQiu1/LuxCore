@@ -854,7 +854,7 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 			taskState->initialPathReservoir.selectedSample.prefixRadiance
 		);
 		// Cache bsdf hit point of the first path vertex (vertex right before reconnection vertex)
-		taskState->initialPathReservoir.selectedSample.prefixBsdf = bsdf;
+		taskState->initialPathReservoir.selectedSample.prefixBsdf = *bsdf;
 		// Cache hit time of first path vertex
 		taskState->initialPathReservoir.selectedSample.hitTime = ray->time;
 	}
@@ -1212,11 +1212,8 @@ __kernel void SpatialReuse_Init(
 	// End of variables setup
 	//--------------------------------------------------------------------------
 
-	// Initialize Respir state
-	taskState->doResample = false;
-
 	// Save ray time state
-	taskState->timeBeforeSpatialResample = ray->time;
+	taskState->timeBeforeSpatialReuse = ray->time;
 
 	// Cache data for RIS
 	Radiance_Sub(
@@ -1279,7 +1276,7 @@ __kernel void SpatialReuse_ResampleNeighbor(
 		// There is a neighbor
 		if (RespirReservoir_SpatialUpdate(tasksState, &rays[gid], &task->seed, film)) {
 			// Resampling succeeds, we need to check visibility from offset prereconnection vertex to base reconnection vertex
-			taskState->state = SPATIALREUSE_CHECK_VISIBILITY;
+			taskState->state = SR_CHECK_VISIBILITY;
 			break;
 		}
 	}
@@ -1302,6 +1299,11 @@ __kernel void SpatialReuse_ResampleNeighbor(
 // SpatialReuse_CheckVisibility Kernel
 //
 // Checks if the shadow ray shot for reconnection is blocked or not.
+// If visible, then update reservoir appropriately.
+//
+// TO: SpatialReuse_CheckVisibility (if ray is not finished tracing)
+// TO: SpatialReuse_ResampleNeighbor (if ray is finished tracing)
+//
 //------------------------------------------------------------------------------
 __kernel void SpatialReuse_CheckVisibility(
 	KERNEL_ARGS
