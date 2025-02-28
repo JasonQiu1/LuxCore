@@ -182,6 +182,7 @@ void RespirPathOCLRenderThread::InitKernels() {
 	advancePathsWorkGroupSize = Min(advancePathsWorkGroupSize, workGroupSize);
 	CompileKernel(intersectionDevice, program, &spatialReuseResampleNeighborKernel, &workGroupSize,
 			"SpatialReuse_ResampleNeighbor");
+	SLG_LOG("finished compiling resample neighbors");
 	advancePathsWorkGroupSize = Min(advancePathsWorkGroupSize, workGroupSize);
 	CompileKernel(intersectionDevice, program, &spatialReuseCheckVisibilityKernel, &workGroupSize,
 		"SpatialReuse_CheckVisibility");
