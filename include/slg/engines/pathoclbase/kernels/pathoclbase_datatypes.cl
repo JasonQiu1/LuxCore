@@ -208,9 +208,6 @@ typedef struct {
 	
 	// This is used by DirectLight_BSDFSampling()
 	PathDepthInfo tmpPathDepthInfo;
-
-	// Reservoir used to hold the current frame+pixel's selected sample for spatial reuse with other pixels.
-	RespirReservoir respirReservoir;
 } RespirGPUTask;
 
 
