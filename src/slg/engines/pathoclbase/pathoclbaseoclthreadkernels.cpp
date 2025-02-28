@@ -51,9 +51,12 @@ void PathOCLBaseOCLRenderThread::CompileKernel(HardwareIntersectionDevice *devic
 	device->GetKernel(program, kernel, name.c_str());
 	SLG_LOG("Got kernel");
 
-	if (device->GetDeviceDesc()->GetForceWorkGroupSize() > 0)
+	if (device->GetDeviceDesc()->GetForceWorkGroupSize() > 0) {
+		SLG_LOG("force workgroup size");
 		*workGroupSize = device->GetDeviceDesc()->GetForceWorkGroupSize();
-	else {
+		SLG_LOG("got force workgroup size " << &workGroupSize);
+	} else {
+		SLG_LOG("not force workgroup size");
 		*workGroupSize = device->GetKernelWorkGroupSize(*kernel); 
 		SLG_LOG("[PathOCLBaseRenderThread::" << threadIndex << "] " << name << " workgroup size: " << *workGroupSize);
 	}
