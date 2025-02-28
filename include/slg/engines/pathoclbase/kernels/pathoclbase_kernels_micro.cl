@@ -1257,7 +1257,6 @@ __kernel void SpatialReuse_ResampleNeighbor(
 	//--------------------------------------------------------------------------
 
 	__constant const Film* restrict film = &taskConfig->film;
-	__global RespirReservoir* reservoir = &taskState->initialPathReservoir;
 
 	// Read the seed
 	Seed seedValue = task->seed;
@@ -1321,6 +1320,7 @@ __kernel void SpatialReuse_CheckVisibility(
 	// Start of variables setup
 	//--------------------------------------------------------------------------
 
+	__constant const Film* restrict film = &taskConfig->film;
 	__global GPUTaskDirectLight *taskDirectLight = &tasksDirectLight[gid];
 	__constant const Scene* restrict scene = &taskConfig->scene;
 	__global SampleResult *sampleResult = &sampleResultsBuff[gid];
@@ -1419,11 +1419,6 @@ __kernel void SpatialReuse_CheckVisibility(
 
 		taskState->state = SYNC;
 	}
-
-	//--------------------------------------------------------------------------
-
-	// Save the seed
-	task->seed = seedValue;
 }
 
 //------------------------------------------------------------------------------

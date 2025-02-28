@@ -267,7 +267,7 @@ OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(__global GPUTaskState* tas
 
 // Resample the offset path onto the base path. 
 // If successful, set up shadow ray from the offset path to the base path at the reconnection vertex.
-OPENCL_FORCE_INLINE	void RespirReservoir_SpatialUpdate(__global GPUTaskState* tasksState, 
+OPENCL_FORCE_INLINE	bool RespirReservoir_SpatialUpdate(__global GPUTaskState* tasksState, 
 		__global Ray* ray, __global Seed* seed, __constant const Film* film) {	
 	const uint gid = get_global_id(0);
 	// the offset path is the current path we're working on
@@ -293,7 +293,10 @@ OPENCL_FORCE_INLINE	void RespirReservoir_SpatialUpdate(__global GPUTaskState* ta
 		const float dir_mag = sqrt(dir_mag_squared);
 		dir /= dir_mag;
 		Ray_Init2(ray, BSDF_GetRayOrigin(&offset->selectedSample.prefixBsdf, dir), dir, offset->selectedSample.hitTime);
+		
+		return true; 
 	}
+	return false;
 }
 
 #endif
