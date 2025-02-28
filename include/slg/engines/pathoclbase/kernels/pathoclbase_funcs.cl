@@ -250,8 +250,8 @@ OPENCL_FORCE_INLINE bool SampleResult_CheckInRange(__constant const SampleResult
 // TODO: upgrade to n-rooks sampling around pixel and customizable spatial radius and number of spatial neighbors
 OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(__global GPUTaskState* taskState, 
 		__global SampleResult* sampleResultsBuff, const int spatialRadius) {
-	__constant const uint bufferSize = get_global_size(0);
-	const uint gid = get_global_id(0);
+	const size_t bufferSize = get_global_size(0);
+	const size_t gid = get_global_id(0);
 	// Assume that the current neighborGid is already a neighbor that has been resampled, skip it to find the next one
 	taskState->neighborGid++;
 	while (taskState->neighborGid < bufferSize) {
@@ -269,7 +269,7 @@ OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(__global GPUTaskState* tas
 // If successful, set up shadow ray from the offset path to the base path at the reconnection vertex.
 OPENCL_FORCE_INLINE	bool RespirReservoir_SpatialUpdate(__global GPUTaskState* tasksState, 
 		__global Ray* ray, __global Seed* seed) {	
-	const uint gid = get_global_id(0);
+	const size_t gid = get_global_id(0);
 	// the offset path is the current path we're working on
 	GPUTaskState* offsetTaskState = &tasksState[gid];
 	RespirReservoir* offset = &offsetTaskState->initialPathReservoir;
