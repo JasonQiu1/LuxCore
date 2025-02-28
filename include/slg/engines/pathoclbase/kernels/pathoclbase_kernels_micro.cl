@@ -1238,7 +1238,7 @@ __kernel void SpatialReuse_Init(
 //
 // FROM: SpatialReuse_CheckVisibility (succeed or fail)
 // TO: SpatialReuse_CheckVisibility (if resampling succeeds for a neighbor)
-// TO: SpatialReuse_ResampleNeighbor (if no more neighbors)
+// TO: SYNC (if no more neighbors)
 //------------------------------------------------------------------------------
 __kernel void SpatialReuse_ResampleNeighbor(
 		KERNEL_ARGS
@@ -1249,19 +1249,12 @@ __kernel void SpatialReuse_ResampleNeighbor(
 	__global GPUTaskState *taskState = &tasksState[gid];
 	if (taskState->state != SR_RESAMPLE_NEIGHBOR)
 		return;
-	__global SampleResult *sampleResult = &sampleResultsBuff[gid];
-
 
 	//--------------------------------------------------------------------------
 	// Start of variables setup
 	//--------------------------------------------------------------------------
 
-	__constant const Film* restrict film = &taskConfig->film;
-
-	// Read the seed
-	Seed seedValue = task->seed;
-	// This trick is required by SAMPLER_PARAM macro
-	Seed *seed = &seedValue;
+	__global SampleResult *sampleResult = &sampleResultsBuff[gid];
 
 	//--------------------------------------------------------------------------
 	// End of variables setup
@@ -1273,7 +1266,7 @@ __kernel void SpatialReuse_ResampleNeighbor(
 	// Resample neighbors until one succeeds, then check its visibility
 	while (Respir_UpdateNextNeighborGid(taskState, sampleResultsBuff, SPATIAL_RADIUS)) {
 		// There is a neighbor
-		if (RespirReservoir_SpatialUpdate(tasksState, &rays[gid], &task->seed, film)) {
+		if (RespirReservoir_SpatialUpdate(tasksState, &rays[gid], &task->seed)) {
 			// Resampling succeeds, we need to check visibility from offset prereconnection vertex to base reconnection vertex
 			taskState->state = SR_CHECK_VISIBILITY;
 			break;
@@ -1287,11 +1280,6 @@ __kernel void SpatialReuse_ResampleNeighbor(
 	// DEBUG: sanity check to make sure shifting from one pixel to the same one gets the exact same result
 	// TODO: remove after verifying this is good
 	// RespirReservoir_SpatialUpdate(reservoir, reservoir, &task->seed, film);
-
-	//--------------------------------------------------------------------------
-
-	// Save the seed
-	task->seed = seedValue;
 }
 
 //------------------------------------------------------------------------------
