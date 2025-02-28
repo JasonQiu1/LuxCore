@@ -44,6 +44,7 @@ RespirPathOCLRenderThread::RespirPathOCLRenderThread(const u_int index, luxrays:
     : PathOCLOpenCLRenderThread(index, device, re) {
     spatialReuseInitKernel = nullptr;
 	spatialReuseResampleNeighborKernel = nullptr;
+	spatialReuseCheckVisibilityKernel = nullptr;
 	spatialReuseFinishIterationKernel = nullptr;
 	spatialReuseSetSplatKernel = nullptr;
 }
@@ -51,6 +52,7 @@ RespirPathOCLRenderThread::RespirPathOCLRenderThread(const u_int index, luxrays:
 RespirPathOCLRenderThread::~RespirPathOCLRenderThread() {
     delete spatialReuseInitKernel;
 	delete spatialReuseResampleNeighborKernel;
+	delete spatialReuseCheckVisibilityKernel;
 	delete spatialReuseFinishIterationKernel;
 	delete spatialReuseSetSplatKernel;
 }
