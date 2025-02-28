@@ -187,7 +187,7 @@ void RespirPathOCLRenderThread::InitKernels() {
 		"SpatialReuse_CheckVisibility");
 	advancePathsWorkGroupSize = Min(advancePathsWorkGroupSize, workGroupSize);
 	CompileKernel(intersectionDevice, program, &spatialReuseFinishIterationKernel, &workGroupSize,
-			"SpatialReuse_Done");
+			"SpatialReuse_FinishIteration");
 	advancePathsWorkGroupSize = Min(advancePathsWorkGroupSize, workGroupSize);
 	CompileKernel(intersectionDevice, program, &spatialReuseSetSplatKernel, &workGroupSize,
 			"SpatialReuse_SetSplat");
