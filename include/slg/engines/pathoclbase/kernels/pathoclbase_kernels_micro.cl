@@ -1427,7 +1427,7 @@ __kernel void SpatialReuse_CheckVisibility(
 			taskDirectLight->directLightResult = SHADOWED;
 		}
 
-		taskState->state = SYNC;
+		taskState->state = SR_RESAMPLE_NEIGHBOR;
 	}
 
 	// DEBUG: identity shift
