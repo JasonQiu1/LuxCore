@@ -1386,7 +1386,7 @@ __kernel void SpatialReuse_CheckVisibility(
 			}
 
 			RespirReservoir* offset = &taskState->initialPathReservoir;
-			RespirReservoir* base = &tasksState[taskState->neighborGid].initialPathReservoir;
+			RespirReservoir* base = &tasks[taskState->neighborGid].tmpReservoir;
 
 			// visible
 			// set offset reconnection vertex to base reconnection vertex
