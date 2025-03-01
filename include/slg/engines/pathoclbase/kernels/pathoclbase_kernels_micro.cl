@@ -1267,11 +1267,13 @@ __kernel void SpatialReuse_ResampleNeighbor(
 	// TODO: configuration of spatial radius and number of neighbors
 #define SPATIAL_RADIUS 4
 	// Resample neighbors until one succeeds, then check its visibility
-	while (Respir_UpdateNextNeighborGid(taskState, sampleResultsBuff, SPATIAL_RADIUS)) {
-		if (gid == 1) {
-			printf("Found spatial neighbor");
-		}
+	// while (Respir_UpdateNextNeighborGid(taskState, sampleResultsBuff, SPATIAL_RADIUS)) {
+	// 	if (gid == 1) {
+	// 		printf("Found spatial neighbor");
+	// 	}
 		// There is a neighbor
+		// DEBUG: identity shift
+		taskState->neighborGid = gid;
 		if (RespirReservoir_SpatialUpdate(tasks, tasksState, &rays[gid], &task->seed)) {
 			if (gid == 1) {
 				printf("Succeeded resampling chance, checking visibility now");
@@ -1279,12 +1281,12 @@ __kernel void SpatialReuse_ResampleNeighbor(
 			// Resampling succeeds, we need to check visibility from offset prereconnection vertex to base reconnection vertex
 			taskState->state = SR_CHECK_VISIBILITY;
 			break;
-		}
-	}
-	if (taskState->state != SR_CHECK_VISIBILITY) {
-		// If no more neighbors, then this spatial iteration is finished 
-		taskState->state = SYNC;
-	}
+	// 	}
+	// }
+	// if (taskState->state != SR_CHECK_VISIBILITY) {
+	// 	// If no more neighbors, then this spatial iteration is finished 
+	// 	taskState->state = SYNC;
+	// }
 
 	// DEBUG: sanity check to make sure shifting from one pixel to the same one gets the exact same result
 	// TODO: remove after verifying this is good
@@ -1423,6 +1425,9 @@ __kernel void SpatialReuse_CheckVisibility(
 
 		taskState->state = SYNC;
 	}
+
+	// DEBUG: identity shift
+	taskState->state = SYNC;
 }
 
 //------------------------------------------------------------------------------
