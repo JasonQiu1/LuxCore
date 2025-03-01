@@ -1268,8 +1268,14 @@ __kernel void SpatialReuse_ResampleNeighbor(
 #define SPATIAL_RADIUS 4
 	// Resample neighbors until one succeeds, then check its visibility
 	while (Respir_UpdateNextNeighborGid(taskState, sampleResultsBuff, SPATIAL_RADIUS)) {
+		if (gid == 1) {
+			SLG_LOG("Found spatial neighbor");
+		}
 		// There is a neighbor
 		if (RespirReservoir_SpatialUpdate(tasks, tasksState, &rays[gid], &task->seed)) {
+			if (gid == 1) {
+				SLG_LOG("Succeeded resampling chance, checking visibility now");
+			}
 			// Resampling succeeds, we need to check visibility from offset prereconnection vertex to base reconnection vertex
 			taskState->state = SR_CHECK_VISIBILITY;
 			break;
@@ -1354,11 +1360,14 @@ __kernel void SpatialReuse_CheckVisibility(
 
 	const bool rayMiss = (rayHits[gid].meshIndex == NULL_INDEX);
 
+	if (gid == 1) {
+		SLG_LOG("Checking if ray hit anything");
+	}
 	// If continueToTrace, there is nothing to do, just keep the same state
 	if (!continueToTrace) {
 		if (rayMiss) {
 			// Nothing was hit, the light source is visible
-
+			
 			__global BSDF *bsdf = &taskState->bsdf;
 
 			if (!BSDF_IsShadowCatcher(bsdf MATERIALS_PARAM)) {
@@ -1383,6 +1392,10 @@ __kernel void SpatialReuse_CheckVisibility(
 							VLOAD3F(taskDirectLight->illumInfo.lightIrradiance.c);
 					VSTORE3F(irradiance, sampleResult->irradiance.c);
 				}
+			}
+
+			if (gid == 1) {
+				SLG_LOG("Ray hits nothing: reconnection vertex is visible");
 			}
 
 			RespirReservoir* offset = &taskState->initialPathReservoir;
