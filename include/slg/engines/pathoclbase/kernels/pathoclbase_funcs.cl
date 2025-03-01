@@ -235,8 +235,8 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 #endif
 }
 
-OPENCL_FORCE_INLINE bool SampleResult_CheckInRange(__constant const SampleResult* a, 
-		__constant const SampleResult* b, int spatialRadius) {
+OPENCL_FORCE_INLINE bool SampleResult_CheckInRange(__constant SampleResult* a, 
+		__constant SampleResult* b, const int spatialRadius) {
     int dx = a->pixelX - b->pixelX;
     int dy = a->pixelY - b->pixelY;
     
@@ -249,7 +249,7 @@ OPENCL_FORCE_INLINE bool SampleResult_CheckInRange(__constant const SampleResult
 // Return true if a neighbor was found, otherwise false.
 // TODO: upgrade to n-rooks sampling around pixel and customizable spatial radius and number of spatial neighbors
 OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(__global GPUTaskState* taskState, 
-		__global SampleResult* sampleResultsBuff, const int spatialRadius) {
+		__constant SampleResult* sampleResultsBuff, const int spatialRadius) {
 	const size_t bufferSize = get_global_size(0);
 	const size_t gid = get_global_id(0);
 	// Assume that the current neighborGid is already a neighbor that has been resampled, skip it to find the next one
@@ -267,13 +267,13 @@ OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(__global GPUTaskState* tas
 
 // Resample the offset path onto the base path. 
 // If successful, set up shadow ray from the offset path to the base path at the reconnection vertex.
-OPENCL_FORCE_INLINE	bool RespirReservoir_SpatialUpdate(__global GPUTask* tasks, 
+OPENCL_FORCE_INLINE	bool RespirReservoir_SpatialUpdate(__constant GPUTask* tasks, 
 		__global GPUTaskState* tasksState, __global Ray* ray, __global Seed* seed) {
 	const size_t gid = get_global_id(0);
 	// the offset path is the current path we're working on
 	RespirReservoir* offset = &tasksState[gid].initialPathReservoir;
 	// the base path is the neighboring path we're resampling (from previous RIS resamples, to prevent race conditions)
-	RespirReservoir* base = &tasks[tasksState[gid].neighborGid].tmpReservoir;
+	const RespirReservoir* base = &tasks[tasksState[gid].neighborGid].tmpReservoir;
 	// Resample the offset reservoir
 	offset->sumWeight += base->sumWeight;
 	if (Rnd_FloatValue(seed) < base->selectedWeight / offset->sumWeight) {
