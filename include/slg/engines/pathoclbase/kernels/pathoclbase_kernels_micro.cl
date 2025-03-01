@@ -1223,6 +1223,9 @@ __kernel void SpatialReuse_Init(
 		reservoir->selectedSample.reconnectionVertex.postfixRadiance
 	);
 
+	// Prime neighbor gid
+	taskState->neighborGid = 0;
+
 	taskState->state = SR_RESAMPLE_NEIGHBOR;
 
 	// Prime previous reservoir with final initial path sample
@@ -1456,6 +1459,8 @@ __kernel void SpatialReuse_FinishIteration(
 
 	// Update previous reservoir with current reservoir
 	task->tmpReservoir = *reservoir;
+	// Reset neighbor gid search
+	taskState->neighborGid = 0;
 }
 
 //------------------------------------------------------------------------------
