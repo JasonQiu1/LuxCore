@@ -267,15 +267,13 @@ OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(__global GPUTaskState* tas
 
 // Resample the offset path onto the base path. 
 // If successful, set up shadow ray from the offset path to the base path at the reconnection vertex.
-OPENCL_FORCE_INLINE	bool RespirReservoir_SpatialUpdate(__global GPUTaskState* tasksState, 
-		__global Ray* ray, __global Seed* seed) {	
+OPENCL_FORCE_INLINE	bool RespirReservoir_SpatialUpdate(__global GPUTask* tasks, 
+		__global GPUTaskState* tasksState, __global Ray* ray, __global Seed* seed) {
 	const size_t gid = get_global_id(0);
 	// the offset path is the current path we're working on
-	GPUTaskState* offsetTaskState = &tasksState[gid];
-	RespirReservoir* offset = &offsetTaskState->initialPathReservoir;
-	// the base path is the neighboring path we're resampling
-	GPUTaskState* baseTaskState = &tasksState[offsetTaskState->neighborGid];
-	RespirReservoir* base = &baseTaskState->initialPathReservoir;
+	RespirReservoir* offset = &tasksState[gid]->initialPathReservoir;
+	// the base path is the neighboring path we're resampling (from previous RIS resamples, to prevent race conditions)
+	RespirReservoir* base = &tasks[offsetTaskState->neighborGid]->previousReservoir;
 	// Resample the offset reservoir
 	offset->sumWeight += base->sumWeight;
 	if (Rnd_FloatValue(seed) < base->selectedWeight / offset->sumWeight) {

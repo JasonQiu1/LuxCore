@@ -1225,6 +1225,9 @@ __kernel void SpatialReuse_Init(
 
 	taskState->state = SR_RESAMPLE_NEIGHBOR;
 
+	// Prime previous reservoir with final initial path sample
+	task->previousReservoir = &reservoir;
+
 	//--------------------------------------------------------------------------
 
 	// Save the seed
@@ -1266,7 +1269,7 @@ __kernel void SpatialReuse_ResampleNeighbor(
 	// Resample neighbors until one succeeds, then check its visibility
 	while (Respir_UpdateNextNeighborGid(taskState, sampleResultsBuff, SPATIAL_RADIUS)) {
 		// There is a neighbor
-		if (RespirReservoir_SpatialUpdate(tasksState, &rays[gid], &task->seed)) {
+		if (RespirReservoir_SpatialUpdate(tasks, tasksState, &rays[gid], &task->seed)) {
 			// Resampling succeeds, we need to check visibility from offset prereconnection vertex to base reconnection vertex
 			taskState->state = SR_CHECK_VISIBILITY;
 			break;
@@ -1427,19 +1430,14 @@ __kernel void SpatialReuse_FinishIteration(
 	// Start of variables setup
 	//--------------------------------------------------------------------------
 
-	// Read the seed
-	Seed seedValue = task->seed;
-	// This trick is required by SAMPLER_PARAM macro
-	Seed *seed = &seedValue;
+	__global RespirReservoir* reservoir = &taskState->initialPathReservoir;
 
 	//--------------------------------------------------------------------------
 	// End of variables setup
 	//--------------------------------------------------------------------------
 
-	//--------------------------------------------------------------------------
-
-	// Save the seed
-	task->seed = seedValue;
+	// Update previous reservoir with current reservoir
+	task->previousReservoir = &reservoir;
 }
 
 //------------------------------------------------------------------------------

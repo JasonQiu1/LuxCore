@@ -208,6 +208,9 @@ typedef struct {
 	
 	// This is used by DirectLight_BSDFSampling()
 	PathDepthInfo tmpPathDepthInfo;
+
+	// Swap reservoir to use to hold the last spatial passes's reservoirs in order to prevent race conditions.
+	RespirReservoir tmpReservoir;
 } RespirGPUTask;
 
 
