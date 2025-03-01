@@ -1226,7 +1226,7 @@ __kernel void SpatialReuse_Init(
 	taskState->state = SR_RESAMPLE_NEIGHBOR;
 
 	// Prime previous reservoir with final initial path sample
-	task->previousReservoir = &reservoir;
+	task->tmpReservoir = &reservoir;
 
 	//--------------------------------------------------------------------------
 
@@ -1437,7 +1437,7 @@ __kernel void SpatialReuse_FinishIteration(
 	//--------------------------------------------------------------------------
 
 	// Update previous reservoir with current reservoir
-	task->previousReservoir = &reservoir;
+	task->tmpReservoir = &reservoir;
 }
 
 //------------------------------------------------------------------------------

@@ -271,9 +271,9 @@ OPENCL_FORCE_INLINE	bool RespirReservoir_SpatialUpdate(__global GPUTask* tasks,
 		__global GPUTaskState* tasksState, __global Ray* ray, __global Seed* seed) {
 	const size_t gid = get_global_id(0);
 	// the offset path is the current path we're working on
-	RespirReservoir* offset = &tasksState[gid]->initialPathReservoir;
+	RespirReservoir* offset = &tasksState[gid].initialPathReservoir;
 	// the base path is the neighboring path we're resampling (from previous RIS resamples, to prevent race conditions)
-	RespirReservoir* base = &tasks[offsetTaskState->neighborGid]->previousReservoir;
+	RespirReservoir* base = &tasks[tasksState[gid].neighborGid].tmpReservoir;
 	// Resample the offset reservoir
 	offset->sumWeight += base->sumWeight;
 	if (Rnd_FloatValue(seed) < base->selectedWeight / offset->sumWeight) {
