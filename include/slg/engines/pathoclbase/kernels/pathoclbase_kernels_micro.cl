@@ -1460,6 +1460,7 @@ __kernel void SpatialReuse_FinishReuse(
 	const size_t gid = get_global_id(0);
 
 	__global GPUTaskState *taskState = &tasksState[gid];
+	__global Ray *ray = &rays[gid];
 	__global SampleResult *sampleResult = &sampleResultsBuff[gid];
 
 	// maintain integrity of pathtraacer by using time from before spatial reuse
