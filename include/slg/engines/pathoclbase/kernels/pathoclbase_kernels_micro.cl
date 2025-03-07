@@ -1215,7 +1215,7 @@ __kernel void SpatialReuse_Init(
 	// Save ray time state
 	taskState->timeBeforeSpatialReuse = ray->time;
 
-	// Cache data for RIS
+	// Cache data for first iteration of RIS
 	Radiance_Sub(
 		film,
 		sampleResult->radiancePerPixelNormalized,
@@ -1223,11 +1223,9 @@ __kernel void SpatialReuse_Init(
 		reservoir->selectedSample.reconnectionVertex.postfixRadiance
 	);
 
-	// Prime neighbor gid
+	// PRIME LOOP
 	taskState->neighborGid = 0;
-
 	taskState->state = SR_RESAMPLE_NEIGHBOR;
-
 	// Prime previous reservoir with final initial path sample
 	task->tmpReservoir = *reservoir;
 
@@ -1458,10 +1456,10 @@ __kernel void SpatialReuse_FinishIteration(
 	// End of variables setup
 	//--------------------------------------------------------------------------
 
-	// Update previous reservoir with current reservoir
-	task->tmpReservoir = *reservoir;
-	// Reset neighbor gid search
+	// Do the same thing as Init loop priming here
 	taskState->neighborGid = 0;
+	taskState->state = SR_RESAMPLE_NEIGHBOR;
+	task->tmpReservoir = *reservoir;
 }
 
 //------------------------------------------------------------------------------
