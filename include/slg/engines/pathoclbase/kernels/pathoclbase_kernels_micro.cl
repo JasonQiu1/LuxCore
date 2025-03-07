@@ -1224,7 +1224,7 @@ __kernel void SpatialReuse_Init(
 	);
 
 	// PRIME LOOP
-	taskState->neighborGid = 0;
+	taskState->neighborGid = -1;
 	taskState->state = SR_RESAMPLE_NEIGHBOR;
 	// Prime previous reservoir with final initial path sample
 	task->tmpReservoir = *reservoir;
@@ -1449,7 +1449,7 @@ __kernel void SpatialReuse_FinishIteration(
 	//--------------------------------------------------------------------------
 
 	// Do the same thing as Init loop priming here
-	taskState->neighborGid = 0;
+	taskState->neighborGid = -1;
 	taskState->state = SR_RESAMPLE_NEIGHBOR;
 	task->tmpReservoir = *reservoir;
 }
