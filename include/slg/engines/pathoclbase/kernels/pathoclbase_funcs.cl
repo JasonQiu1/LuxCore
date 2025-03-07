@@ -277,9 +277,11 @@ OPENCL_FORCE_INLINE	bool RespirReservoir_SpatialUpdate(__constant GPUTask* tasks
 	// Resample the offset reservoir
 	offset->sumWeight += base->sumWeight;
 	if (Rnd_FloatValue(seed) < base->selectedWeight / offset->sumWeight) {
+#ifdef DEBUG
 		if (get_global_id(0) == 1) {
 			printf("Spatial resampling succeeded.\n");
 		}
+#endif
 		// Using the simplest but biased reconnection shift mapping for now
 		// TODO: upgrade to hybrid shift mapping
 		// TODO: If not good/invalid reconnection vertex, then skip

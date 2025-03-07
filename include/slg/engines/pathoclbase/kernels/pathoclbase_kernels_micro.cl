@@ -1269,14 +1269,8 @@ __kernel void SpatialReuse_ResampleNeighbor(
 #define SPATIAL_RADIUS 4
 	// Resample neighbors until one succeeds, then check its visibility
 	while (Respir_UpdateNextNeighborGid(taskState, sampleResultsBuff, SPATIAL_RADIUS)) {
-		if (gid == 1) {
-			printf("Found spatial neighbor");
-		}
 		// There is a neighbor
 		if (RespirReservoir_SpatialUpdate(tasks, tasksState, &rays[gid], &task->seed)) {
-			if (gid == 1) {
-				printf("Succeeded resampling chance, checking visibility now");
-			}
 			// Resampling succeeds, we need to check visibility from offset prereconnection vertex to base reconnection vertex
 			taskState->state = SR_CHECK_VISIBILITY;
 			break;
@@ -1419,6 +1413,10 @@ __kernel void SpatialReuse_CheckVisibility(
 			taskDirectLight->directLightResult = ILLUMINATED;
 		} else {
 			// not visible
+			if (gid == 1) {
+				printf("Ray hits something; reconnection vertex is not visible");
+			}
+
 			taskDirectLight->directLightResult = SHADOWED;
 		}
 
