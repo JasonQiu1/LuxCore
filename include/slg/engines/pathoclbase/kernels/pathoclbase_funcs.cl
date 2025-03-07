@@ -261,6 +261,10 @@ OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(__global GPUTaskState* tas
 		}
 		taskState->neighborGid++;
 	}
+
+	if (gid == 1) {
+		printf("Ran out of neighbors!\n");
+	}
 	
 	return false;
 }
