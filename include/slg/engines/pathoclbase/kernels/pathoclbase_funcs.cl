@@ -289,7 +289,7 @@ OPENCL_FORCE_INLINE	bool RespirReservoir_SpatialUpdate(__constant GPUTask* tasks
 		// Do visibility check from base primary hit vertex to offset secondary hit vertex
 		// set up shadow ray
 		const float3 reconnectionPoint = VLOAD3F(&base->selectedSample.reconnectionVertex.hitPoint.x);
-		const float3 offsetPoint = VLOAD3F(&offset->selectedSample.prefixBsdf.hitPoint.x);
+		const float3 offsetPoint = VLOAD3F(&offset->selectedSample.prefixBsdf.hitPoint.p.x);
 		float3 toReconnectionPoint = reconnectionPoint - offsetPoint;
 		const float toReconnectionPointDistanceSquared = dot(toReconnectionPoint, toReconnectionPoint);
 		const float toReconnectionPointDistance = sqrt(toReconnectionPointDistanceSquared);
