@@ -289,7 +289,7 @@ OPENCL_FORCE_INLINE	bool RespirReservoir_SpatialUpdate(__constant GPUTask* tasks
 		// Do visibility check from base primary hit vertex to offset secondary hit vertex
 		// set up shadow ray
 		const float3 reconnectionPoint = VLOAD3F(&base->selectedSample.reconnectionVertex.hitPoint.x);
-		const float3 offsetPoint = &offset->selectedSample.prefixBsdf;
+		const float3 offsetPoint = VLOAD3F(&offset->selectedSample.prefixBsdf->hitPoint.x);
 		float3 toReconnectionPoint = reconnectionPoint - offsetPoint;
 		const float toReconnectionPointDistanceSquared = dot(toReconnectionPoint);
 		const float toReconnectionPointDistance = sqrt(toReconnectionPointDistanceSquared);
@@ -297,9 +297,9 @@ OPENCL_FORCE_INLINE	bool RespirReservoir_SpatialUpdate(__constant GPUTask* tasks
 
 		const float3 shadowRayOrigin = BSDF_GetRayOrigin(&offset->selectedSample.prefixBsdf, toReconnectionPoint)
 		// TODO: the geometryN value might have to be negative
-		float3 shadowRayDir = reconnectionPoint + (BSDF_GetLandingGeometryN(&offset->selectedSample.prefixBsdf)
-				* MachineEpsilon_E_Float3(reconnectionPoint)) 
-				- shadowRayOrigin;
+		float3 shadowRayDir = reconnectionPoint + 
+				(BSDF_GetLandingGeometryN(&offset->selectedSample.prefixBsdf) * MachineEpsilon_E_Float3(reconnectionPoint)) - 
+				shadowRayOrigin;
 		const float shadowRayDirDistanceSquared = dot(shadowRayDir, shadowRayDir);
 		const float shadowRayDirDistance = sqrt(shadowRayDirDistanceSquared);
 		shadowRayDir /= shadowRayDirDistance;
