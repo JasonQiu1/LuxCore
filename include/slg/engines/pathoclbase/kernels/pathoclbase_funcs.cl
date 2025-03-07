@@ -295,7 +295,7 @@ OPENCL_FORCE_INLINE	bool RespirReservoir_SpatialUpdate(__constant GPUTask* tasks
 		const float toReconnectionPointDistance = sqrt(toReconnectionPointDistanceSquared);
 		toReconnectionPoint /= toReconnectionPointDistance;
 
-		const float3 shadowRayOrigin = BSDF_GetRayOrigin(&offset->selectedSample.prefixBsdf, toReconnectionPoint)
+		const float3 shadowRayOrigin = BSDF_GetRayOrigin(&offset->selectedSample.prefixBsdf, toReconnectionPoint);
 		// TODO: the geometryN value might have to be negative
 		float3 shadowRayDir = reconnectionPoint + (BSDF_GetLandingGeometryN(&offset->selectedSample.prefixBsdf) 
 				* MachineEpsilon_E_Float3(reconnectionPoint)) - 
