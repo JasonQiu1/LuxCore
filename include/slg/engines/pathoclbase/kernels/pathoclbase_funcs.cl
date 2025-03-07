@@ -290,7 +290,7 @@ OPENCL_FORCE_INLINE	bool RespirReservoir_SpatialUpdate(__constant GPUTask* tasks
 		// set up shadow ray
 		float3 dir = VLOAD3F(&base->selectedSample.reconnectionVertex.hitPoint.x) - VLOAD3F(&offset->selectedSample.prefixBsdf.hitPoint.p.x);
 		const float dir_distance_squared = dot(dir, dir);
-		const float dir_distance = sqrt(dir_mag_squared);
+		const float dir_distance = sqrt(dir_distance_squared);
 		dir /= dir_distance;
 		Ray_Init3(ray, BSDF_GetRayOrigin(&offset->selectedSample.prefixBsdf, dir), dir, dir_distance, offset->selectedSample.hitTime);
 		
