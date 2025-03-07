@@ -176,27 +176,30 @@ void RespirPathOCLRenderThread::InitKernels() {
 
 	const double tSpatialReuseStart = WallClockTime();
 	SLG_LOG("[RespirPathOCLThread::" << threadIndex << "] Compiling kernels ");
-	// TODO: use a different workgroup size and kernel arguments for spatial reuse in the future to optimize performance.
-	CompileKernel(intersectionDevice, program, &spatialReuseInitKernel, &workGroupSize,
-			"SpatialReuse_Init");
-	advancePathsWorkGroupSize = Min(advancePathsWorkGroupSize, workGroupSize);
-	CompileKernel(intersectionDevice, program, &spatialReuseResampleNeighborKernel, &workGroupSize,
+
+	CompileKernel(intersectionDevice, program, &spatialReuseKernel_MK_RESAMPLE_NEIGHBOR, &spatialReuseResamplingVisibilityWorkGroupSize,
 			"SpatialReuse_ResampleNeighbor");
-	advancePathsWorkGroupSize = Min(advancePathsWorkGroupSize, workGroupSize);
-	CompileKernel(intersectionDevice, program, &spatialReuseCheckVisibilityKernel, &workGroupSize,
+	CompileKernel(intersectionDevice, program, &spatialReuseKernel_MK_CHECK_VISIBILITY, &workGroupSize,
 		"SpatialReuse_CheckVisibility");
-	advancePathsWorkGroupSize = Min(advancePathsWorkGroupSize, workGroupSize);
-	CompileKernel(intersectionDevice, program, &spatialReuseFinishIterationKernel, &workGroupSize,
+	spatialReuseResamplingVisibilityWorkGroupSize = Min(spatialReuseResamplingVisibilityWorkGroupSize, workGroupSize);
+	SLG_LOG("[PathOCLBaseRenderThread::" << threadIndex << "] Spatial Reuse resampling and visibility kernels workgroup size: " << spatialReuseResamplingVisibilityWorkGroupSize);
+
+	CompileKernel(intersectionDevice, program, &spatialReuseKernel_MK_INIT, &spatialReuseWorkGroupSize,
+		"SpatialReuse_Init");
+	CompileKernel(intersectionDevice, program, &spatialReuseKernel_MK_FINISH_ITERATION, &workGroupSize,
 			"SpatialReuse_FinishIteration");
-	advancePathsWorkGroupSize = Min(advancePathsWorkGroupSize, workGroupSize);
-	CompileKernel(intersectionDevice, program, &spatialReuseSetSplatKernel, &workGroupSize,
+	spatialReuseWorkGroupSize = Min(spatialReuseWorkGroupSize, workGroupSize);
+	CompileKernel(intersectionDevice, program, &spatialReuseKernel_MK_FINISH_REUSE, &workGroupSize,
+			"SpatialReuse_FinishReuse");
+	spatialReuseWorkGroupSize = Min(spatialReuseWorkGroupSize, workGroupSize);
+	CompileKernel(intersectionDevice, program, &spatialReuseKernel_MK_SET_SPLAT, &workGroupSize,
 			"SpatialReuse_SetSplat");
-	advancePathsWorkGroupSize = Min(advancePathsWorkGroupSize, workGroupSize);
+	spatialReuseWorkGroupSize = Min(spatialReuseWorkGroupSize, workGroupSize);
+	SLG_LOG("[PathOCLBaseRenderThread::" << threadIndex << "] Spatial Reuse general kernels workgroup size: " << spatialReuseWorkGroupSize);
 	const double tSpatialReuseEnd = WallClockTime();
 	SLG_LOG("[RespirPathOCLThread::" << threadIndex << "] Spatial reuse kernels compilation time: " << int((tSpatialReuseEnd - tSpatialReuseStart) * 1000.0) << "ms");
 
 	delete program;
-
 }
 
 void RespirPathOCLRenderThread::SetInitKernelArgs(const u_int filmIndex) {
@@ -209,16 +212,19 @@ void RespirPathOCLRenderThread::SetAdvancePathsKernelArgs(luxrays::HardwareDevic
 
 void RespirPathOCLRenderThread::SetAllAdvancePathsKernelArgs(const u_int filmIndex) {
     PathOCLOpenCLRenderThread::SetAllAdvancePathsKernelArgs(filmIndex);
-	if (spatialReuseInitKernel)
-		SetAdvancePathsKernelArgs(spatialReuseInitKernel, filmIndex);
-	if (spatialReuseResampleNeighborKernel)
-		SetAdvancePathsKernelArgs(spatialReuseResampleNeighborKernel, filmIndex);
-	if (spatialReuseCheckVisibilityKernel)
-		SetAdvancePathsKernelArgs(spatialReuseCheckVisibilityKernel, filmIndex);
-	if (spatialReuseFinishIterationKernel)
-		SetAdvancePathsKernelArgs(spatialReuseFinishIterationKernel, filmIndex);
-	if (spatialReuseSetSplatKernel)
-		SetAdvancePathsKernelArgs(spatialReuseSetSplatKernel, filmIndex);
+	// TODO: optimize performance by setting smaller kernel args for spatial reuse kernels
+	if (spatialReuseKernel_MK_INIT)
+		SetAdvancePathsKernelArgs(spatialReuseKernel_MK_INIT, filmIndex);
+	if (spatialReuseKernel_MK_RESAMPLE_NEIGHBOR)
+		SetAdvancePathsKernelArgs(spatialReuseKernel_MK_RESAMPLE_NEIGHBOR, filmIndex);
+	if (spatialReuseKernel_MK_CHECK_VISIBILITY)
+		SetAdvancePathsKernelArgs(spatialReuseKernel_MK_CHECK_VISIBILITY, filmIndex);
+	if (spatialReuseKernel_MK_FINISH_ITERATION)
+		SetAdvancePathsKernelArgs(spatialReuseKernel_MK_FINISH_ITERATION, filmIndex);
+	if (spatialReuseKernel_MK_FINISH_REUSE)
+		SetAdvancePathsKernelArgs(spatialReuseKernel_MK_FINISH_REUSE, filmIndex);
+	if (spatialReuseKernel_MK_SET_SPLAT)
+		SetAdvancePathsKernelArgs(spatialReuseKernel_MK_SET_SPLAT, filmIndex);
 }
 
 void RespirPathOCLRenderThread::EnqueueAdvancePathsKernel() {

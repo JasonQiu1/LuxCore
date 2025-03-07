@@ -42,19 +42,21 @@ using namespace slg;
 RespirPathOCLRenderThread::RespirPathOCLRenderThread(const u_int index, luxrays::HardwareIntersectionDevice *device,
         RespirPathOCLRenderEngine *re)
     : PathOCLOpenCLRenderThread(index, device, re) {
-    spatialReuseInitKernel = nullptr;
-	spatialReuseResampleNeighborKernel = nullptr;
-	spatialReuseCheckVisibilityKernel = nullptr;
-	spatialReuseFinishIterationKernel = nullptr;
-	spatialReuseSetSplatKernel = nullptr;
+    spatialReuseKernel_MK_INIT = nullptr;
+	spatialReuseKernel_MK_RESAMPLE_NEIGHBOR = nullptr;
+	spatialReuseKernel_MK_CHECK_VISIBILITY = nullptr;
+	spatialReuseKernel_MK_FINISH_ITERATION = nullptr;
+	spatialReuseKernel_MK_FINISH_REUSE = nullptr;
+	spatialReuseKernel_MK_SET_SPLAT = nullptr;
 }
 
 RespirPathOCLRenderThread::~RespirPathOCLRenderThread() {
-    delete spatialReuseInitKernel;
-	delete spatialReuseResampleNeighborKernel;
-	delete spatialReuseCheckVisibilityKernel;
-	delete spatialReuseFinishIterationKernel;
-	delete spatialReuseSetSplatKernel;
+    delete spatialReuseKernel_MK_INIT;
+	delete spatialReuseKernel_MK_RESAMPLE_NEIGHBOR;
+	delete spatialReuseKernel_MK_CHECK_VISIBILITY;
+	delete spatialReuseKernel_MK_FINISH_ITERATION;
+	delete spatialReuseKernel_MK_FINISH_REUSE;
+	delete spatialReuseKernel_MK_SET_SPLAT;
 }
 
 void RespirPathOCLRenderThread::StartRenderThread() {
@@ -208,8 +210,8 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 			if (numSpatialReuseIterations > 0) {
 				SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Spatial reuse is enabled, performing " << numSpatialReuseIterations << " iterations");
 				// Initialize variables and find spatial neighbors
-				intersectionDevice->EnqueueKernel(spatialReuseInitKernel,
-						HardwareDeviceRange(engine->taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
+				intersectionDevice->EnqueueKernel(spatialReuseKernel_MK_INIT,
+						HardwareDeviceRange(engine->taskCount), HardwareDeviceRange(spatialReuseWorkGroupSize));
 				// Ensure all paths are synced before continuing
 				intersectionDevice->FinishQueue();
 			} else {
@@ -226,15 +228,15 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 					// Evaluate visibility if resampling succeeds
 					for (u_int i = 0; i < iterations; ++i) {					
 						// Resample next neighboring pixel
-						intersectionDevice->EnqueueKernel(spatialReuseResampleNeighborKernel,
-							HardwareDeviceRange(taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
+						intersectionDevice->EnqueueKernel(spatialReuseKernel_MK_RESAMPLE_NEIGHBOR,
+							HardwareDeviceRange(taskCount), HardwareDeviceRange(spatialReuseResamplingVisibilityWorkGroupSize));
 	
 						// Trace shadow rays to reconnection vertices
 						intersectionDevice->EnqueueTraceRayBuffer(raysBuff, hitsBuff, taskCount);
 
 						// Check visibility and update reservoirs if successful
-						intersectionDevice->EnqueueKernel(spatialReuseCheckVisibilityKernel,
-							HardwareDeviceRange(taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
+						intersectionDevice->EnqueueKernel(spatialReuseKernel_MK_CHECK_VISIBILITY,
+							HardwareDeviceRange(taskCount), HardwareDeviceRange(spatialReuseResamplingVisibilityWorkGroupSize));
 					}
 
 					// This is blocking and waits for queue to finish
@@ -242,18 +244,24 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 				}
 				
 				// Finish the iteration
-				intersectionDevice->EnqueueKernel(spatialReuseFinishIterationKernel,
-					HardwareDeviceRange(taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
+				intersectionDevice->EnqueueKernel(spatialReuseKernel_MK_FINISH_ITERATION,
+					HardwareDeviceRange(taskCount), HardwareDeviceRange(spatialReuseWorkGroupSize));
 
 				// Ensure all paths are synced before continuing
 				intersectionDevice->FinishQueue();
 			}
 			
-			SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Spatial reuse passes are complete, splatting pixels");
+			// Finish up reuse
+			if (numSpatialReuseIterations > 0) {
+				SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Spatial reuse passes are complete, finishing reuse.");
+				intersectionDevice->EnqueueKernel(spatialReuseKernel_MK_FINISH_REUSE,
+                    HardwareDeviceRange(engine->taskCount), HardwareDeviceRange(spatialReuseWorkGroupSize));
+			}
 
             // Splat pixels.
-			intersectionDevice->EnqueueKernel(spatialReuseSetSplatKernel,
-                    HardwareDeviceRange(engine->taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
+			SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Splatting pixels.");
+			intersectionDevice->EnqueueKernel(spatialReuseKernel_MK_SET_SPLAT,
+                    HardwareDeviceRange(engine->taskCount), HardwareDeviceRange(spatialReuseWorkGroupSize));
             intersectionDevice->EnqueueKernel(advancePathsKernel_MK_SPLAT_SAMPLE,
 			    HardwareDeviceRange(taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
 			

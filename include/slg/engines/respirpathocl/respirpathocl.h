@@ -54,11 +54,15 @@ protected:
 	bool CheckSyncedPathStates(ocl::pathoclbase::RespirGPUTaskState* tasksStateReadBuffer, 
 		const u_int taskCount, ocl::pathoclbase::PathState targetState);
 
-	luxrays::HardwareDeviceKernel* spatialReuseInitKernel;
-	luxrays::HardwareDeviceKernel* spatialReuseResampleNeighborKernel;
-	luxrays::HardwareDeviceKernel* spatialReuseCheckVisibilityKernel;
-	luxrays::HardwareDeviceKernel* spatialReuseFinishIterationKernel;
-	luxrays::HardwareDeviceKernel* spatialReuseSetSplatKernel;
+	luxrays::HardwareDeviceKernel* spatialReuseKernel_MK_INIT;
+	luxrays::HardwareDeviceKernel* spatialReuseKernel_MK_RESAMPLE_NEIGHBOR;
+	luxrays::HardwareDeviceKernel* spatialReuseKernel_MK_CHECK_VISIBILITY;
+	luxrays::HardwareDeviceKernel* spatialReuseKernel_MK_FINISH_ITERATION;
+	luxrays::HardwareDeviceKernel* spatialReuseKernel_MK_FINISH_REUSE;
+	luxrays::HardwareDeviceKernel* spatialReuseKernel_MK_SET_SPLAT;
+
+	size_t spatialReuseResamplingVisibilityWorkGroupSize;
+	size_t spatialReuseWorkGroupSize;
 };
 
 //------------------------------------------------------------------------------

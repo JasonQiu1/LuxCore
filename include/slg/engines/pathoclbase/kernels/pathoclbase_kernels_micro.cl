@@ -982,11 +982,6 @@ __kernel void AdvancePaths_MK_SPLAT_SAMPLE(
 	// End of variables setup
 	//--------------------------------------------------------------------------
 
-#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-	// Copy resampled sample from reservoir to sampleResultsBuff[gid] to be splatted like normal
-	*sampleResult = taskState->initialPathReservoir.selectedSample.sampleResult;
-#endif
-
 	// Initialize Film radiance group pointer table
 	__global float *filmRadianceGroup[FILM_MAX_RADIANCE_GROUP_COUNT];
 	filmRadianceGroup[0] = filmRadianceGroup0;
@@ -1455,6 +1450,26 @@ __kernel void SpatialReuse_FinishIteration(
 }
 
 //------------------------------------------------------------------------------
+// SpatialReuse_FinishReuse Kernel
+//
+// Runs after all iterations are complete.
+//------------------------------------------------------------------------------
+__kernel void SpatialReuse_FinishReuse(
+		KERNEL_ARGS
+		) {
+	const size_t gid = get_global_id(0);
+
+	__global GPUTaskState *taskState = &tasksState[gid];
+	__global SampleResult *sampleResult = &sampleResultsBuff[gid];
+
+	// maintain integrity of pathtraacer by using time from before spatial reuse
+	ray->time = taskState->timeBeforeSpatialReuse;
+
+	// Copy resampled sample from reservoir to sampleResultsBuff[gid] to be splatted like normal
+	*sampleResult = taskState->initialPathReservoir.selectedSample.sampleResult;	
+}
+
+//------------------------------------------------------------------------------
 // SpatialReuse_SetSplat Kernel
 //
 // Sets path state to splat.
@@ -1464,12 +1479,7 @@ __kernel void SpatialReuse_SetSplat(
 		) {
 	const size_t gid = get_global_id(0);
 
-	// Read the path state
 	__global GPUTaskState *taskState = &tasksState[gid];
-	__global Ray* ray = &rays[gid];
-	
-	// maintain integrity of pathtraacer by using time from before spatial reuse
-	ray->time = taskState->timeBeforeSpatialReuse;
 
 	taskState->state = MK_SPLAT_SAMPLE;
 }
