@@ -224,7 +224,7 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 				while (!isSpatialReuseDone) {
 					SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Spatial reuse (iteration " << i << "): tracing shadow paths");
 					// Evaluate visibility if resampling succeeds
-					for (u_int i = 0; i < totalIterationsThisFrame; ++i) {					
+					for (u_int i = 0; i < iterations; ++i) {					
 						// Resample next neighboring pixel
 						intersectionDevice->EnqueueKernel(spatialReuseResampleNeighborKernel,
 							HardwareDeviceRange(taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
