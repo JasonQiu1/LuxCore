@@ -1281,8 +1281,8 @@ __kernel void SpatialReuse_ResampleNeighbor(
 			}
 			// Resampling succeeds, we need to check visibility from offset prereconnection vertex to base reconnection vertex
 			taskState->state = SR_CHECK_VISIBILITY;
-			// break;
-		}
+			break;
+	// 	}
 	// }
 	// if (taskState->state != SR_CHECK_VISIBILITY) {
 	// 	// If no more neighbors, then this spatial iteration is finished 
