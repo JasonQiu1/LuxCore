@@ -278,8 +278,12 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 			// Also transfer if numFrames is less than 10 in order to get accurate low spp images.
 			if (totalTransferTime < totalKernelTime * (1.0 / 100.0) || numFrames < 10) {
 				SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Transferring film and checking convergence conditions.");
-				// Sync. transfer of the Film buffers
-				threadFilms[0]->RecvFilm(intersectionDevice);
+				bool blocking = CL_FALSE;
+				if (numFrames < 10) {
+					blocking = CL_TRUE;
+				}
+				// Transfer of the Film buffers
+				threadFilms[0]->RecvFilm(intersectionDevice, blocking);
 
 				// Async. transfer of GPU task statistics
 				intersectionDevice->EnqueueReadBuffer(

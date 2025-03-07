@@ -80,6 +80,7 @@ protected:
 		void ClearFilm(luxrays::HardwareIntersectionDevice *intersectionDevice,
 			luxrays::HardwareDeviceKernel *filmClearKernel, const size_t filmClearWorkGroupSize);
 		void RecvFilm(luxrays::HardwareIntersectionDevice *intersectionDevice);
+		void RecvFilm(luxrays::HardwareIntersectionDevice *intersectionDevice, bool blocking);
 		void SendFilm(luxrays::HardwareIntersectionDevice *intersectionDevice);
 
 		Film *film;
