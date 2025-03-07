@@ -277,26 +277,26 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 			// resolution images (for instance at 4961x3508)
 			// Also transfer if numFrames is less than 10 in order to get accurate low spp images.
 			if (totalTransferTime < totalKernelTime * (1.0 / 100.0) || numFrames < 10) {
-				// Async. transfer of the Film buffers
+				SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Transferring film and checking convergence conditions.");
+				// Sync. transfer of the Film buffers
 				threadFilms[0]->RecvFilm(intersectionDevice);
 
 				// Async. transfer of GPU task statistics
 				intersectionDevice->EnqueueReadBuffer(
 					taskStatsBuff,
-					CL_FALSE,
+					true,
 					sizeof(slg::ocl::pathoclbase::GPUTaskStats) * taskCount,
 					gpuTaskStats);
 
 				intersectionDevice->FinishQueue();
 				
-				// I need to update the film samples count
-				
+				// Update the film samples count
 				double totalCount = 0.0;
 				for (size_t i = 0; i < taskCount; ++i)
 					totalCount += gpuTaskStats[i].sampleCount;
 				threadFilms[0]->film->SetSampleCount(totalCount, totalCount, 0.0);
 
-				//SLG_LOG("[DEBUG] film transferred");
+				SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Finished transferring film.");
 			}
 			const double timeTransferEnd = WallClockTime();
 			totalTransferTime += timeTransferEnd - timeTransferStart;
