@@ -275,8 +275,8 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 			// Transfer the film from GPU to CPU only if I have already spent enough time running
 			// rendering kernels. This is very important when rendering very high
 			// resolution images (for instance at 4961x3508)
-
-			if (totalTransferTime < totalKernelTime * (1.0 / 100.0)) {
+			// Also transfer if numFrames is less than 10 in order to get accurate low spp images.
+			if (totalTransferTime < totalKernelTime * (1.0 / 100.0) || numFrames < 10) {
 				// Async. transfer of the Film buffers
 				threadFilms[0]->RecvFilm(intersectionDevice);
 
