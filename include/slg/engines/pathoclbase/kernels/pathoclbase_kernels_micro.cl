@@ -1275,7 +1275,6 @@ __kernel void SpatialReuse_ResampleNeighbor(
 		// There is a neighbor
 		// DEBUG: identity shift
 		taskState->neighborGid = gid;
-		taskState->state = SR_CHECK_VISIBILITY;
 		if (RespirReservoir_SpatialUpdate(tasks, tasksState, &rays[gid], &task->seed)) {
 			if (gid == 1) {
 				printf("Succeeded resampling chance, checking visibility now");
