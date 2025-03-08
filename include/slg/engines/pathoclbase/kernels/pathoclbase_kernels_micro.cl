@@ -1267,12 +1267,14 @@ __kernel void SpatialReuse_ResampleNeighbor(
 		// There is a neighbor
 		if (RespirReservoir_SpatialUpdate(tasks, tasksState, &rays[gid], &task->seed)) {
 			// Resampling succeeds, we need to check visibility from offset prereconnection vertex to base reconnection vertex
+			printf("Resampled neighbor.\n");
 			taskState->state = SR_CHECK_VISIBILITY;
 			break;
 		}
 	}
 	if (taskState->state != SR_CHECK_VISIBILITY) {
 		// If no more neighbors, then this spatial iteration is finished 
+		printf("No more neighbors to resample.\n");
 		taskState->state = SYNC;
 	}
 
