@@ -230,6 +230,9 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 					// Resample next neighboring pixel
 					intersectionDevice->EnqueueKernel(spatialReuseKernel_MK_RESAMPLE_NEIGHBOR,
 						HardwareDeviceRange(taskCount), HardwareDeviceRange(spatialReuseResamplingVisibilityWorkGroupSize));
+					if (!CheckSyncedPathStates(tasksStateReadBuffer, taskCount, slg::ocl::pathoclbase::PathState::SR_CHECK_VISIBILITY)) {
+						continue;
+					}
 
 					// Trace shadow rays to reconnection vertices
 					intersectionDevice->EnqueueTraceRayBuffer(raysBuff, hitsBuff, taskCount);
