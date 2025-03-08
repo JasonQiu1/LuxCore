@@ -1270,7 +1270,7 @@ __kernel void SpatialReuse_ResampleNeighbor(
 			&directLightVolInfos[gid], &eyePathInfos[gid],
 			&task->seed)) {
 			// Resampling succeeds, we need to check visibility from offset prereconnection vertex to base reconnection vertex
-			//taskState->state = SR_CHECK_VISIBILITY;
+			taskState->state = SR_CHECK_VISIBILITY;
 			break;
 		}
 	}
