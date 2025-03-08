@@ -330,8 +330,8 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 	}
     SLG_LOG("[PathOCLRespirRenderThread::" << threadIndex << "]: Rendered " << numFrames << " frames in total.");
 
-	threadFilms[0]->RecvFilm(intersectionDevice);
-	intersectionDevice->FinishQueue();
+	// threadFilms[0]->RecvFilm(intersectionDevice);
+	// intersectionDevice->FinishQueue();
 	
 	threadDone = true;
 	
