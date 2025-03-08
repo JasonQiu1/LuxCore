@@ -1263,7 +1263,7 @@ __kernel void SpatialReuse_ResampleNeighbor(
 	// TODO: configuration of spatial radius and number of neighbors
 #define SPATIAL_RADIUS 2
 	// Resample neighbors until one succeeds, then check its visibility
-	while (Respir_UpdateNextNeighborGid(taskState, sampleResultsBuff, SPATIAL_RADIUS)) {
+	if (Respir_UpdateNextNeighborGid(taskState, sampleResultsBuff, SPATIAL_RADIUS)) {
 		// There is a neighbor
 		if (RespirReservoir_SpatialUpdate(tasks, tasksState, 
 			&rays[gid], &tasksDirectLight[gid],
@@ -1273,8 +1273,7 @@ __kernel void SpatialReuse_ResampleNeighbor(
 			taskState->state = SR_CHECK_VISIBILITY;
 			break;
 		}
-	}
-	if (taskState->state != SR_CHECK_VISIBILITY) {
+	} else {
 		// If no more neighbors, then this spatial iteration is finished 
 		taskState->state = SYNC;
 	}
