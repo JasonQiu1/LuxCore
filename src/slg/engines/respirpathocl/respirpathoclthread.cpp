@@ -222,6 +222,7 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 			for (u_int i = 0; i < numSpatialReuseIterations; i++) {
 				SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Beginning spatial reuse iteration " << i);
 				bool isSpatialReuseDone = false;
+				uint visibilityIterations = 0;
 				// Resample neighboring pixels
 				while (!isSpatialReuseDone) {
 					SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Spatial reuse (iteration " << i << "): tracing shadow paths");
@@ -238,7 +239,10 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 
 					// This is blocking and waits for queue to finish
 					isSpatialReuseDone = CheckSyncedPathStates(tasksStateReadBuffer, taskCount, slg::ocl::pathoclbase::PathState::SYNC);
+					visibilityIterations++;
 				}
+
+				SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Number of iterations for visibility checks: " << visibilityIterations);
 				
 				// Finish the iteration
 				intersectionDevice->EnqueueKernel(spatialReuseKernel_MK_FINISH_ITERATION,
