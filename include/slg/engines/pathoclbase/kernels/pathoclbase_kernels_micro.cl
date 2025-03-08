@@ -1265,7 +1265,10 @@ __kernel void SpatialReuse_ResampleNeighbor(
 	// Resample neighbors until one succeeds, then check its visibility
 	while (Respir_UpdateNextNeighborGid(taskState, sampleResultsBuff, SPATIAL_RADIUS)) {
 		// There is a neighbor
-		if (RespirReservoir_SpatialUpdate(tasks, tasksState, &rays[gid], &task->seed)) {
+		if (RespirReservoir_SpatialUpdate(tasks, tasksState, 
+			&rays[gid], &tasksDirectLight[gid],
+			&directLightVolInfos[gid], &eyePathInfos[gid],
+			&task->seed)) {
 			// Resampling succeeds, we need to check visibility from offset prereconnection vertex to base reconnection vertex
 			taskState->state = SR_CHECK_VISIBILITY;
 			break;
