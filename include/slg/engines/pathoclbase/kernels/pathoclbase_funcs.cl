@@ -296,11 +296,11 @@ OPENCL_FORCE_INLINE	bool RespirReservoir_SpatialUpdate(
 		// Do visibility check from base primary hit vertex to offset secondary hit vertex
 		// set up shadow ray
 		// Initialize the trough a shadow transparency flag used by Scene_Intersect()
-		tasksDirectLight->throughShadowTransparency = false;
+		taskDirectLight->throughShadowTransparency = false;
 
 		// Make a copy of current PathVolumeInfo for tracing the
 		// shadow ray
-		*directLightVolInfos = pathInfo->volume;
+		*directLightVolInfo = pathInfo->volume;
 
 		const float3 reconnectionPoint = VLOAD3F(&base->selectedSample.reconnectionVertex.hitPoint.x);
 		const float3 offsetPoint = VLOAD3F(&offset->selectedSample.prefixBsdf.hitPoint.p.x);
