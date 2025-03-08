@@ -273,7 +273,7 @@ OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(__global GPUTaskState* tas
 // If successful, set up shadow ray from the offset path to the base path at the reconnection vertex.
 OPENCL_FORCE_INLINE	bool RespirReservoir_SpatialUpdate(
 		__constant GPUTask* tasks, __global GPUTaskState* tasksState, 
-		__global Ray* ray, global GPUTaskDirectLight* tasksDirectLight, __global PathVolumeInfo* directLightVolInfos,
+		__global Ray* ray, __global GPUTaskDirectLight* tasksDirectLight, __global PathVolumeInfo* directLightVolInfos,
 		__global Seed* seed) {
 	const size_t gid = get_global_id(0);
 	// the offset path is the current path we're working on
