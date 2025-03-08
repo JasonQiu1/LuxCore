@@ -271,8 +271,10 @@ OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(__global GPUTaskState* tas
 
 // Resample the offset path onto the base path. 
 // If successful, set up shadow ray from the offset path to the base path at the reconnection vertex.
-OPENCL_FORCE_INLINE	bool RespirReservoir_SpatialUpdate(__constant GPUTask* tasks, 
-		__global GPUTaskState* tasksState, __global Ray* ray, __global Seed* seed) {
+OPENCL_FORCE_INLINE	bool RespirReservoir_SpatialUpdate(
+		__constant GPUTask* tasks, __global GPUTaskState* tasksState, 
+		__global Ray* ray, _-global GPUTaskDirectLight* tasksDirectLight, __global PathVolumeInfo* directLightVolInfos,
+		__global Seed* seed) {
 	const size_t gid = get_global_id(0);
 	// the offset path is the current path we're working on
 	RespirReservoir* offset = &tasksState[gid].initialPathReservoir;
@@ -292,6 +294,13 @@ OPENCL_FORCE_INLINE	bool RespirReservoir_SpatialUpdate(__constant GPUTask* tasks
 
 		// Do visibility check from base primary hit vertex to offset secondary hit vertex
 		// set up shadow ray
+		// Initialize the trough a shadow transparency flag used by Scene_Intersect()
+		tasksDirectLight[gid].throughShadowTransparency = false;
+
+		// Make a copy of current PathVolumeInfo for tracing the
+		// shadow ray
+		directLightVolInfos[gid] = pathInfo->volume;
+
 		const float3 reconnectionPoint = VLOAD3F(&base->selectedSample.reconnectionVertex.hitPoint.x);
 		const float3 offsetPoint = VLOAD3F(&offset->selectedSample.prefixBsdf.hitPoint.p.x);
 		float3 toReconnectionPoint = reconnectionPoint - offsetPoint;
