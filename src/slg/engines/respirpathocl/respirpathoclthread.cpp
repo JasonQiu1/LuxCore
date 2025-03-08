@@ -285,10 +285,10 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 				// Transfer of the Film buffers
 				threadFilms[0]->RecvFilm(intersectionDevice, blocking);
 
-				// Async. transfer of GPU task statistics
+				// Transfer of GPU task statistics
 				intersectionDevice->EnqueueReadBuffer(
 					taskStatsBuff,
-					true,
+					blocking,
 					sizeof(slg::ocl::pathoclbase::GPUTaskStats) * taskCount,
 					gpuTaskStats);
 
