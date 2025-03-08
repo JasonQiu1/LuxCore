@@ -193,6 +193,7 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 
                 // Check if initial path resampling for all pixels is complete
 				// This is blocking and waits for queue to finish
+				intersectionDevice->FinishQueue();
                 isInitialPathResamplingDone = CheckSyncedPathStates(tasksStateReadBuffer, taskCount, slg::ocl::pathoclbase::PathState::SYNC);
 
                 totalIterationsThisFrame += iterations;
@@ -238,6 +239,7 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 						HardwareDeviceRange(taskCount), HardwareDeviceRange(spatialReuseResamplingVisibilityWorkGroupSize));
 
 					// This is blocking and waits for queue to finish
+					intersectionDevice->FinishQueue();
 					isSpatialReuseDone = CheckSyncedPathStates(tasksStateReadBuffer, taskCount, slg::ocl::pathoclbase::PathState::SYNC);
 					visibilityIterations++;
 				}
