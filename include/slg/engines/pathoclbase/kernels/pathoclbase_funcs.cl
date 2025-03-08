@@ -309,7 +309,7 @@ OPENCL_FORCE_INLINE	bool RespirReservoir_SpatialUpdate(__constant GPUTask* tasks
 		shadowRayDir /= shadowRayDirDistance;
 		Ray_Init4(ray, shadowRayOrigin, shadowRayDir, 0.f, shadowRayDirDistance, offset->selectedSample.hitTime);
 		if (get_global_id(0) == 1) {
-			printf("Shadow ray maxt: %f\n", shadowRayDirDistance);
+			printf("Shadow ray maxt: %f\n", ray->maxt);
 		}
 		return true; 
 	}
