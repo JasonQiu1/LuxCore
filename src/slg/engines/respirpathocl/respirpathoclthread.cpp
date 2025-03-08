@@ -225,19 +225,16 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 				// Resample neighboring pixels
 				while (!isSpatialReuseDone) {
 					SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Spatial reuse (iteration " << i << "): tracing shadow paths");
-					// Evaluate visibility if resampling succeeds
-					for (u_int i = 0; i < iterations; ++i) {					
-						// Resample next neighboring pixel
-						intersectionDevice->EnqueueKernel(spatialReuseKernel_MK_RESAMPLE_NEIGHBOR,
-							HardwareDeviceRange(taskCount), HardwareDeviceRange(spatialReuseResamplingVisibilityWorkGroupSize));
-	
-						// Trace shadow rays to reconnection vertices
-						intersectionDevice->EnqueueTraceRayBuffer(raysBuff, hitsBuff, taskCount);
+					// Resample next neighboring pixel
+					intersectionDevice->EnqueueKernel(spatialReuseKernel_MK_RESAMPLE_NEIGHBOR,
+						HardwareDeviceRange(taskCount), HardwareDeviceRange(spatialReuseResamplingVisibilityWorkGroupSize));
 
-						// Check visibility and update reservoirs if successful
-						intersectionDevice->EnqueueKernel(spatialReuseKernel_MK_CHECK_VISIBILITY,
-							HardwareDeviceRange(taskCount), HardwareDeviceRange(spatialReuseResamplingVisibilityWorkGroupSize));
-					}
+					// Trace shadow rays to reconnection vertices
+					intersectionDevice->EnqueueTraceRayBuffer(raysBuff, hitsBuff, taskCount);
+
+					// Check visibility and update reservoirs if successful
+					intersectionDevice->EnqueueKernel(spatialReuseKernel_MK_CHECK_VISIBILITY,
+						HardwareDeviceRange(taskCount), HardwareDeviceRange(spatialReuseResamplingVisibilityWorkGroupSize));
 
 					// This is blocking and waits for queue to finish
 					isSpatialReuseDone = CheckSyncedPathStates(tasksStateReadBuffer, taskCount, slg::ocl::pathoclbase::PathState::SYNC);
@@ -257,6 +254,10 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 				intersectionDevice->EnqueueKernel(spatialReuseKernel_MK_FINISH_REUSE,
                     HardwareDeviceRange(engine->taskCount), HardwareDeviceRange(spatialReuseWorkGroupSize));
 			}
+
+			// Check halt conditions
+			if (engine->film->GetConvergence() == 1.f)
+				break;
 
             // Splat pixels.
 			SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Splatting pixels.");
