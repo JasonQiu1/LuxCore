@@ -1451,6 +1451,7 @@ __kernel void SpatialReuse_FinishIteration(
 	//--------------------------------------------------------------------------
 
 	__global RespirReservoir* reservoir = &taskState->initialPathReservoir;
+	__global SampleResult *sampleResult = &sampleResultsBuff[gid];
 
 	//--------------------------------------------------------------------------
 	// End of variables setup
