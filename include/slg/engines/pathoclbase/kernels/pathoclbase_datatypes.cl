@@ -136,11 +136,11 @@ typedef struct {
 	
 	// TODO: MOVE INTO SEPARATE BUFFER IN THE FUTURE
 	uint timeBeforeSpatialReuse; // save time before spatial reuse to make sure rays after spatial reuse are using the correct time
-	// stores the current index of sampleResultsBuff/taskStates buffer that we find neighbors through
-	int neighborGid;
 	// Reservoir data structure for initial path resampling using RIS
 	RespirReservoir initialPathReservoir;
-	// TODO: store spatialRadius from CPU in the future instead of as a hard-coded macro
+	
+	// Neighbor search info
+	int currentNeighborGid, neighborSearchDx, neighborSearchDy;
 	
 	int albedoToDo, photonGICacheEnabledOnLastHit,
 			photonGICausticCacheUsed, photonGIShowIndirectPathMixUsed,

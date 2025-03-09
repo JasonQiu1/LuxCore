@@ -1220,10 +1220,17 @@ __kernel void SpatialReuse_Init(
 	);
 
 	// PRIME LOOP
-	taskState->neighborGid = -1;
-	taskState->state = SR_RESAMPLE_NEIGHBOR;
+	// Prime neighbor search
+	taskState->currentNeighborGid = -1;
+	taskState->neighborSearchDx = -spatialRadius;
+	taskState->neighborSearchDy = -spatialRadius;
+	PixelMapIndex_Set(pixelIndexMap, filmWidth, 
+			sampleResult->pixelX, sampleResult->pixelY, 
+			gid);
 	// Prime previous reservoir with final initial path sample
 	task->tmpReservoir = *reservoir;
+	// Prime pathstate
+	taskState->state = SR_RESAMPLE_NEIGHBOR;
 
 	//--------------------------------------------------------------------------
 
@@ -1394,7 +1401,7 @@ __kernel void SpatialReuse_CheckVisibility(
 			}
 
 			RespirReservoir* offset = &taskState->initialPathReservoir;
-			const RespirReservoir* base = &tasks[taskState->neighborGid].tmpReservoir;
+			const RespirReservoir* base = &tasks[taskState->currentNeighborGid].tmpReservoir;
 
 			// visible
 			// set offset reconnection vertex to base reconnection vertex
@@ -1449,10 +1456,18 @@ __kernel void SpatialReuse_FinishIteration(
 	// End of variables setup
 	//--------------------------------------------------------------------------
 
-	// Do the same thing as Init loop priming here
-	taskState->neighborGid = -1;
-	taskState->state = SR_RESAMPLE_NEIGHBOR;
+	// PRIME LOOP
+	// Prime neighbor search
+	taskState->currentNeighborGid = -1;
+	taskState->neighborSearchDx = -spatialRadius;
+	taskState->neighborSearchDy = -spatialRadius;
+	PixelMapIndex_Set(pixelIndexMap, filmWidth, 
+			sampleResult->pixelX, sampleResult->pixelY, 
+			gid);
+	// Prime previous reservoir with final initial path sample
 	task->tmpReservoir = *reservoir;
+	// Prime pathstate
+	taskState->state = SR_RESAMPLE_NEIGHBOR;
 }
 
 //------------------------------------------------------------------------------
@@ -1473,7 +1488,12 @@ __kernel void SpatialReuse_FinishReuse(
 	ray->time = taskState->timeBeforeSpatialReuse;
 
 	// Copy resampled sample from reservoir to sampleResultsBuff[gid] to be splatted like normal
-	*sampleResult = taskState->initialPathReservoir.selectedSample.sampleResult;	
+	*sampleResult = taskState->initialPathReservoir.selectedSample.sampleResult;
+	
+	// Reinitialize pixelMapIndex state in case the pixel this task is working on changes
+	PixelMapIndex_Set(pixelIndexMap, filmWidth, 
+		sampleResult->pixelX, sampleResult->pixelY, 
+		-1);
 }
 
 //------------------------------------------------------------------------------

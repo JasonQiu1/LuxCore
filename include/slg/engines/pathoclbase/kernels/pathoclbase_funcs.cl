@@ -170,6 +170,14 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 //------------------------------------------------------------------------------
 
 #if defined(RENDER_ENGINE_RESPIRPATHOCL)
+OPENCL_FORCE_INLINE int PixelIndexMap_Get(__global int* pixelIndexMap, const uint mapWidth, const uint x, const uint y) {
+	return pixelIndexMap[y * mapWidth + x];
+}
+
+OPENCL_FORCE_INLINE void PixelIndexMap_Set(__global int* pixelIndexMap, const uint mapWidth, const uint x, const uint y, const int value) {
+	pixelIndexMap[y * mapWidth + x] = value;
+}
+
 // Add a sample to the streaming reservoir.
 // Simply replace based on the new sample's weight and the reservoir's current sum weight.
 OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfiguration* restrict taskConfig, __global GPUTaskState* restrict taskState, 
@@ -245,21 +253,21 @@ OPENCL_FORCE_INLINE bool SampleResult_CheckInRange(__constant SampleResult* a,
 
 // Find the spatial neighbors around the pixel this work-item is handling for now
 // Spatial radius is the square grid distance, not circle distance
-// Advances taskState->neighborGid to the next neighbor.
+// Advances taskState->currentNeighborGid to the next neighbor.
 // Return true if a neighbor was found, otherwise false.
 // TODO: upgrade to n-rooks sampling around pixel and customizable spatial radius and number of spatial neighbors
 OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(__global GPUTaskState* taskState, 
 		__constant SampleResult* sampleResultsBuff, const int spatialRadius) {
 	const size_t bufferSize = get_global_size(0);
 	const size_t gid = get_global_id(0);
-	// Assume that the current neighborGid is already a neighbor that has been resampled, skip it to find the next one
-	taskState->neighborGid++;
-	while (taskState->neighborGid < bufferSize) {
+	// Assume that the current currentNeighborGid is already a neighbor that has been resampled, skip it to find the next one
+	taskState->currentNeighborGid++;
+	while (taskState->currentNeighborGid < bufferSize) {
 		// Keep in mind the sample results in the buffer are different from those in the reservoir, but we're only checking pixel coordinates here so it's ok
-		if (SampleResult_CheckInRange(&sampleResultsBuff[gid], &sampleResultsBuff[taskState->neighborGid], spatialRadius)) {
+		if (SampleResult_CheckInRange(&sampleResultsBuff[gid], &sampleResultsBuff[taskState->currentNeighborGid], spatialRadius)) {
 			return true;
 		}
-		taskState->neighborGid++;
+		taskState->currentNeighborGid++;
 	}
 
 	if (gid == 1) {
@@ -280,7 +288,7 @@ OPENCL_FORCE_INLINE	bool RespirReservoir_SpatialUpdate(
 	// the offset path is the current path we're working on
 	RespirReservoir* offset = &tasksState[gid].initialPathReservoir;
 	// the base path is the neighboring path we're resampling (from previous RIS resamples, to prevent race conditions)
-	const RespirReservoir* base = &tasks[tasksState[gid].neighborGid].tmpReservoir;
+	const RespirReservoir* base = &tasks[tasksState[gid].currentNeighborGid].tmpReservoir;
 	// Resample the offset reservoir
 	offset->sumWeight += base->sumWeight;
 	if (Rnd_FloatValue(seed) < base->selectedWeight / offset->sumWeight) {
