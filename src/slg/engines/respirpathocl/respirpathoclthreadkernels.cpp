@@ -215,7 +215,7 @@ void RespirPathOCLRenderThread::InitPixelIndexMapBuffer(const u_int filmWidth, c
 			initial[i][j] = -1;
 		}
 	}
-	intersectionDevice->EnqueueWriteBuffer(pixelIndexMapBuff, CL_TRUE, size, initial);
+	intersectionDevice->EnqueueWriteBuffer(pixelIndexMapBuff, CL_TRUE, size, &initial);
 }
 
 void RespirPathOCLRenderThread::InitRespirBuffers() {
