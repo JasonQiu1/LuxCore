@@ -1179,7 +1179,7 @@ __kernel void AdvancePaths_MK_GENERATE_CAMERA_RAY(
 //------------------------------------------------------------------------------
 __kernel void SpatialReuse_Init(
 		KERNEL_ARGS
-		KERNEL_ARGS_SPATIAL_REUSE
+		KERNEL_ARGS_SPATIALREUSE
 		) {
 	const size_t gid = get_global_id(0);
 
@@ -1242,7 +1242,7 @@ __kernel void SpatialReuse_Init(
 //------------------------------------------------------------------------------
 __kernel void SpatialReuse_ResampleNeighbor(
 		KERNEL_ARGS
-		KERNEL_ARGS_SPATIAL_REUSE
+		KERNEL_ARGS_SPATIALREUSE
 		) {
 	const size_t gid = get_global_id(0);
 
@@ -1431,7 +1431,7 @@ __kernel void SpatialReuse_CheckVisibility(
 //------------------------------------------------------------------------------
 __kernel void SpatialReuse_FinishIteration(
 		KERNEL_ARGS
-		KERNEL_ARGS_SPATIAL_REUSE
+		KERNEL_ARGS_SPATIALREUSE
 		) {
 	const size_t gid = get_global_id(0);
 
