@@ -1224,7 +1224,7 @@ __kernel void SpatialReuse_Init(
 	taskState->currentNeighborGid = -1;
 	taskState->neighborSearchDx = -spatialRadius;
 	taskState->neighborSearchDy = -spatialRadius;
-	PixelMapIndex_Set(pixelIndexMap, filmWidth, 
+	PixelIndexMap_Set(pixelIndexMap, filmWidth, 
 			sampleResult->pixelX, sampleResult->pixelY, 
 			gid);
 	// Prime previous reservoir with final initial path sample
@@ -1461,7 +1461,7 @@ __kernel void SpatialReuse_FinishIteration(
 	taskState->currentNeighborGid = -1;
 	taskState->neighborSearchDx = -spatialRadius;
 	taskState->neighborSearchDy = -spatialRadius;
-	PixelMapIndex_Set(pixelIndexMap, filmWidth, 
+	PixelIndexMap_Set(pixelIndexMap, filmWidth, 
 			sampleResult->pixelX, sampleResult->pixelY, 
 			gid);
 	// Prime previous reservoir with final initial path sample
@@ -1477,6 +1477,7 @@ __kernel void SpatialReuse_FinishIteration(
 //------------------------------------------------------------------------------
 __kernel void SpatialReuse_FinishReuse(
 		KERNEL_ARGS
+		KERNEL_ARGS_SPATIALREUSE
 		) {
 	const size_t gid = get_global_id(0);
 
@@ -1490,8 +1491,8 @@ __kernel void SpatialReuse_FinishReuse(
 	// Copy resampled sample from reservoir to sampleResultsBuff[gid] to be splatted like normal
 	*sampleResult = taskState->initialPathReservoir.selectedSample.sampleResult;
 	
-	// Reinitialize pixelMapIndex state in case the pixel this task is working on changes
-	PixelMapIndex_Set(pixelIndexMap, filmWidth, 
+	// Reinitialize PixelIndexMap state in case the pixel this task is working on changes
+	PixelIndexMap_Set(pixelIndexMap, filmWidth, 
 		sampleResult->pixelX, sampleResult->pixelY, 
 		-1);
 }
