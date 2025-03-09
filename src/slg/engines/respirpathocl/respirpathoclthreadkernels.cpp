@@ -61,14 +61,6 @@ void RespirPathOCLRenderThread::GetKernelParameters(
 			params.push_back("-D LUXCORE_GENERIC_OPENCL");
 	}}
 
-void RespirPathOCLRenderThread::InitGPUTaskBuffer(const u_int taskCount) {
-	intersectionDevice->AllocBufferRW(&tasksBuff, nullptr, sizeof(slg::ocl::pathoclbase::RespirGPUTask) * taskCount, "ReSPIR GPUTask");
-}
-
-void RespirPathOCLRenderThread::InitGPUTaskStateBuffer(const u_int taskCount) {
-	intersectionDevice->AllocBufferRW(&tasksStateBuff, nullptr, sizeof(slg::ocl::pathoclbase::RespirGPUTaskState) * taskCount, "ReSPIR GPUTaskState");
-}
-
 void RespirPathOCLRenderThread::InitKernels() {
 	//--------------------------------------------------------------------------
 	// Compile kernels
@@ -202,6 +194,28 @@ void RespirPathOCLRenderThread::InitKernels() {
 	delete program;
 }
 
+void RespirPathOCLRenderThread::InitGPUTaskBuffer(const u_int taskCount) {
+	intersectionDevice->AllocBufferRW(&tasksBuff, nullptr, sizeof(slg::ocl::pathoclbase::RespirGPUTask) * taskCount, "ReSPIR GPUTask");
+}
+
+void RespirPathOCLRenderThread::InitGPUTaskStateBuffer(const u_int taskCount) {
+	intersectionDevice->AllocBufferRW(&tasksStateBuff, nullptr, sizeof(slg::ocl::pathoclbase::RespirGPUTaskState) * taskCount, "ReSPIR GPUTaskState");
+}
+
+void RespirPathOCLRenderThread::InitGPUTaskBuffer() {
+	// This may use the base class's InitGPUTaskBuffer and InitGPUTaskStateBuffer instead of the overridden ones above.
+	// TODO: Which is not what we want. Check this.
+	PathOCLBaseOCLRenderThread::InitGPUTaskBuffer();
+}
+
+void RespirPathOCLRenderThread::InitPixelIndexMapBuffer(const u_int filmWidth, const u_int filmHeight) {
+	intersectionDevice->AllocBufferRW(&pixelIndexMapBuff, nullptr, sizeof(size_t) * filmWidth * filmHeight, "PixelIndexMap");
+}
+
+void RespirPathOCLRenderThread::InitRespirBuffers() {
+	InitPixelIndexMapBuffer(threadFilms[0]->film->GetWidth(), threadFilms[0]->film->GetHeight());
+}
+
 void RespirPathOCLRenderThread::SetInitKernelArgs(const u_int filmIndex) {
     PathOCLOpenCLRenderThread::SetInitKernelArgs(filmIndex);
 }
@@ -212,19 +226,293 @@ void RespirPathOCLRenderThread::SetAdvancePathsKernelArgs(luxrays::HardwareDevic
 
 void RespirPathOCLRenderThread::SetAllAdvancePathsKernelArgs(const u_int filmIndex) {
     PathOCLOpenCLRenderThread::SetAllAdvancePathsKernelArgs(filmIndex);
+}
+
+void RespirPathOCLRenderThread::SetSpatialReuseKernelArgs(HardwareDeviceKernel *spatialReuseKernel, const u_int filmIndex) {
+	CompiledScene *cscene = renderEngine->compiledScene;
+
+	u_int argIndex = 0;
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, taskConfigBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, tasksBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, tasksDirectLightBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, tasksStateBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, taskStatsBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, pixelFilterBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, samplerSharedDataBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, samplesBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, sampleDataBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, sampleResultsBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, eyePathInfosBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, directLightVolInfosBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, raysBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, hitsBuff);
+
+	// Film parameters
+	argIndex = threadFilms[filmIndex]->SetFilmKernelArgs(intersectionDevice, spatialReuseKernel, argIndex);
+
+	// Scene parameters
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, cscene->worldBSphere.center.x);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, cscene->worldBSphere.center.y);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, cscene->worldBSphere.center.z);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, cscene->worldBSphere.rad);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, materialsBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, materialEvalOpsBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, materialEvalStackBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, cscene->maxMaterialEvalStackSize);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, texturesBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, textureEvalOpsBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, textureEvalStackBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, cscene->maxTextureEvalStackSize);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, scnObjsBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, meshDescsBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, vertsBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, normalsBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, triNormalsBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, uvsBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, colsBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, alphasBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, vertexAOVBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, triAOVBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, trianglesBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, interpolatedTransformsBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, cameraBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, cameraBokehDistributionBuff);
+	// Lights
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, lightsBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, envLightIndicesBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, (u_int)cscene->envLightIndices.size());
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, lightIndexOffsetByMeshIndexBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, lightIndexByTriIndexBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, envLightDistributionsBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, lightsDistributionBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, infiniteLightSourcesDistributionBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, dlscAllEntriesBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, dlscDistributionsBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, dlscBVHNodesBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, cscene->dlscRadius2);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, cscene->dlscNormalCosAngle);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, elvcAllEntriesBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, elvcDistributionsBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, elvcTileDistributionOffsetsBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, elvcBVHNodesBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, cscene->elvcRadius2);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, cscene->elvcNormalCosAngle);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, cscene->elvcTilesXCount);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, cscene->elvcTilesYCount);
+
+	// Images
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, imageMapDescsBuff);
+	for (u_int i = 0; i < 8; ++i) {
+		if (i < imageMapsBuff.size())
+			intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, imageMapsBuff[i]);
+		else
+			intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, nullptr);
+	}
+
+	// PhotonGI cache
+	// TODO: remove this since this Respir implementation doesn't use photonGI caching
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, pgicRadiancePhotonsBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, cscene->pgicLightGroupCounts);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, pgicRadiancePhotonsValuesBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, pgicRadiancePhotonsBVHNodesBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, pgicCausticPhotonsBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, pgicCausticPhotonsBVHNodesBuff);
+
+	// Spatial reuse
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, pixelIndexMapBuff);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, spatialRadius);
+}
+
+void RespirPathOCLRenderThread::SetAllSpatialReuseKernelArgs(const u_int filmIndex) {
 	// TODO: optimize performance by setting smaller kernel args for spatial reuse kernels
 	if (spatialReuseKernel_MK_INIT)
-		SetAdvancePathsKernelArgs(spatialReuseKernel_MK_INIT, filmIndex);
+		SetSpatialReuseKernelArgs(spatialReuseKernel_MK_INIT, filmIndex);
 	if (spatialReuseKernel_MK_RESAMPLE_NEIGHBOR)
-		SetAdvancePathsKernelArgs(spatialReuseKernel_MK_RESAMPLE_NEIGHBOR, filmIndex);
+		SetSpatialReuseKernelArgs(spatialReuseKernel_MK_RESAMPLE_NEIGHBOR, filmIndex);
 	if (spatialReuseKernel_MK_CHECK_VISIBILITY)
-		SetAdvancePathsKernelArgs(spatialReuseKernel_MK_CHECK_VISIBILITY, filmIndex);
+		SetSpatialReuseKernelArgs(spatialReuseKernel_MK_CHECK_VISIBILITY, filmIndex);
 	if (spatialReuseKernel_MK_FINISH_ITERATION)
-		SetAdvancePathsKernelArgs(spatialReuseKernel_MK_FINISH_ITERATION, filmIndex);
+		SetSpatialReuseKernelArgs(spatialReuseKernel_MK_FINISH_ITERATION, filmIndex);
 	if (spatialReuseKernel_MK_FINISH_REUSE)
-		SetAdvancePathsKernelArgs(spatialReuseKernel_MK_FINISH_REUSE, filmIndex);
+		SetSpatialReuseKernelArgs(spatialReuseKernel_MK_FINISH_REUSE, filmIndex);
 	if (spatialReuseKernel_MK_SET_SPLAT)
-		SetAdvancePathsKernelArgs(spatialReuseKernel_MK_SET_SPLAT, filmIndex);
+		SetSpatialReuseKernelArgs(spatialReuseKernel_MK_SET_SPLAT, filmIndex);
+}
+
+void RespirPathOCLRenderThread::SetKernelArgs() {
+	// Set init kernel args and advance paths kernels args
+	PathOCLBaseOCLRenderThread::SetKernelArgs();
+
+	SLG_LOG("[RespirPathOCLBaseRenderThread::" << threadIndex << "] Setting kernel arguments");
+
+	//--------------------------------------------------------------------------
+	// Spatial reuse kernels
+	//--------------------------------------------------------------------------
+
+	SLG_LOG("[PathOCLBaseRenderThread::" << threadIndex << "] Setting spatial reuse kernel arguments");
+
+	SetAllSpatialReuseKernelArgs(0);
+}
+
+void RespirPathOCLRenderThread::InitRender() {
+	//--------------------------------------------------------------------------
+	// Film definition
+	//--------------------------------------------------------------------------
+
+	InitFilm();
+
+	//--------------------------------------------------------------------------
+	// Camera definition
+	//--------------------------------------------------------------------------
+
+	InitCamera();
+
+	//--------------------------------------------------------------------------
+	// Scene geometry
+	//--------------------------------------------------------------------------
+
+	InitGeometry();
+
+	//--------------------------------------------------------------------------
+	// Image maps
+	//--------------------------------------------------------------------------
+
+	InitImageMaps();
+
+	//--------------------------------------------------------------------------
+	// Texture definitions
+	//--------------------------------------------------------------------------
+
+	InitTextures();
+
+	//--------------------------------------------------------------------------
+	// Material definitions
+	//--------------------------------------------------------------------------
+
+	InitMaterials();
+
+	//--------------------------------------------------------------------------
+	// Mesh <=> Material links
+	//--------------------------------------------------------------------------
+
+	InitSceneObjects();
+
+	//--------------------------------------------------------------------------
+	// Light definitions
+	//--------------------------------------------------------------------------
+
+	InitLights();
+
+	//--------------------------------------------------------------------------
+	// Light definitions
+	//--------------------------------------------------------------------------
+
+	InitPhotonGI();
+
+	//--------------------------------------------------------------------------
+	// GPUTaskStats
+	//--------------------------------------------------------------------------
+
+	const u_int taskCount = renderEngine->taskCount;
+
+	// In case renderEngine->taskCount has changed
+	delete[] gpuTaskStats;
+	gpuTaskStats = new slg::ocl::pathoclbase::GPUTaskStats[taskCount];
+	for (u_int i = 0; i < taskCount; ++i)
+		gpuTaskStats[i].sampleCount = 0;
+
+	//--------------------------------------------------------------------------
+	// Allocate Ray/RayHit buffers
+	//--------------------------------------------------------------------------
+
+	intersectionDevice->AllocBufferRW(&raysBuff, nullptr, sizeof(Ray) * taskCount, "Ray");
+	intersectionDevice->AllocBufferRW(&hitsBuff, nullptr, sizeof(RayHit) * taskCount, "RayHit");
+
+	//--------------------------------------------------------------------------
+	// Allocate GPU task buffers
+	//--------------------------------------------------------------------------
+
+	InitGPUTaskBuffer();
+
+	//--------------------------------------------------------------------------
+	// Allocate GPU task statistic buffers
+	//--------------------------------------------------------------------------
+
+	intersectionDevice->AllocBufferRW(&taskStatsBuff, nullptr, sizeof(slg::ocl::pathoclbase::GPUTaskStats) * taskCount, "GPUTask Stats");
+
+	//--------------------------------------------------------------------------
+	// Allocate sampler shared data buffer
+	//--------------------------------------------------------------------------
+
+	InitSamplerSharedDataBuffer();
+
+	//--------------------------------------------------------------------------
+	// Allocate sample buffers
+	//--------------------------------------------------------------------------
+
+	InitSamplesBuffer();
+
+	//--------------------------------------------------------------------------
+	// Allocate sample data buffers
+	//--------------------------------------------------------------------------
+
+	InitSampleDataBuffer();
+
+	//--------------------------------------------------------------------------
+	// Allocate sample result buffers
+	//--------------------------------------------------------------------------
+
+	InitSampleResultsBuffer();
+
+	//--------------------------------------------------------------------------
+	// Allocate volume info buffers if required
+	//--------------------------------------------------------------------------
+
+	intersectionDevice->AllocBufferRW(&eyePathInfosBuff, nullptr, sizeof(slg::ocl::EyePathInfo) * taskCount, "PathInfo");
+
+	//--------------------------------------------------------------------------
+	// Allocate volume info buffers if required
+	//--------------------------------------------------------------------------
+
+	intersectionDevice->AllocBufferRW(&directLightVolInfosBuff, nullptr, sizeof(slg::ocl::PathVolumeInfo) * taskCount, "DirectLightVolumeInfo");
+
+	//--------------------------------------------------------------------------
+	// Allocate GPU pixel filter distribution
+	//--------------------------------------------------------------------------
+
+	intersectionDevice->AllocBufferRO(&pixelFilterBuff, renderEngine->pixelFilterDistribution,
+			renderEngine->pixelFilterDistributionSize, "Pixel Filter Distribution");
+	
+	//--------------------------------------------------------------------------
+	// Allocate Respir related buffers
+	//--------------------------------------------------------------------------
+
+	InitRespirBuffers();
+
+	//--------------------------------------------------------------------------
+	// Compile kernels
+	//--------------------------------------------------------------------------
+
+	InitKernels();
+
+	//--------------------------------------------------------------------------
+	// Initialize
+	//--------------------------------------------------------------------------
+
+	// Set kernel arguments
+	SetKernelArgs();
+
+	// Clear all thread films
+	BOOST_FOREACH(ThreadFilm *threadFilm, threadFilms) {
+		intersectionDevice->PushThreadCurrentDevice();
+		threadFilm->ClearFilm(intersectionDevice, filmClearKernel, filmClearWorkGroupSize);
+		intersectionDevice->PopThreadCurrentDevice();
+	}
+
+	intersectionDevice->FinishQueue();
+
+	// Reset statistics in order to be more accurate
+	intersectionDevice->ResetPerformaceStats();
 }
 
 void RespirPathOCLRenderThread::EnqueueAdvancePathsKernel() {

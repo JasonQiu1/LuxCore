@@ -152,7 +152,7 @@ protected:
 	void FreeThreadFilmsOCLBuffers();
 	void FreeThreadFilms();
 
-	void InitRender();
+	virtual void InitRender();
 
     // Make kernel execution overridable
 	void InitFilm();
@@ -167,7 +167,7 @@ protected:
 	virtual void InitKernels();
 	virtual void InitGPUTaskStateBuffer(const u_int taskCount);
 	virtual void InitGPUTaskBuffer(const u_int taskCount);
-	void InitGPUTaskBuffer();
+	virtual void InitGPUTaskBuffer();
 	void InitSamplerSharedDataBuffer();
 	void InitSamplesBuffer();
 	void InitSampleDataBuffer();

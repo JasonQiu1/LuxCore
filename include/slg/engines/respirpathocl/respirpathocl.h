@@ -34,7 +34,8 @@ public:
 			RespirPathOCLRenderEngine *re);
 	~RespirPathOCLRenderThread();
 
-	void StartRenderThread() override;
+	virtual void StartRenderThread() override;
+	virtual void Stop() override;
 
 	friend class RespirPathOCLRenderEngine;
 protected:
@@ -42,17 +43,27 @@ protected:
 			luxrays::HardwareIntersectionDevice *intersectionDevice,
 			const std::string renderEngineType,
 			const float epsilonMin, const float epsilonMax) override;
+	void InitRender() override;
 	void InitGPUTaskBuffer(const u_int taskCount) override;
 	void InitGPUTaskStateBuffer(const u_int taskCount) override;
+	void InitGPUTaskBuffer() override;
 	void GetThreadFilmSize(u_int *filmWidth, u_int *filmHeight, u_int *filmSubRegion) override;
 	void RenderThreadImpl() override;
     void InitKernels() override;
+	void InitPixelIndexMapBuffer(const u_int filmWidth, const u_int filmHeight);
+	void InitRespirBuffers();
     void SetInitKernelArgs(const u_int filmIndex) override;
     void SetAdvancePathsKernelArgs(luxrays::HardwareDeviceKernel *advancePathsKernel, const u_int filmIndex) override;
     void SetAllAdvancePathsKernelArgs(const u_int filmIndex) override;
+	void SetSpatialReuseKernelArgs(luxrays::HardwareDeviceKernel *spatialReuseKernel, const u_int filmIndex);
+	void SetAllSpatialReuseKernelArgs(const u_int filmIndex);
+	void SetKernelArgs() override;
+
     void EnqueueAdvancePathsKernel() override;
-	bool CheckSyncedPathStates(ocl::pathoclbase::RespirGPUTaskState* tasksStateReadBuffer, 
-		const u_int taskCount, ocl::pathoclbase::PathState targetState);
+	bool CheckSyncedPathStates(ocl::pathoclbase::RespirGPUTaskState* tasksStateReadBuffer, const u_int taskCount, ocl::pathoclbase::PathState targetState);
+
+
+	luxrays::HardwareDeviceBuffer* pixelIndexMapBuff;
 
 	luxrays::HardwareDeviceKernel* spatialReuseKernel_MK_INIT;
 	luxrays::HardwareDeviceKernel* spatialReuseKernel_MK_RESAMPLE_NEIGHBOR;
@@ -63,6 +74,7 @@ protected:
 
 	size_t spatialReuseResamplingVisibilityWorkGroupSize;
 	size_t spatialReuseWorkGroupSize;
+	const u_int spatialRadius;
 };
 
 //------------------------------------------------------------------------------
@@ -93,6 +105,7 @@ public:
 
 	// number of times to iterate spatial reuse pass per frame
 	u_int numSpatialReuseIterations;
+	u_int spatialRadius;
 
 protected:
 	static const luxrays::Properties &GetDefaultProps();

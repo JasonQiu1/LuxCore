@@ -41,7 +41,11 @@ using namespace slg;
 
 RespirPathOCLRenderThread::RespirPathOCLRenderThread(const u_int index, luxrays::HardwareIntersectionDevice *device,
         RespirPathOCLRenderEngine *re)
-    : PathOCLOpenCLRenderThread(index, device, re) {
+    : PathOCLOpenCLRenderThread(index, device, re), 
+	  spatialRadius(re->spatialRadius)
+{
+	pixelIndexMapBuff = nullptr;
+
     spatialReuseKernel_MK_INIT = nullptr;
 	spatialReuseKernel_MK_RESAMPLE_NEIGHBOR = nullptr;
 	spatialReuseKernel_MK_CHECK_VISIBILITY = nullptr;
@@ -57,6 +61,84 @@ RespirPathOCLRenderThread::~RespirPathOCLRenderThread() {
 	delete spatialReuseKernel_MK_FINISH_ITERATION;
 	delete spatialReuseKernel_MK_FINISH_REUSE;
 	delete spatialReuseKernel_MK_SET_SPLAT;
+}
+
+void RespirPathOCLRenderThread::Stop() {
+	StopRenderThread();
+
+	// Transfer the films
+	TransferThreadFilms(intersectionDevice);
+	FreeThreadFilmsOCLBuffers();
+
+	// Scene buffers
+	intersectionDevice->FreeBuffer(&materialsBuff);
+	intersectionDevice->FreeBuffer(&materialEvalOpsBuff);
+	intersectionDevice->FreeBuffer(&materialEvalStackBuff);
+	intersectionDevice->FreeBuffer(&texturesBuff);
+	intersectionDevice->FreeBuffer(&textureEvalOpsBuff);
+	intersectionDevice->FreeBuffer(&textureEvalStackBuff);
+	intersectionDevice->FreeBuffer(&meshDescsBuff);
+	intersectionDevice->FreeBuffer(&scnObjsBuff);
+	intersectionDevice->FreeBuffer(&normalsBuff);
+	intersectionDevice->FreeBuffer(&triNormalsBuff);
+	intersectionDevice->FreeBuffer(&uvsBuff);
+	intersectionDevice->FreeBuffer(&colsBuff);
+	intersectionDevice->FreeBuffer(&alphasBuff);
+	intersectionDevice->FreeBuffer(&triAOVBuff);
+	intersectionDevice->FreeBuffer(&trianglesBuff);
+	intersectionDevice->FreeBuffer(&interpolatedTransformsBuff);
+	intersectionDevice->FreeBuffer(&vertsBuff);
+	intersectionDevice->FreeBuffer(&lightsBuff);
+	intersectionDevice->FreeBuffer(&envLightIndicesBuff);
+	intersectionDevice->FreeBuffer(&lightsDistributionBuff);
+	intersectionDevice->FreeBuffer(&infiniteLightSourcesDistributionBuff);
+	intersectionDevice->FreeBuffer(&dlscAllEntriesBuff);
+	intersectionDevice->FreeBuffer(&dlscDistributionsBuff);
+	intersectionDevice->FreeBuffer(&dlscBVHNodesBuff);
+	intersectionDevice->FreeBuffer(&elvcAllEntriesBuff);
+	intersectionDevice->FreeBuffer(&elvcDistributionsBuff);
+	intersectionDevice->FreeBuffer(&elvcTileDistributionOffsetsBuff);
+	intersectionDevice->FreeBuffer(&elvcBVHNodesBuff);
+	intersectionDevice->FreeBuffer(&envLightDistributionsBuff);
+	intersectionDevice->FreeBuffer(&cameraBuff);
+	intersectionDevice->FreeBuffer(&cameraBokehDistributionBuff);
+	intersectionDevice->FreeBuffer(&lightIndexOffsetByMeshIndexBuff);
+	intersectionDevice->FreeBuffer(&lightIndexByTriIndexBuff);
+	intersectionDevice->FreeBuffer(&imageMapDescsBuff);
+
+	for (u_int i = 0; i < imageMapsBuff.size(); ++i)
+		intersectionDevice->FreeBuffer(&imageMapsBuff[i]);
+	imageMapsBuff.resize(0);
+	intersectionDevice->FreeBuffer(&pgicRadiancePhotonsBuff);
+	intersectionDevice->FreeBuffer(&pgicRadiancePhotonsValuesBuff);
+	intersectionDevice->FreeBuffer(&pgicRadiancePhotonsBVHNodesBuff);
+	intersectionDevice->FreeBuffer(&pgicCausticPhotonsBuff);
+	intersectionDevice->FreeBuffer(&pgicCausticPhotonsBVHNodesBuff);
+
+	// OpenCL task related buffers
+	intersectionDevice->FreeBuffer(&raysBuff);
+	intersectionDevice->FreeBuffer(&hitsBuff);
+	intersectionDevice->FreeBuffer(&taskConfigBuff);
+	intersectionDevice->FreeBuffer(&tasksBuff);
+	intersectionDevice->FreeBuffer(&tasksDirectLightBuff);
+	intersectionDevice->FreeBuffer(&tasksStateBuff);
+	intersectionDevice->FreeBuffer(&samplerSharedDataBuff);
+	intersectionDevice->FreeBuffer(&samplesBuff);
+	intersectionDevice->FreeBuffer(&sampleDataBuff);
+	intersectionDevice->FreeBuffer(&sampleResultsBuff);
+	intersectionDevice->FreeBuffer(&taskStatsBuff);
+	intersectionDevice->FreeBuffer(&eyePathInfosBuff);
+	intersectionDevice->FreeBuffer(&directLightVolInfosBuff);
+	intersectionDevice->FreeBuffer(&pixelFilterBuff);
+
+	// Respir buffers
+
+	intersectionDevice->FreeBuffer(&pixelIndexMapBuff);
+
+	started = false;
+
+	// Film is deleted in the destructor to allow image saving after
+	// the rendering is finished
 }
 
 void RespirPathOCLRenderThread::StartRenderThread() {

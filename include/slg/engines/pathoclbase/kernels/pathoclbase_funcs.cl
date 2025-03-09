@@ -691,6 +691,12 @@ OPENCL_FORCE_INLINE bool DirectLight_BSDFSampling(
 		KERNEL_ARGS_IMAGEMAPS_PAGES \
 		KERNEL_ARGS_PHOTONGI
 
+#if defined(RENDER_ENGINE_RESPIRPATHOCL)
+#define KERNEL_ARGS_SPATIALREUSE \
+		, __global int* pixelIndexMap \
+		, __global const uint spatialRadius
+#endif
+
 
 //------------------------------------------------------------------------------
 // To initialize image maps page pointer table

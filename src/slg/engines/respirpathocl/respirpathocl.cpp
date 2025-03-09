@@ -17,6 +17,7 @@ RespirPathOCLRenderEngine::RespirPathOCLRenderEngine(const RenderConfig *rcfg) :
 		PathOCLRenderEngine(rcfg) {
     const Properties &cfg = renderConfig->cfg;
     numSpatialReuseIterations = cfg.Get(GetDefaultProps().Get("respirpathocl.spatialreuse.numiterations")).Get<int>();
+	spatialRadius = cfg.Get(GetDefaultProps().Get("respirpathocl.spatialreuse.radius")).Get<int>();
 }
 
 RespirPathOCLRenderEngine::~RespirPathOCLRenderEngine() {
@@ -41,6 +42,7 @@ Properties RespirPathOCLRenderEngine::ToProperties(const Properties &cfg) {
 			cfg.Get(GetDefaultProps().Get("pathocl.pixelatomics.enable")) <<
 			cfg.Get(GetDefaultProps().Get("opencl.task.count")) <<
             cfg.Get(GetDefaultProps().Get("respirpathocl.spatialreuse.numiterations")) <<
+			cfg.Get(GetDefaultProps().Get("respirpathocl.spatialreuse.radius")) <<
 			Sampler::ToProperties(cfg);
 	return props;
 }
@@ -56,7 +58,8 @@ const Properties &RespirPathOCLRenderEngine::GetDefaultProps() {
 			PathTracer::GetDefaultProps() <<
 			Property("pathocl.pixelatomics.enable")(true) <<
 			Property("opencl.task.count")("AUTO") <<
-            Property("respirpathocl.spatialreuse.numiterations")(1);
+            Property("respirpathocl.spatialreuse.numiterations")(1) <<
+			Property("respirpathocl.spatialreuse.radius")(1);
 	return props;
 }
 
