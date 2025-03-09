@@ -207,7 +207,7 @@ void RespirPathOCLRenderThread::InitGPUTaskBuffer() {
 }
 
 void RespirPathOCLRenderThread::InitPixelIndexMapBuffer(const u_int filmWidth, const u_int filmHeight) {
-	size_t size = sizeof(size_t) * filmWidth * filmHeight;
+	size_t size = sizeof(int) * filmWidth * filmHeight;
 	intersectionDevice->AllocBufferRW(&pixelIndexMapBuff, nullptr, size, "PixelIndexMap");
 	int initial[filmHeight][filmWidth]{};
 	for (int i = 0; i < filmHeight; i++) {
@@ -215,7 +215,7 @@ void RespirPathOCLRenderThread::InitPixelIndexMapBuffer(const u_int filmWidth, c
 			initial[i][j] = -1;
 		}
 	}
-	intersectionDevice->EnqueueWriteBuffer(pixelIndexMapBuff, CL_TRUE, size, &initial);
+	intersectionDevice->EnqueueWriteBuffer(pixelIndexMapBuff, CL_TRUE, size, initial);
 }
 
 void RespirPathOCLRenderThread::InitRespirBuffers() {
