@@ -203,8 +203,6 @@ void RespirPathOCLRenderThread::InitGPUTaskStateBuffer(const u_int taskCount) {
 }
 
 void RespirPathOCLRenderThread::InitGPUTaskBuffer() {
-	// This may use the base class's InitGPUTaskBuffer and InitGPUTaskStateBuffer instead of the overridden ones above.
-	// TODO: Which is not what we want. Check this.
 	PathOCLBaseOCLRenderThread::InitGPUTaskBuffer();
 }
 
