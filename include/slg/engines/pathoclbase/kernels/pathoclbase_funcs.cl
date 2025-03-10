@@ -63,8 +63,13 @@ OPENCL_FORCE_INLINE void InitSampleResult(
 	const float uSubPixelX = filmX - pixelX;
 	const float uSubPixelY = filmY - pixelY;
 
+#if defined(RENDER_ENGINE_RESPIRPATHOCL)
+	sampleResult->pixelX = gid % filmWidth;
+	sampleResult->pixelY = gid / filmWidth;
+#else
 	sampleResult->pixelX = pixelX;
 	sampleResult->pixelY = pixelY;
+#endif
 
 	// Sample according the pixel filter distribution
 	float distX, distY;
