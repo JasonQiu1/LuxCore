@@ -209,6 +209,7 @@ void RespirPathOCLRenderThread::InitGPUTaskBuffer() {
 void RespirPathOCLRenderThread::InitPixelIndexMapBuffer(const u_int filmWidth, const u_int filmHeight) {
 	size_t size = sizeof(int) * filmWidth * filmHeight;
 	intersectionDevice->AllocBufferRW(&pixelIndexMapBuff, nullptr, size, "PixelIndexMap");
+	SLG_LOG("Initial pixelindexmap dims " << filmHeight << " " << filmWidth);
 	int initial[filmHeight][filmWidth]{};
 	for (int i = 0; i < filmHeight; i++) {
 		for (int j = 0; j < filmWidth; j++) {
