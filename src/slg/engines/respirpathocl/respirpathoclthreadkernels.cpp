@@ -213,7 +213,7 @@ void RespirPathOCLRenderThread::InitPixelIndexMapBuffer(const u_int filmWidth, c
 	int* initial = (int*)malloc(sizeof(int) * filmWidth * filmHeight);
 	for (int i = 0; i < filmHeight; i++) {
 		for (int j = 0; j < filmWidth; j++) {
-			initial[i][j] = -1;
+			initial[i * filmWidth + j] = -1;
 		}
 	}
 	SLG_LOG("Created initial pixelindexmap");
