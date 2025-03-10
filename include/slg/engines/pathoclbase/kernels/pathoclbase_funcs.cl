@@ -254,6 +254,7 @@ OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(__global GPUTaskState* tas
 	taskState->currentNeighborGid = -1;
 	if (get_global_id(0) == 1) {
 		printf("Finding next neighbor for pixel (%d,%d)\n", sampleResult->pixelX, sampleResult->pixelY);
+		printf("Current pixel offset (%d,%d)\n", taskState->neighborSearchDx, taskState->neighborSearchDy);
 	}
 	while (taskState->neighborSearchDy <= spatialRadius) {
 		while (taskState->neighborSearchDx <= spatialRadius) {
