@@ -252,25 +252,12 @@ OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(GPUTaskState* taskState,
 		const SampleResult* sampleResult, const int spatialRadius, 
 		const int* pixelIndexMap, const uint filmWidth, const uint filmHeight) {
 	taskState->currentNeighborGid = -1;
-	if (get_global_id(0) == 1) {
-		printf("Finding next neighbor for pixel (%d,%d)\n", sampleResult->pixelX, sampleResult->pixelY);
-		printf("Current pixel offset (%d,%d)\n", taskState->neighborSearchDx, taskState->neighborSearchDy);
-		printf("taskState->neighborSearchDy (%d) <= spatialRadius (%d): %d\n", taskState->neighborSearchDy, spatialRadius, taskState->neighborSearchDy <= spatialRadius);
-	}
 	while (taskState->neighborSearchDy <= spatialRadius) {
 		while (taskState->neighborSearchDx <= spatialRadius) {
-			if (get_global_id(0) == 1) {
-				printf("Current pixel offset (%d,%d)\n", taskState->neighborSearchDx, taskState->neighborSearchDy);
-			}
 			int searchX = sampleResult->pixelX + taskState->neighborSearchDx;
 			int searchY = sampleResult->pixelY + taskState->neighborSearchDy;
 
 			taskState->neighborSearchDx++;
-			if (get_global_id(0) == 1) {
-				printf("Pixel (%d, %d): Checking (%d, %d)\n", 
-					sampleResult->pixelX, sampleResult->pixelY,
-					searchX, searchY);
-			}
 
 			if (searchX >= 0 && searchX < filmWidth && searchY >= 0 && searchY < filmHeight // check in bounds
 				&& (searchX != sampleResult->pixelX || searchY != sampleResult->pixelY)) // check not the pixel itself
