@@ -265,11 +265,9 @@ OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(GPUTaskState* taskState,
 				taskState->currentNeighborGid = PixelIndexMap_Get(pixelIndexMap, filmWidth, searchX, searchY);
 				// check that the neighbor is actually being worked on by a gputask
 				if (taskState->currentNeighborGid != -1) {
-					if (get_global_id(0) == 1) {
-						printf("Pixel (%d, %d): Found neighbor: (%d, %d)\n", 
-							sampleResult->pixelX, sampleResult->pixelY,
-							searchX, searchY);
-					}
+					printf("Pixel (%d, %d): Found neighbor: (%d, %d)\n", 
+						sampleResult->pixelX, sampleResult->pixelY,
+						searchX, searchY);
 					// Successfully found valid neighbor
 					return true;
 				}
@@ -280,10 +278,6 @@ OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(GPUTaskState* taskState,
 		taskState->neighborSearchDy++;
 	}
 	
-	// No more neighbors
-	if (get_global_id(0) == 1) {
-		printf("Pixel (%d, %d): No more neighbors.\n", sampleResult->pixelX, sampleResult->pixelY);
-	}
 	return false;
 }
 
