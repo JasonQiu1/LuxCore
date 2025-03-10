@@ -296,7 +296,7 @@ OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(__global GPUTaskState* tas
 	
 	// No more neighbors
 	if (get_global_id(0) == 1) {
-		printf("Pixel (%d, %d): No more neighbors.\n");
+		printf("Pixel (%d, %d): No more neighbors.\n", sampleResult->pixelX, sampleResult->pixelY);
 	}
 	return false;
 }
