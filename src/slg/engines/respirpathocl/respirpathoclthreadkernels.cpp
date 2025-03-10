@@ -209,16 +209,13 @@ void RespirPathOCLRenderThread::InitGPUTaskBuffer() {
 void RespirPathOCLRenderThread::InitPixelIndexMapBuffer(const u_int filmWidth, const u_int filmHeight) {
 	size_t size = sizeof(int) * filmWidth * filmHeight;
 	intersectionDevice->AllocBufferRW(&pixelIndexMapBuff, nullptr, size, "PixelIndexMap");
-	SLG_LOG("Initial pixelindexmap dims " << filmHeight << " " << filmWidth);
 	int* initial = (int*)malloc(sizeof(int) * filmWidth * filmHeight);
 	for (int i = 0; i < filmHeight; i++) {
 		for (int j = 0; j < filmWidth; j++) {
 			initial[i * filmWidth + j] = -1;
 		}
 	}
-	SLG_LOG("Created initial pixelindexmap");
 	intersectionDevice->EnqueueWriteBuffer(pixelIndexMapBuff, CL_TRUE, size, initial);
-	SLG_LOG("Wrote initial pixelindexmap to buffer");
 	free(initial);
 }
 
