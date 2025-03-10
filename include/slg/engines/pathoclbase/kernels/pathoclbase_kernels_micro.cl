@@ -1229,6 +1229,7 @@ __kernel void SpatialReuse_Init(
 			gid);
 	if (gid == 1) {
 		printf("[SR_INIT] Spatial radius: %d\n", spatialRadius);
+		printf("[SR_INIT] Initial offset: (%d, %d)\n", taskState->neighborSearchDx, taskState->neighborSearchDy);
 	}
 	// Prime previous reservoir with final initial path sample
 	task->tmpReservoir = *reservoir;
