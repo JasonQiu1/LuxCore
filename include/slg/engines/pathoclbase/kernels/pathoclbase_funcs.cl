@@ -243,37 +243,43 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 #endif
 }
 
-OPENCL_FORCE_INLINE bool SampleResult_CheckInRange(__constant SampleResult* a, 
-		__constant SampleResult* b, const int spatialRadius) {
-    int dx = a->pixelX - b->pixelX;
-    int dy = a->pixelY - b->pixelY;
-    
-    return (dx >= -spatialRadius && dx <= spatialRadius) && (dy >= -spatialRadius && dy <= spatialRadius) && !(dx == 0 && dy == 0);
-}
-
 // Find the spatial neighbors around the pixel this work-item is handling for now
 // Spatial radius is the square grid distance, not circle distance
 // Advances taskState->currentNeighborGid to the next neighbor.
 // Return true if a neighbor was found, otherwise false.
 // TODO: upgrade to n-rooks sampling around pixel and customizable spatial radius and number of spatial neighbors
 OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(__global GPUTaskState* taskState, 
-		__constant SampleResult* sampleResultsBuff, const int spatialRadius) {
-	const size_t bufferSize = get_global_size(0);
-	const size_t gid = get_global_id(0);
-	// Assume that the current currentNeighborGid is already a neighbor that has been resampled, skip it to find the next one
-	taskState->currentNeighborGid++;
-	while (taskState->currentNeighborGid < bufferSize) {
-		// Keep in mind the sample results in the buffer are different from those in the reservoir, but we're only checking pixel coordinates here so it's ok
-		if (SampleResult_CheckInRange(&sampleResultsBuff[gid], &sampleResultsBuff[taskState->currentNeighborGid], spatialRadius)) {
-			return true;
+		__global const SampleResult* sampleResult, const uint spatialRadius, 
+		const int* pixelIndexMap, const uint filmWidth, const uint filmHeight) {
+	taskState->currentNeighborGid = -1;
+	while (taskState->neighborSearchDy <= spatialRadius) {
+		while (taskState->neighborSearchDx <= spatialRadius) {
+			int searchX = sampleResult->pixelX + taskState->neighborSearchDx;
+			int searchY = sampleResult->pixelY + taskState->neighborSearchDy;
+
+			taskState->neighborSearchDx++;
+
+			if (searchX >= 0 && searchX < filmWidth && searchY >= 0 && searchY < filmHeight // check in bounds
+				&& (searchX != sampleResult->pixelX || searchY != sampleResult->pixelY)) // check not the pixel itself
+			{ 
+				taskState->currentNeighborGid = PixelIndexMap_Get(pixelIndexMap, filmWidth, searchX, searchY);
+				// check that the neighbor is actually being worked on by a gputask
+				if (taskState->currentNeighborGid != -1) {
+					// Successfully found valid neighbor
+					return true;
+				}
+			}
 		}
-		taskState->currentNeighborGid++;
+
+		taskState->neighborSearchDx = -spatialRadius;
+		taskState->neighborSearchDy++;
 	}
 
 	if (gid == 1) {
 		printf("Ran out of neighbors!\n");
 	}
 	
+	// No more neighbors
 	return false;
 }
 

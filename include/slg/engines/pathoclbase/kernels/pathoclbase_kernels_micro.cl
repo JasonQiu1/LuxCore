@@ -1269,10 +1269,10 @@ __kernel void SpatialReuse_ResampleNeighbor(
 	//--------------------------------------------------------------------------
 
 	// Get pixels around this point
-	// TODO: configuration of spatial radius and number of neighbors
-#define SPATIAL_RADIUS 2
 	// Resample neighbors until one succeeds, then check its visibility
-	while (Respir_UpdateNextNeighborGid(taskState, sampleResultsBuff, SPATIAL_RADIUS)) {
+	while (Respir_UpdateNextNeighborGid(
+		taskState, sampleResult, spatialRadius, pixelIndexMap, filmWidth, filmHeight
+	)) {
 		// There is a neighbor
 		if (RespirReservoir_SpatialUpdate(tasks, tasksState, 
 			&rays[gid], &tasksDirectLight[gid],
