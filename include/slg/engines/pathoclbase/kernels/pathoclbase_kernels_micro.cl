@@ -1227,6 +1227,9 @@ __kernel void SpatialReuse_Init(
 	PixelIndexMap_Set(pixelIndexMap, filmWidth, 
 			sampleResult->pixelX, sampleResult->pixelY, 
 			gid);
+	if (gid == 1) {
+		printf("[SR_INIT] Spatial radius: %d\n", spatialRadius);
+	}
 	// Prime previous reservoir with final initial path sample
 	task->tmpReservoir = *reservoir;
 	// Prime pathstate
