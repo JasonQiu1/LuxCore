@@ -216,7 +216,9 @@ void RespirPathOCLRenderThread::InitPixelIndexMapBuffer(const u_int filmWidth, c
 			initial[i][j] = -1;
 		}
 	}
+	SLG_LOG("Created initial pixelindexmap");
 	intersectionDevice->EnqueueWriteBuffer(pixelIndexMapBuff, CL_TRUE, size, initial);
+	SLG_LOG("Wrote initial pixelindexmap to buffer");
 }
 
 void RespirPathOCLRenderThread::InitRespirBuffers() {
