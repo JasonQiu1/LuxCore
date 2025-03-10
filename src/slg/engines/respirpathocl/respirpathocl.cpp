@@ -63,4 +63,37 @@ const Properties &RespirPathOCLRenderEngine::GetDefaultProps() {
 	return props;
 }
 
+void RespirPathOCLRenderEngine::UpdateTaskCount() {
+	const Properties &cfg = renderConfig->cfg;
+	if (!cfg.IsDefined("opencl.task.count")) {
+		taskCount = film->GetWidth() * film->GetHeight() / intersectionDevices.size();
+	} else {
+		const u_int defaultTaskCount = 512ull * 1024ull;
+
+		// Compute the cap to the number of tasks
+		u_int taskCap = defaultTaskCount;
+		BOOST_FOREACH(DeviceDescription *devDesc, selectedDeviceDescs) {
+			if (devDesc->GetMaxMemory() <= 8ull* 1024ull * 1024ull * 1024ull) // For 8GB cards
+				taskCap = Min(taskCap, 256u * 1024u);
+			if (devDesc->GetMaxMemory() <= 4ull * 1024ull * 1024ull * 1024ull) // For 4GB cards
+				taskCap = Min(taskCap, 128u * 1024u);
+			if (devDesc->GetMaxMemory() <= 2ull * 1024ull * 1024ull * 1024ull) // For 2GB cards
+				taskCap = Min(taskCap, 64u * 1024u);
+		}
+
+		if (cfg.Get(Property("opencl.task.count")("AUTO")).Get<string>() == "AUTO")
+			taskCount = taskCap;
+		else
+			taskCount = cfg.Get(Property("opencl.task.count")(taskCap)).Get<u_int>();
+	}
+
+	// I don't know yet the workgroup size of each device so I can not
+	// round up task count to be a multiple of workgroups size of all devices
+	// used. Rounding to 8192 is a simple trick based on the assumption that
+	// workgroup size is a power of 2 and <= 8192.
+	taskCount = RoundUp<u_int>(taskCount, 8192);
+	if(GetType() != RTPATHOCL)
+		SLG_LOG("[PathOCLRenderEngine] OpenCL task count: " << taskCount);
+}
+
 #endif

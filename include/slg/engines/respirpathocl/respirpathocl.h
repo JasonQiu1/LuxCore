@@ -112,6 +112,8 @@ protected:
 
 	virtual PathOCLBaseOCLRenderThread *CreateOCLThread(const u_int index,
 		luxrays::HardwareIntersectionDevice *device);
+
+	void UpdateTaskCount() override;
 };
 
 }
