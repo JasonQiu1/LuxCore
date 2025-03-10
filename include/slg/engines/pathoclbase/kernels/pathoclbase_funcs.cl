@@ -170,7 +170,7 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 //------------------------------------------------------------------------------
 
 #if defined(RENDER_ENGINE_RESPIRPATHOCL)
-OPENCL_FORCE_INLINE int PixelIndexMap_Get(__global int* pixelIndexMap, const uint mapWidth, const uint x, const uint y) {
+OPENCL_FORCE_INLINE int PixelIndexMap_Get(__global const int* pixelIndexMap, const uint mapWidth, const uint x, const uint y) {
 	return pixelIndexMap[y * mapWidth + x];
 }
 
@@ -273,10 +273,6 @@ OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(__global GPUTaskState* tas
 
 		taskState->neighborSearchDx = -spatialRadius;
 		taskState->neighborSearchDy++;
-	}
-
-	if (gid == 1) {
-		printf("Ran out of neighbors!\n");
 	}
 	
 	// No more neighbors
