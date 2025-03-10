@@ -76,8 +76,8 @@ OPENCL_FORCE_INLINE void InitSampleResult(
 	FilterDistribution_SampleContinuous(&taskConfig->pixelFilter, pixelFilterDistribution,
 			uSubPixelX, uSubPixelY, &distX, &distY);
 
-	sampleResult->filmX = pixelX + .5f + distX;
-	sampleResult->filmY = pixelY + .5f + distY;
+	sampleResult->filmX = sampleResult->pixelX + .5f + distX;
+	sampleResult->filmY = sampleResult->pixelY + .5f + distY;
 
 	sampleResult->directShadowMask = 1.f;
 	sampleResult->indirectShadowMask = 1.f;
