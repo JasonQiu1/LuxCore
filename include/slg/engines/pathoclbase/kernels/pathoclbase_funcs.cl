@@ -258,6 +258,11 @@ OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(__global GPUTaskState* tas
 			int searchY = sampleResult->pixelY + taskState->neighborSearchDy;
 
 			taskState->neighborSearchDx++;
+			if (get_global_id(0) == 1) {
+				printf("Pixel (%d, %d): Checking (%d, %d)\n", 
+					sampleResult->pixelX, sampleResult->pixelY,
+					searchX, searchY);
+			}
 
 			if (searchX >= 0 && searchX < filmWidth && searchY >= 0 && searchY < filmHeight // check in bounds
 				&& (searchX != sampleResult->pixelX || searchY != sampleResult->pixelY)) // check not the pixel itself
