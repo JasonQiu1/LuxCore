@@ -255,6 +255,7 @@ OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(GPUTaskState* taskState,
 	if (get_global_id(0) == 1) {
 		printf("Finding next neighbor for pixel (%d,%d)\n", sampleResult->pixelX, sampleResult->pixelY);
 		printf("Current pixel offset (%d,%d)\n", taskState->neighborSearchDx, taskState->neighborSearchDy);
+		printf("taskState->neighborSearchDy <= spatialRadius: %d", taskState->neighborSearchDy <= spatialRadius);
 	}
 	while (taskState->neighborSearchDy <= spatialRadius) {
 		printf("test outer\n");
