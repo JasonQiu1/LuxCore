@@ -248,8 +248,8 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 // Advances taskState->currentNeighborGid to the next neighbor.
 // Return true if a neighbor was found, otherwise false.
 // TODO: upgrade to n-rooks sampling around pixel and customizable spatial radius and number of spatial neighbors
-OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(__global GPUTaskState* taskState, 
-		__global const SampleResult* sampleResult, const uint spatialRadius, 
+OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(GPUTaskState* taskState, 
+		const SampleResult* sampleResult, const uint spatialRadius, 
 		const int* pixelIndexMap, const uint filmWidth, const uint filmHeight) {
 	taskState->currentNeighborGid = -1;
 	if (get_global_id(0) == 1) {
