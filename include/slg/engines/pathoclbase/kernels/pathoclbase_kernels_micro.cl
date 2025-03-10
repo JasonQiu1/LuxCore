@@ -1370,35 +1370,35 @@ __kernel void SpatialReuse_CheckVisibility(
 		printf("Checking if ray hit anything\n");
 	}
 	// If continueToTrace, there is nothing to do, just keep the same state
-	if (!continueToTrace) {
-		if (rayMiss) {
-			// Nothing was hit, the light source is visible
+	// if (!continueToTrace) {
+	// 	if (rayMiss) {
+	// 		// Nothing was hit, the light source is visible
 			
-			__global BSDF *bsdf = &taskState->bsdf;
+	// 		__global BSDF *bsdf = &taskState->bsdf;
 
-			if (!BSDF_IsShadowCatcher(bsdf MATERIALS_PARAM)) {
-				const float3 lightRadiance = VLOAD3F(taskDirectLight->illumInfo.lightRadiance.c);
-				SampleResult_AddDirectLight(&taskConfig->film,
-						sampleResult, taskDirectLight->illumInfo.lightID,
-						BSDF_GetEventTypes(bsdf
-							MATERIALS_PARAM),
-						VLOAD3F(taskState->throughput.c), lightRadiance,
-						1.f);
+	// 		if (!BSDF_IsShadowCatcher(bsdf MATERIALS_PARAM)) {
+	// 			const float3 lightRadiance = VLOAD3F(taskDirectLight->illumInfo.lightRadiance.c);
+	// 			SampleResult_AddDirectLight(&taskConfig->film,
+	// 					sampleResult, taskDirectLight->illumInfo.lightID,
+	// 					BSDF_GetEventTypes(bsdf
+	// 						MATERIALS_PARAM),
+	// 					VLOAD3F(taskState->throughput.c), lightRadiance,
+	// 					1.f);
 
-				// The first path vertex is not handled by AddDirectLight(). This is valid
-				// for irradiance AOV only if it is not a SPECULAR material.
-				//
-				// Note: irradiance samples the light sources only here (i.e. no
-				// direct hit, no MIS, it would be useless)
-				if ((sampleResult->firstPathVertex) && !(BSDF_GetEventTypes(bsdf
-							MATERIALS_PARAM) & SPECULAR)) {
-					const float3 irradiance = (M_1_PI_F * fabs(dot(
-								VLOAD3F(&bsdf->hitPoint.shadeN.x),
-								VLOAD3F(&rays[gid].d.x)))) *
-							VLOAD3F(taskDirectLight->illumInfo.lightIrradiance.c);
-					VSTORE3F(irradiance, sampleResult->irradiance.c);
-				}
-			}
+	// 			// The first path vertex is not handled by AddDirectLight(). This is valid
+	// 			// for irradiance AOV only if it is not a SPECULAR material.
+	// 			//
+	// 			// Note: irradiance samples the light sources only here (i.e. no
+	// 			// direct hit, no MIS, it would be useless)
+	// 			if ((sampleResult->firstPathVertex) && !(BSDF_GetEventTypes(bsdf
+	// 						MATERIALS_PARAM) & SPECULAR)) {
+	// 				const float3 irradiance = (M_1_PI_F * fabs(dot(
+	// 							VLOAD3F(&bsdf->hitPoint.shadeN.x),
+	// 							VLOAD3F(&rays[gid].d.x)))) *
+	// 						VLOAD3F(taskDirectLight->illumInfo.lightIrradiance.c);
+	// 				VSTORE3F(irradiance, sampleResult->irradiance.c);
+	// 			}
+	// 		}
 
 			if (gid == 1) {
 				printf("Ray hits nothing: reconnection vertex is visible\n");
@@ -1422,17 +1422,17 @@ __kernel void SpatialReuse_CheckVisibility(
 			offset->selectedWeight = Spectrum_Filter(SampleResult_GetUnscaledSpectrum(film, &offset->selectedSample.sampleResult));
 
 			taskDirectLight->directLightResult = ILLUMINATED;
-		} else {
-			// not visible
-			if (gid == 1) {
-				printf("Ray hits something; reconnection vertex is not visible\n");
-			}
+		// } else {
+		// 	// not visible
+		// 	if (gid == 1) {
+		// 		printf("Ray hits something; reconnection vertex is not visible\n");
+		// 	}
 
-			taskDirectLight->directLightResult = SHADOWED;
-		}
+		// 	taskDirectLight->directLightResult = SHADOWED;
+		// }
 
 		taskState->state = SR_RESAMPLE_NEIGHBOR;
-	}
+	// }
 }
 
 //------------------------------------------------------------------------------
