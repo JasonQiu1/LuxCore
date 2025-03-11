@@ -855,7 +855,7 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 		);
 		Radiance_Copy(
 			&taskConfig->film,
-			sampleResult->radiancePerPixelUnormalized,
+			sampleResult->radiancePerPixelUnnormalized,
 			taskState->initialPathReservoir.selectedSample.radiance
 		);
 		// Cache bsdf hit point of the first path vertex (vertex right before reconnection vertex)
@@ -1504,7 +1504,7 @@ __kernel void SpatialReuse_FinishIteration(
 	// Start of variables setup
 	//--------------------------------------------------------------------------
 	
-	__global const Film* film = &taskConfig->film;
+	__constant const Film* restrict film = &taskConfig->film;
 	__global RespirReservoir* reservoir = &taskState->initialPathReservoir;
 	__global SampleResult *sampleResult = &sampleResultsBuff[gid];
 
