@@ -1504,7 +1504,7 @@ __kernel void SpatialReuse_FinishIteration(
 	// Start of variables setup
 	//--------------------------------------------------------------------------
 	
-	__constant Film* film = &taskConfig->film;
+	__global Film* film = &taskConfig->film;
 	__global RespirReservoir* reservoir = &taskState->initialPathReservoir;
 	__global SampleResult *sampleResult = &sampleResultsBuff[gid];
 
