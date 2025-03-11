@@ -279,11 +279,6 @@ OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(GPUTaskState* taskState,
 				taskState->currentNeighborGid = PixelIndexMap_Get(pixelIndexMap, filmWidth, searchX, searchY);
 				// check that the neighbor is actually being worked on by a gputask
 				if (taskState->currentNeighborGid != -1) {
-					if (get_global_id(0) == 1) {
-						printf("Pixel (%d, %d): Found neighbor: (%d, %d)\n", 
-							sampleResult->pixelX, sampleResult->pixelY,
-							searchX, searchY);
-					}
 					// Successfully found valid neighbor
 					return true;
 				}
@@ -338,7 +333,6 @@ OPENCL_FORCE_INLINE	bool RespirReservoir_SpatialUpdate(
 		toReconnectionPoint /= toReconnectionPointDistance;
 
 		const float3 shadowRayOrigin = BSDF_GetRayOrigin(&offset->selectedSample.prefixBsdf, toReconnectionPoint);
-		// TODO: the geometryN value might have to be negative
 		float3 shadowRayDir = reconnectionPoint + (BSDF_GetLandingGeometryN(&offset->selectedSample.prefixBsdf) 
 				* MachineEpsilon_E_Float3(reconnectionPoint) * (offset->selectedSample.prefixBsdf.hitPoint.intoObject ? 1.f : -1.f) ) - 
 				shadowRayOrigin;
@@ -346,9 +340,6 @@ OPENCL_FORCE_INLINE	bool RespirReservoir_SpatialUpdate(
 		const float shadowRayDirDistance = sqrt(shadowRayDirDistanceSquared);
 		shadowRayDir /= shadowRayDirDistance;
 		Ray_Init4(ray, shadowRayOrigin, shadowRayDir, 0.f, shadowRayDirDistance, offset->selectedSample.hitTime);
-		if (get_global_id(0) == 1) {
-			printf("Shadow ray maxt: %f\n", ray->maxt);
-		}
 		return true; 
 	}
 	return false;
