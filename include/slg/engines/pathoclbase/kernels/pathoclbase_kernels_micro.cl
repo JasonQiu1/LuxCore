@@ -1397,9 +1397,9 @@ __kernel void SpatialReuse_CheckVisibility(
 			}
 
 			// VISIBLE: FINISH RESAMPLING PROCESS
-			if (gid == 1) {
+			// if (gid == 1) {
 				printf("Ray hits nothing: reconnection vertex is visible\n");
-			}
+			// }
 
 			RespirReservoir* offset = &taskState->initialPathReservoir;
 			const RespirReservoir* base = &tasks[taskState->currentNeighborGid].tmpReservoir;
@@ -1442,9 +1442,9 @@ __kernel void SpatialReuse_CheckVisibility(
 			taskDirectLight->directLightResult = ILLUMINATED;
 		} else {
 			// not visible
-			if (gid == 1) {
+			// if (gid == 1) {
 				printf("Ray hits something; reconnection vertex is not visible\n");
-			}
+			// }
 
 			taskDirectLight->directLightResult = SHADOWED;
 		}
