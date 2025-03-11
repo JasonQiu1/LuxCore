@@ -1446,9 +1446,10 @@ __kernel void SpatialReuse_CheckVisibility(
 			}
 
 			// RECALCULATE SAMPLE THROUGHPUT FOR NEW RIS WEIGHT
-			Radiance_Add(film,
+			Radiance_Add_Scaled(film,
 				offset->selectedSample.prefixRadiance, 
 				base->selectedSample.reconnectionVertex.postfixRadiance, 
+				jacobianDeterminant,
 				offset->selectedSample.sampleResult.radiancePerPixelNormalized);
 				
 			offset->selectedWeight = jacobianDeterminant * Spectrum_Filter(SampleResult_GetUnscaledSpectrum(film, &offset->selectedSample.sampleResult));
