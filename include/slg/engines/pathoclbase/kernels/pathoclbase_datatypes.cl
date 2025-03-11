@@ -93,7 +93,7 @@ typedef struct {
 	float incidentAngle; // the incident angle coming out of the reconnection vertex in the base path
 	uint pathLength; // the length of the path at the reconnection vertex
 	Spectrum postfixRadiance[FILM_MAX_RADIANCE_GROUP_COUNT]; // the radiance of the path of the path at the reconnection vertex and after
-	Point hitPoint; // contains info on the exact hit point on the reconnection vertex
+	HitPoint hitPoint; // contains info on the exact hit point on the reconnection vertex
 	// TODO: find out if LuxCoreRender has multi-lobed materials
 	// uint prevLobeIndex; // the sampled lobe index of the material at the previous vertex 
 	// uint currLobeIndex; // the sampled lobe index of the material at the reconnection vertex

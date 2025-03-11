@@ -861,7 +861,7 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 
 	if (pathInfo->depth.depth == 2) {
 		// Cache hit point on reconnection vertex (secondary path vertex for reconnection shift)
-		taskState->initialPathReservoir.selectedSample.reconnectionVertex.hitPoint = bsdf->hitPoint.p;
+		taskState->initialPathReservoir.selectedSample.reconnectionVertex.hitPoint = bsdf->hitPoint;
 #endif
 	}
 
@@ -1400,6 +1400,7 @@ __kernel void SpatialReuse_CheckVisibility(
 				}
 			}
 
+			// VISIBLE: FINISH RESAMPLING PROCESS
 			if (gid == 1) {
 				printf("Ray hits nothing: reconnection vertex is visible\n");
 			}
@@ -1407,19 +1408,40 @@ __kernel void SpatialReuse_CheckVisibility(
 			RespirReservoir* offset = &taskState->initialPathReservoir;
 			const RespirReservoir* base = &tasks[taskState->currentNeighborGid].tmpReservoir;
 
-			// visible
-			// set offset reconnection vertex to base reconnection vertex
-			offset->selectedSample.reconnectionVertex = base->selectedSample.reconnectionVertex;
+			// CALCULATE JACOBIAN DETERMINANT TO CORRECT BIAS
+			const float3 reconnectionPoint = VLOAD3F(&offset->selectedSample.reconnectionVertex.hitPoint.p.x);
+			const float3 offsetPoint = VLOAD3F(&offset->selectedSample.prefixBsdf.hitPoint.p.x);
 
-			// calculate jacobian determinant
+			const float3 basePoint = VLOAD3F(&base->selectedSample.prefixBsdf.hitPoint.p.x);
 
-			// recalculate sample throughput to get the new sample weight
-			Radiance_Add(film,
+			float3 offsetToReconnection = reconnectionPoint - offsetPoint;
+			const float offsetDistanceSquared = dot(offsetToReconnection, offsetToReconnection);
+			const float offsetDistance = sqrt(offsetDistanceSquared);
+			offsetToReconnection /= offsetDistance;
+
+			float3 baseToReconnection = reconnectionPoint - basePoint;
+			const float baseDistanceSquared = dot(baseToReconnection, baseToReconnection);
+			const float baseDistance = sqrt(baseDistanceSquared);
+			baseToReconnection /= baseDistance;
+
+			// absolute value of Cos(angle from surface normal of reconnection point to prefix point) 
+			const float3 reconnectionGeometricN = HitPoint_GetGeometryN(&offset->selectedSample.reconnectionVertex.hitPoint);
+			const float offsetCosW = abs(dot(offsetToReconnection, reconnectionGeometricN));
+			const float baseCosW = abs(dot(baseToReconnection, reconnectionGeometricN));
+
+			const float jacobianDeterminant = (offsetCosW / baseCosW) * (baseDistanceSquared / offsfetDistanceSquared);
+
+			// RECALCULATE SAMPLE THROUGHPUT FOR NEW RIS WEIGHT
+			Radiance_Add_Scaled(film,
 				offset->selectedSample.prefixRadiance, 
 				base->selectedSample.reconnectionVertex.postfixRadiance, 
+				jacobianDeterminant,
 				offset->selectedSample.sampleResult.radiancePerPixelNormalized);
 				
 			offset->selectedWeight = Spectrum_Filter(SampleResult_GetUnscaledSpectrum(film, &offset->selectedSample.sampleResult));
+			
+			// set offset reconnection vertex to base reconnection vertex
+			offset->selectedSample.reconnectionVertex = base->selectedSample.reconnectionVertex;
 
 			taskDirectLight->directLightResult = ILLUMINATED;
 		} else {

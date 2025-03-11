@@ -321,7 +321,7 @@ OPENCL_FORCE_INLINE	bool RespirReservoir_SpatialUpdate(
 		// shadow ray
 		*directLightVolInfo = pathInfo->volume;
 
-		const float3 reconnectionPoint = VLOAD3F(&base->selectedSample.reconnectionVertex.hitPoint.x);
+		const float3 reconnectionPoint = VLOAD3F(&base->selectedSample.reconnectionVertex.hitPoint.p.x);
 		const float3 offsetPoint = VLOAD3F(&offset->selectedSample.prefixBsdf.hitPoint.p.x);
 		float3 toReconnectionPoint = reconnectionPoint - offsetPoint;
 		const float toReconnectionPointDistanceSquared = dot(toReconnectionPoint, toReconnectionPoint);

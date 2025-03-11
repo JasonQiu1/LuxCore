@@ -208,6 +208,13 @@ OPENCL_FORCE_INLINE void Radiance_Add(__constant const Film* restrict film,
 	}
 }
 
+OPENCL_FORCE_INLINE void Radiance_Add_Scaled(__constant const Film* restrict film, 
+	__constant const Spectrum* a, __constant const Spectrum* b, const float scale, __global Spectrum* out) {
+	for (uint i = 0; i < film->radianceGroupCount; i++) {
+		VSTORE3F((VLOAD3F(a[i].c) + VLOAD3F(b[i].c)) * scale, out[i].c);
+	}
+}
+
 OPENCL_FORCE_INLINE void Radiance_Sub(__constant const Film* restrict film, 
 	__constant const Spectrum* a, __constant const Spectrum* b, __global Spectrum* out) {
 	for (uint i = 0; i < film->radianceGroupCount; i++) {
