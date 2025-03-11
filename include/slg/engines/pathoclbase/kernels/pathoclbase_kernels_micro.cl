@@ -1424,7 +1424,7 @@ __kernel void SpatialReuse_CheckVisibility(
 				printf("offsetDistance (%f), baseDistance(%f)\n", offsetDistance, baseDistance);
 				printf("Reconnection geometric normal: (%f, %f, %f)\n", reconnectionGeometricN.x, reconnectionGeometricN.y, reconnectionGeometricN.z);
 				printf("OffsetCosW (%f), BaseCosW(%f)\n", offsetCosW, baseCosW);
-				printf("Jacobian determinant: %d\n", jacobianDeterminant);
+				printf("Jacobian determinant: %f\n", jacobianDeterminant);
 			}
 
 			// RECALCULATE SAMPLE THROUGHPUT FOR NEW RIS WEIGHT
