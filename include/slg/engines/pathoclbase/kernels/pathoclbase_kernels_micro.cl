@@ -1434,7 +1434,7 @@ __kernel void SpatialReuse_CheckVisibility(
 				jacobianDeterminant,
 				offset->selectedSample.sampleResult.radiancePerPixelNormalized);
 				
-			offset->selectedWeight = Spectrum_Filter(SampleResult_GetUnscaledSpectrum(film, &offset->selectedSample.sampleResult));
+			offset->selectedWeight = jacobianDeterminant * Spectrum_Filter(SampleResult_GetUnscaledSpectrum(film, &offset->selectedSample.sampleResult));
 			
 			// set offset reconnection vertex to base reconnection vertex
 			offset->selectedSample.reconnectionVertex = base->selectedSample.reconnectionVertex;
