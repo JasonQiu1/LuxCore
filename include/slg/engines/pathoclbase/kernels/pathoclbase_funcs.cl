@@ -340,7 +340,7 @@ OPENCL_FORCE_INLINE	bool RespirReservoir_SpatialUpdate(
 		const float3 shadowRayOrigin = BSDF_GetRayOrigin(&offset->selectedSample.prefixBsdf, toReconnectionPoint);
 		// TODO: the geometryN value might have to be negative
 		float3 shadowRayDir = reconnectionPoint + (BSDF_GetLandingGeometryN(&offset->selectedSample.prefixBsdf) 
-				* MachineEpsilon_E_Float3(reconnectionPoint)) - 
+				* MachineEpsilon_E_Float3(reconnectionPoint) * (offset->selectedSample.prefixBsdf.hitPoint.intoObject ? 1.f : -1.f) ) - 
 				shadowRayOrigin;
 		const float shadowRayDirDistanceSquared = dot(shadowRayDir, shadowRayDir);
 		const float shadowRayDirDistance = sqrt(shadowRayDirDistanceSquared);

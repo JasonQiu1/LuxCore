@@ -1291,10 +1291,6 @@ __kernel void SpatialReuse_ResampleNeighbor(
 		// If no more neighbors, then this spatial iteration is finished 
 		taskState->state = SYNC;
 	}
-
-	// DEBUG: sanity check to make sure shifting from one pixel to the same one gets the exact same result
-	// TODO: remove after verifying this is good
-	// RespirReservoir_SpatialUpdate(reservoir, reservoir, &task->seed, film);
 }
 
 //------------------------------------------------------------------------------
