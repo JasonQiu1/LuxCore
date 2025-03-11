@@ -256,15 +256,6 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(GPUTaskState* taskState, 
 		const SampleResult* sampleResult, const int spatialRadius, 
 		const int* pixelIndexMap, const uint filmWidth, const uint filmHeight) {
-	// DEBUG IDENTITY SHIFT
-	if (taskState->neighborSearchDx == 0 && taskState->neighborSearchDy == 0) {
-		return false;
-	}
-	taskState->currentNeighborGid = get_global_id(0);
-	taskState->neighborSearchDx = 0;
-	taskState->neighborSearchDy = 0;
-	return true;
-
 	taskState->currentNeighborGid = -1;
 	while (taskState->neighborSearchDy <= spatialRadius) {
 		while (taskState->neighborSearchDx <= spatialRadius) {
