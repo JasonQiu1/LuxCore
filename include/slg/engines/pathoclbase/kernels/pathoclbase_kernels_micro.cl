@@ -1420,6 +1420,10 @@ __kernel void SpatialReuse_CheckVisibility(
 
 			const float jacobianDeterminant = (offsetCosW / baseCosW) * (baseDistanceSquared / offsetDistanceSquared);
 
+			if (gid == 1) {
+				printf("Jacobian determinant: %d\n", jacobianDeterminant);
+			}
+
 			// RECALCULATE SAMPLE THROUGHPUT FOR NEW RIS WEIGHT
 			Radiance_Add_Scaled(film,
 				offset->selectedSample.prefixRadiance, 
