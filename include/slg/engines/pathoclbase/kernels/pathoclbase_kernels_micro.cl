@@ -1440,10 +1440,10 @@ __kernel void SpatialReuse_CheckVisibility(
 			// roughness threshold of at least 0.2 is recommended from GRIS paper, so we want glossiness to be <= 0.2
 			const float glossinessThreshold = 0.2;
 			if (BSDF_GetGlossiness(&offset->selectedSample.reconnectionVertex.bsdf MATERIALS_PARAM) > glossinessThreshold
-				|| BSDF_GetGlossiness(&base->selectedSample.reconnectionVertex.bsdf MATERIALS_PARAM) > glossinessThreshold 
-				|| BSDF_GetGlossiness(&offset->selectedSample.prefixBsdf MATERIALS_PARAM) > glossinessThreshold) {
-					return;
-				}
+					|| BSDF_GetGlossiness(&base->selectedSample.reconnectionVertex.bsdf MATERIALS_PARAM) > glossinessThreshold 
+					|| BSDF_GetGlossiness(&offset->selectedSample.prefixBsdf MATERIALS_PARAM) > glossinessThreshold) {
+				return;
+			}
 
 			// RECALCULATE SAMPLE THROUGHPUT FOR NEW RIS WEIGHT
 			Radiance_Add_Scaled(film,
