@@ -92,7 +92,8 @@ typedef struct {
 typedef struct {
 	float incidentAngle; // the incident angle coming out of the reconnection vertex in the base path
 	uint pathLength; // the length of the path at the reconnection vertex
-	Spectrum postfixRadiance[FILM_MAX_RADIANCE_GROUP_COUNT]; // the radiance of the path of the path at the reconnection vertex and after
+	Spectrum normalizedRadiance[FILM_MAX_RADIANCE_GROUP_COUNT]; // the normalized radiance of the path of the path at the reconnection vertex and after
+	Spectrum radiance[FILM_MAX_RADIANCE_GROUP_COUNT];
 	BSDF bsdf; // contains info on the exact hit point on the reconnection vertex
 	// TODO: find out if LuxCoreRender has multi-lobed materials
 	// uint prevLobeIndex; // the sampled lobe index of the material at the previous vertex 
@@ -102,7 +103,8 @@ typedef struct {
 // Stores reuse information about a selected ReSPIR sample. (spatial reuse only)
 typedef struct {
 	ReconnectionVertex reconnectionVertex; // the chosen reconnection vertex for this path
-	Spectrum prefixRadiance[FILM_MAX_RADIANCE_GROUP_COUNT]; // the radiance of the path at the vertices before the reconnection vertex
+	Spectrum normalizedRadiance[FILM_MAX_RADIANCE_GROUP_COUNT]; // the normalized radiance of the path of the path at the reconnection vertex and after
+	Spectrum radiance[FILM_MAX_RADIANCE_GROUP_COUNT];
 	SampleResult sampleResult; // the cached sampleresult data of the entire path
 	BSDF prefixBsdf; // the BSDF point where the vertex before the reconnection vertex was hit
 	float hitTime; // time the reconnection vertex was hit. we use this to shoot a visibility ray backwards to the connecting offset path vertex

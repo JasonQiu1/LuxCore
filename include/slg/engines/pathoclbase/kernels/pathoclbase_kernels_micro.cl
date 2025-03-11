@@ -851,7 +851,12 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 		Radiance_Copy(
 			&taskConfig->film,
 			sampleResult->radiancePerPixelNormalized,
-			taskState->initialPathReservoir.selectedSample.prefixRadiance
+			taskState->initialPathReservoir.selectedSample.normalizedRadiance
+		);
+		Radiance_Copy(
+			&taskConfig->film,
+			sampleResult->radiancePerPixelUnormalized,
+			taskState->initialPathReservoir.selectedSample.radiance
 		);
 		// Cache bsdf hit point of the first path vertex (vertex right before reconnection vertex)
 		taskState->initialPathReservoir.selectedSample.prefixBsdf = *bsdf;
@@ -1215,8 +1220,14 @@ __kernel void SpatialReuse_Init(
 	Radiance_Sub(
 		film,
 		sampleResult->radiancePerPixelNormalized,
-		reservoir->selectedSample.prefixRadiance,
-		reservoir->selectedSample.reconnectionVertex.postfixRadiance
+		reservoir->selectedSample.normalizedRadiance,
+		reservoir->selectedSample.reconnectionVertex.normalizedRadiance
+	);
+	Radiance_Sub(
+		film,
+		sampleResult->radiancePerPixelUnnormalized,
+		reservoir->selectedSample.radiance,
+		reservoir->selectedSample.reconnectionVertex.radiance
 	);
 
 	// PRIME LOOP
@@ -1394,6 +1405,8 @@ __kernel void SpatialReuse_CheckVisibility(
 				}
 			}
 
+			taskDirectLight->directLightResult = ILLUMINATED;
+
 			// VISIBLE: FINISH RESAMPLING PROCESS
 			RespirReservoir* offset = &taskState->initialPathReservoir;
 			const RespirReservoir* base = &tasks[taskState->currentNeighborGid].tmpReservoir;
@@ -1446,17 +1459,26 @@ __kernel void SpatialReuse_CheckVisibility(
 			}
 
 			// RECALCULATE SAMPLE THROUGHPUT FOR NEW RIS WEIGHT
+			// TODO: correct this calculation. We need to reevaluate BSDF at the new outgoing angle versus the old angle and include geometric term
 			Radiance_Add(film,
-				offset->selectedSample.prefixRadiance, 
-				base->selectedSample.reconnectionVertex.postfixRadiance, 
+				offset->selectedSample.normalizedRadiance, 
+				base->selectedSample.reconnectionVertex.normalizedRadiance, 
 				offset->selectedSample.sampleResult.radiancePerPixelNormalized);
-				
-			offset->selectedWeight = jacobianDeterminant * Spectrum_Filter(SampleResult_GetUnscaledSpectrum(film, &offset->selectedSample.sampleResult));
-			
+			Radiance_Add(film,
+				offset->selectedSample.radiance, 
+				base->selectedSample.reconnectionVertex.radiance, 
+				offset->selectedSample.sampleResult.radiancePerPixelUnnormalized);
+
 			// set offset reconnection vertex to base reconnection vertex
 			offset->selectedSample.reconnectionVertex = base->selectedSample.reconnectionVertex;
+				
+			const float newRadianceGrayscale = Spectrum_Filter(SampleResult_GetUnscaledSpectrum(film, &offset->selectedSample.sampleResult));
 
-			taskDirectLight->directLightResult = ILLUMINATED;
+			if (newRadianceGrayscale == 0) {
+				offset->selectedWeight = 0;
+			} else {
+				offset->selectedWeight = jacobianDeterminant * newRadianceGrayscale;
+			}
 		} else {
 			taskDirectLight->directLightResult = SHADOWED;
 		}
@@ -1489,6 +1511,12 @@ __kernel void SpatialReuse_FinishIteration(
 	//--------------------------------------------------------------------------
 	// End of variables setup
 	//--------------------------------------------------------------------------
+
+	// Recalculate unbiased contribution weight
+	if (reservoir->selectedWeight != 0) {
+		reservoir->selectedWeight = reservoir->sumWeight / 
+				Spectrum_Filter(SampleResult_GetUnscaledUnnormalizedSpectrum(film, &reservoir->selectedSample.sampleResult));
+	}
 
 	// PRIME LOOP
 	// Prime neighbor search
