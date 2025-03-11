@@ -287,7 +287,7 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 				iterations++;
             }
 
-			SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Initial path resampling is complete, performing spatial reuse");
+			SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Number of iterations for initial path sampling: " << totalIterationsThisFrame);
             
             // Perform spatial reuse.
 			if (numSpatialReuseIterations > 0) {
