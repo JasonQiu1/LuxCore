@@ -1431,7 +1431,7 @@ __kernel void SpatialReuse_CheckVisibility(
 			// TODO: move this to the reconnection vertex selection in the future
 			// distance threshold of 2-5% world size recommended by GRIS paper
 			const float distanceThreshold = worldRadius * 2 * 0.025; 
-			if (abs(offsetDistance) >= distanceThreshold || abs(baseDistance) >= distanceThreshold) {
+			if (abs(offsetDistance) <= distanceThreshold || abs(baseDistance) <= distanceThreshold) {
 				return;
 			}
 
