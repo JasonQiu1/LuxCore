@@ -254,30 +254,27 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 // Return true if a neighbor was found, otherwise false.
 // TODO: upgrade to n-rooks sampling around pixel and customizable spatial radius and number of spatial neighbors
 OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(GPUTaskState* taskState, 
-		const SampleResult* sampleResult, const int spatialRadius, 
-		const int* pixelIndexMap, const uint filmWidth, const uint filmHeight) {
+		const SampleResult* sampleResult, const int spatialRadius,
+		const int* pixelIndexMap, const uint filmWidth, const uint filmHeight, Seed* seed) {
 	taskState->currentNeighborGid = -1;
-	while (taskState->neighborSearchDy <= spatialRadius) {
-		while (taskState->neighborSearchDx <= spatialRadius) {
-			int searchX = sampleResult->pixelX + taskState->neighborSearchDx;
-			int searchY = sampleResult->pixelY + taskState->neighborSearchDy;
+	if (taskState->numNeighborsLeft == 0) {
+		return false;
+	}
 
-			taskState->neighborSearchDx++;
+	// randomly choose a pixel in the radius (inclusive) not including self
+	int searchX = sampleResult->pixelX + ((int) (Rnd_FloatValue(seed) * spatialRadius) + 1) * sign(Rnd_FloatValue(seed) - 1.0f);
+	int searchY = sampleResult->pixelY + ((int) (Rnd_FloatValue(seed) * spatialRadius) + 1) * sign(Rnd_FloatValue(seed) - 1.0f);
+	taskState->numNeighborsLeft--;
 
-			if (searchX >= 0 && searchX < filmWidth && searchY >= 0 && searchY < filmHeight // check in bounds
-				&& (searchX != sampleResult->pixelX || searchY != sampleResult->pixelY)) // check not the pixel itself
-			{ 
-				taskState->currentNeighborGid = PixelIndexMap_Get(pixelIndexMap, filmWidth, searchX, searchY);
-				// check that the neighbor is actually being worked on by a gputask
-				if (taskState->currentNeighborGid != -1) {
-					// Successfully found valid neighbor
-					return true;
-				}
-			}
+	if (searchX >= 0 && searchX < filmWidth && searchY >= 0 && searchY < filmHeight // check in bounds
+		&& (searchX != sampleResult->pixelX || searchY != sampleResult->pixelY)) // check not the pixel itself
+	{ 
+		taskState->currentNeighborGid = PixelIndexMap_Get(pixelIndexMap, filmWidth, searchX, searchY);
+		// check that the neighbor is actually being worked on by a gputask
+		if (taskState->currentNeighborGid != -1) {
+			// Successfully found valid neighbor
+			return true;
 		}
-
-		taskState->neighborSearchDx = -spatialRadius;
-		taskState->neighborSearchDy++;
 	}
 	
 	return false;
@@ -287,9 +284,9 @@ OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(GPUTaskState* taskState,
 // If successful, set up shadow ray from the offset path to the base path at the reconnection vertex.
 OPENCL_FORCE_INLINE	bool RespirReservoir_SpatialUpdate(
 		__constant GPUTask* tasks, __global GPUTaskState* tasksState, 
-		__global Ray* ray, __global GPUTaskDirectLight* taskDirectLight, 
-		__global PathVolumeInfo* directLightVolInfo, __global EyePathInfo *pathInfo,
-		__global Seed* seed) {
+		Ray* ray, GPUTaskDirectLight* taskDirectLight, 
+		PathVolumeInfo* directLightVolInfo, EyePathInfo *pathInfo,
+		Seed* seed) {
 	const size_t gid = get_global_id(0);
 	// the offset path is the current path we're working on
 	RespirReservoir* offset = &tasksState[gid].initialPathReservoir;
@@ -705,7 +702,8 @@ OPENCL_FORCE_INLINE bool DirectLight_BSDFSampling(
 
 #define KERNEL_ARGS_SPATIALREUSE \
 		, __global int* pixelIndexMap \
-		, __global const uint spatialRadius
+		, __constant uint spatialRadius \
+		, __constant uint numSpatialNeighbors
 
 //------------------------------------------------------------------------------
 // To initialize image maps page pointer table

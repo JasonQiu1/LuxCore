@@ -1221,15 +1221,14 @@ __kernel void SpatialReuse_Init(
 
 	// PRIME LOOP
 	// Prime neighbor search
+	taskState->numNeighborsLeft = numSpatialNeighbors;
 	taskState->currentNeighborGid = -1;
-	taskState->neighborSearchDx = -spatialRadius;
-	taskState->neighborSearchDy = -spatialRadius;
 	PixelIndexMap_Set(pixelIndexMap, filmWidth, 
 			sampleResult->pixelX, sampleResult->pixelY, 
 			gid);
 	if (gid == 1) {
 		printf("[SR_INIT] Spatial radius: %d\n", spatialRadius);
-		printf("[SR_INIT] Initial offset: (%d, %d)\n", taskState->neighborSearchDx, taskState->neighborSearchDy);
+		printf("[SR_INIT] Number of neighbors: %d\n", numSpatialNeighbors);
 	}
 	// Prime previous reservoir with final initial path sample
 	task->tmpReservoir = *reservoir;
@@ -1275,7 +1274,8 @@ __kernel void SpatialReuse_ResampleNeighbor(
 	// Get pixels around this point
 	// Resample neighbors until one succeeds, then check its visibility
 	while (Respir_UpdateNextNeighborGid(
-		taskState, sampleResult, spatialRadius, pixelIndexMap, filmWidth, filmHeight
+		taskState, sampleResult, 
+		spatialRadius, pixelIndexMap, filmWidth, filmHeight, &task->seed
 	)) {
 		// There is a neighbor
 		if (RespirReservoir_SpatialUpdate(tasks, tasksState, 
@@ -1482,7 +1482,8 @@ __kernel void SpatialReuse_FinishIteration(
 	//--------------------------------------------------------------------------
 	// Start of variables setup
 	//--------------------------------------------------------------------------
-
+	
+	__global const Film* film = &taskConfig->film;
 	__global RespirReservoir* reservoir = &taskState->initialPathReservoir;
 	__global SampleResult *sampleResult = &sampleResultsBuff[gid];
 
@@ -1492,9 +1493,8 @@ __kernel void SpatialReuse_FinishIteration(
 
 	// PRIME LOOP
 	// Prime neighbor search
+	taskState->numNeighborsLeft = numSpatialNeighbors;
 	taskState->currentNeighborGid = -1;
-	taskState->neighborSearchDx = -spatialRadius;
-	taskState->neighborSearchDy = -spatialRadius;
 	PixelIndexMap_Set(pixelIndexMap, filmWidth, 
 			sampleResult->pixelX, sampleResult->pixelY, 
 			gid);

@@ -140,7 +140,8 @@ typedef struct {
 	RespirReservoir initialPathReservoir;
 	
 	// Neighbor search info
-	int currentNeighborGid, neighborSearchDx, neighborSearchDy;
+	int currentNeighborGid;
+	uint numNeighborsLeft;
 	
 	int albedoToDo, photonGICacheEnabledOnLastHit,
 			photonGICausticCacheUsed, photonGIShowIndirectPathMixUsed,
