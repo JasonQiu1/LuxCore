@@ -1429,7 +1429,7 @@ __kernel void SpatialReuse_CheckVisibility(
 			const float offsetCosW = abs(dot(offsetToReconnection, reconnectionGeometricN));
 			const float baseCosW = abs(dot(baseToReconnection, reconnectionGeometricN));
 
-			const float jacobianDeterminant = (offsetCosW / baseCosW) * (baseDistanceSquared / offsfetDistanceSquared);
+			const float jacobianDeterminant = (offsetCosW / baseCosW) * (baseDistanceSquared / offsetDistanceSquared);
 
 			// RECALCULATE SAMPLE THROUGHPUT FOR NEW RIS WEIGHT
 			Radiance_Add_Scaled(film,
