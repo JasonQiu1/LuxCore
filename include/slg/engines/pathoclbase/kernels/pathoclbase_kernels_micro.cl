@@ -861,7 +861,7 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 
 	if (pathInfo->depth.depth == 2) {
 		// Cache hit point on reconnection vertex (secondary path vertex for reconnection shift)
-		taskState->initialPathReservoir.selectedSample.reconnectionVertex.hitPoint = bsdf->hitPoint;
+		taskState->initialPathReservoir.selectedSample.reconnectionVertex.bsdf = bsdf;
 #endif
 	}
 
@@ -1364,6 +1364,7 @@ __kernel void SpatialReuse_CheckVisibility(
 
 	// If continueToTrace, there is nothing to do, just keep the same state
 	if (!continueToTrace) {
+		taskState->state = SR_RESAMPLE_NEIGHBOR;
 		if (rayMiss) {
 			// Nothing was hit, the light source is visible
 			
@@ -1398,7 +1399,7 @@ __kernel void SpatialReuse_CheckVisibility(
 			const RespirReservoir* base = &tasks[taskState->currentNeighborGid].tmpReservoir;
 
 			// CALCULATE JACOBIAN DETERMINANT TO CORRECT BIAS
-			const float3 reconnectionPoint = VLOAD3F(&offset->selectedSample.reconnectionVertex.hitPoint.p.x);
+			const float3 reconnectionPoint = VLOAD3F(&offset->selectedSample.reconnectionVertex.bsdf.hitPoint.p.x);
 			const float3 offsetPoint = VLOAD3F(&offset->selectedSample.prefixBsdf.hitPoint.p.x);
 
 			const float3 basePoint = VLOAD3F(&base->selectedSample.prefixBsdf.hitPoint.p.x);
@@ -1414,7 +1415,7 @@ __kernel void SpatialReuse_CheckVisibility(
 			baseToReconnection /= baseDistance;
 
 			// absolute value of Cos(angle from surface normal of reconnection point to prefix point) 
-			const float3 reconnectionGeometricN = HitPoint_GetGeometryN(&offset->selectedSample.reconnectionVertex.hitPoint);
+			const float3 reconnectionGeometricN = HitPoint_GetGeometryN(&offset->selectedSample.reconnectionVertex.bsdf.hitPoint);
 			const float offsetCosW = abs(dot(offsetToReconnection, reconnectionGeometricN));
 			const float baseCosW = abs(dot(baseToReconnection, reconnectionGeometricN));
 
@@ -1426,6 +1427,23 @@ __kernel void SpatialReuse_CheckVisibility(
 				printf("OffsetCosW (%f), BaseCosW(%f)\n", offsetCosW, baseCosW);
 				printf("Jacobian determinant: %f\n", jacobianDeterminant);
 			}
+
+			// TODO: move this to the reconnection vertex selection in the future
+			// distance threshold of 2-5% world size recommended by GRIS paper
+			const float distanceThreshold = worldRadius * 2 * 0.025; 
+			if (abs(offsetDistance) >= distanceThreshold || abs(baseDistance) >= distanceThreshold) {
+				return;
+			}
+
+			// TODO: move this to the reconnection vertex selection in the future
+			// assume glossiness range is [0.f,1.f], and 1-glossiness is the roughness
+			// roughness threshold of at least 0.2 is recommended from GRIS paper, so we want glossiness to be <= 0.2
+			const float glossinessThreshold = 0.2;
+			if (BSDF_GetGlossiness(&offset->selectedSample.reconnectionVertex.bsdf MATERIALS_PARAM) > glossinessThreshold
+				|| BSDF_GetGlossiness(&base->selectedSample.reconnectionVertex.bsdf MATERIALS_PARAM) > glossinessThreshold 
+				|| BSDF_GetGlossiness(&offset->selectedSample.prefixBsdf MATERIALS_PARAM) > glossinessThreshold) {
+					return;
+				}
 
 			// RECALCULATE SAMPLE THROUGHPUT FOR NEW RIS WEIGHT
 			Radiance_Add_Scaled(film,
@@ -1443,8 +1461,6 @@ __kernel void SpatialReuse_CheckVisibility(
 		} else {
 			taskDirectLight->directLightResult = SHADOWED;
 		}
-
-		taskState->state = SR_RESAMPLE_NEIGHBOR;
 	}
 }
 

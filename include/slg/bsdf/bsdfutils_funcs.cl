@@ -77,7 +77,7 @@ OPENCL_FORCE_INLINE float3 BSDF_GetLandingGeometryN(__global const BSDF *bsdf) {
 
 OPENCL_FORCE_INLINE float3 BSDF_GetLandingInterpolatedN(__global const BSDF *bsdf) {
 	return HitPoint_GetInterpolatedN(&bsdf->hitPoint);
-}
+}d
 
 OPENCL_FORCE_INLINE float3 BSDF_GetLandingShadeN(__global const BSDF *bsdf) {
 	return HitPoint_GetShadeN(&bsdf->hitPoint);
