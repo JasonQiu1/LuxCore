@@ -861,7 +861,7 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 
 	if (pathInfo->depth.depth == 2) {
 		// Cache hit point on reconnection vertex (secondary path vertex for reconnection shift)
-		taskState->initialPathReservoir.selectedSample.reconnectionVertex.bsdf = bsdf;
+		taskState->initialPathReservoir.selectedSample.reconnectionVertex.bsdf = *bsdf;
 #endif
 	}
 
