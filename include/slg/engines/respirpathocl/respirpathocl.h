@@ -75,6 +75,7 @@ protected:
 	size_t spatialReuseResamplingVisibilityWorkGroupSize;
 	size_t spatialReuseWorkGroupSize;
 	const u_int spatialRadius;
+	const u_int numSpatialNeighbors;
 };
 
 //------------------------------------------------------------------------------
@@ -106,6 +107,7 @@ public:
 	// number of times to iterate spatial reuse pass per frame
 	u_int numSpatialReuseIterations;
 	u_int spatialRadius;
+	u_int numSpatialNeighbors;
 
 protected:
 	static const luxrays::Properties &GetDefaultProps();

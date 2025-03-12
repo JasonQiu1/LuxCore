@@ -328,6 +328,7 @@ void RespirPathOCLRenderThread::SetSpatialReuseKernelArgs(HardwareDeviceKernel *
 	// Spatial reuse
 	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, pixelIndexMapBuff);
 	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, spatialRadius);
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, numSpatialNeighbors);
 }
 
 void RespirPathOCLRenderThread::SetAllSpatialReuseKernelArgs(const u_int filmIndex) {
