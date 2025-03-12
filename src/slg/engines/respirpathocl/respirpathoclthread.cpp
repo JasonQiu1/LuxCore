@@ -179,6 +179,7 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
     // Keep track of rendered samples per pixel for this thread.
     // TODO: remove, since this should already be tracked in the film class I think
     u_int numFrames = 0;
+	const u_int haltSpp = engine->film->GetHaltSpp();
 
 	try {
 		//----------------------------------------------------------------------
@@ -404,7 +405,7 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 						"iterations: " << iterations << " #"<< taskCount << ")");*/
 
 			// Check halt conditions
-			if (engine->film->GetConvergence() == 1.f)
+			if (engine->film->GetConvergence() == 1.f || numFrames >= haltSpp)
 				break;
 		}
         free(tasksStateReadBuffer);

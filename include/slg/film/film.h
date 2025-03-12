@@ -307,6 +307,7 @@ public:
 	void AddSampleCount(const u_int threadIndex,
 			const double RADIANCE_PER_PIXEL_NORMALIZED_count,
 			const double RADIANCE_PER_SCREEN_NORMALIZED_count);
+	u_int GetHaltSpp();
 
 	// Normal method versions
 	void AddSample(const u_int x, const u_int y,

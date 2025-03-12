@@ -320,6 +320,10 @@ void Film::AddSampleCount(const u_int threadIndex,
 			RADIANCE_PER_SCREEN_NORMALIZED_count);
 }
 
+u_int Film::GetHaltSpp() {
+	return haltSPP;
+}
+
 void Film::Resize(const u_int w, const u_int h) {
 	if ((w == 0) || (h == 0))
 		throw runtime_error("Film can not have 0 width or height");
