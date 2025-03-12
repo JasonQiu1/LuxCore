@@ -1233,7 +1233,7 @@ __kernel void SpatialReuse_Init(
 	// Recalculate unbiased contribution weight
 	if (reservoir->weight != 0) {
 		reservoir->weight = reservoir->sumWeight /
-			Spectrum_Filter(SampleResult_GetUnscaledUnnormalizedSpectrum(film, &offset->sample.sampleResult));
+			Spectrum_Filter(SampleResult_GetUnscaledUnnormalizedSpectrum(film, &reservoir->sample.sampleResult));
 	}
 
 	// PRIME LOOP
@@ -1515,7 +1515,7 @@ __kernel void SpatialReuse_FinishIteration(
 	// Recalculate unbiased contribution weight
 	if (reservoir->weight != 0) {
 		reservoir->weight = reservoir->sumWeight /
-			Spectrum_Filter(SampleResult_GetUnscaledUnnormalizedSpectrum(film, &offset->sample.sampleResult));
+			Spectrum_Filter(SampleResult_GetUnscaledUnnormalizedSpectrum(film, &reservoir->sample.sampleResult));
 	}
 
 	// PRIME LOOP
