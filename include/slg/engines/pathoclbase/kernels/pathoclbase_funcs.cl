@@ -262,8 +262,8 @@ OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(GPUTaskState* taskState,
 	}
 
 	// randomly choose a pixel in the radius (inclusive) not including self
-	const int searchX = sampleResult->pixelX;//DEBUG 
-	const int searchY = sampleResult->pixelY;//DEBUG
+	int searchX = sampleResult->pixelX + (int) copysign(floor(Rnd_FloatValue(seed) * spatialRadius) + 1.0f, Rnd_FloatValue(seed) - 0.5f);
+	int searchY = sampleResult->pixelY + (int) copysign(floor(Rnd_FloatValue(seed) * spatialRadius) + 1.0f, Rnd_FloatValue(seed) - 0.5f);
 	taskState->numNeighborsLeft--;
 
 	if (searchX >= 0 && searchX < filmWidth && searchY >= 0 && searchY < filmHeight // check in bounds
