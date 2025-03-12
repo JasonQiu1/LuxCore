@@ -216,7 +216,7 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(__global const GPUTaskConfigurat
 	// = (unnorm path contribution / path PDF) / path PDF
 
 	// TODO: current calculation is (pathContribution * path PDF) / path PDF which is probably wrong
-	const float weight = Spectrum_Filter(pathContribution);
+	const float weight = Spectrum_Filter(pathContribution / pathPdf);
 
 	reservoir->sumWeight += weight;
 	if (random < (weight / reservoir->sumWeight)) {
