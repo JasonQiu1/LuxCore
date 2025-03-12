@@ -851,17 +851,17 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 		Radiance_Copy(
 			&taskConfig->film,
 			sampleResult->radiancePerPixelNormalized,
-			taskState->initialPathReservoir.selectedSample.prefixRadiance
+			taskState->reservoir.sample.normPrefixRadiance
 		);
 		// Cache bsdf hit point of the first path vertex (vertex right before reconnection vertex)
-		taskState->initialPathReservoir.selectedSample.prefixBsdf = *bsdf;
+		taskState->reservoir.sample.bsdf = *bsdf;
 		// Cache hit time of first path vertex
-		taskState->initialPathReservoir.selectedSample.hitTime = ray->time;
+		taskState->reservoir.sample.hitTime = ray->time;
 	}
 
 	if (pathInfo->depth.depth == 2) {
 		// Cache hit point on reconnection vertex (secondary path vertex for reconnection shift)
-		taskState->initialPathReservoir.selectedSample.reconnectionVertex.bsdf = *bsdf;
+		taskState->reservoir.sample.reconnection.bsdf = *bsdf;
 #endif
 	}
 
@@ -1196,7 +1196,7 @@ __kernel void SpatialReuse_Init(
 	//--------------------------------------------------------------------------
 	__global SampleResult *sampleResult = &sampleResultsBuff[gid];
 	__constant const Film* restrict film = &taskConfig->film;
-	__global RespirReservoir* reservoir = &taskState->initialPathReservoir;
+	__global RespirReservoir* reservoir = &taskState->reservoir;
 	__global const Ray* ray = &rays[gid];
 
 	// Read the seed
@@ -1209,14 +1209,14 @@ __kernel void SpatialReuse_Init(
 	//--------------------------------------------------------------------------
 
 	// Save ray time state
-	taskState->timeBeforeSpatialReuse = ray->time;
+	taskState->preSpatialReuseTime = ray->time;
 
 	// Cache data for first iteration of RIS
 	Radiance_Sub(
 		film,
 		sampleResult->radiancePerPixelNormalized,
-		reservoir->selectedSample.prefixRadiance,
-		reservoir->selectedSample.reconnectionVertex.postfixRadiance
+		reservoir->sample.normPrefixRadiance,
+		reservoir->sample.reconnection.normPostfixRadiance
 	);
 
 	// PRIME LOOP
@@ -1395,14 +1395,14 @@ __kernel void SpatialReuse_CheckVisibility(
 			}
 
 			// VISIBLE: FINISH RESAMPLING PROCESS
-			RespirReservoir* offset = &taskState->initialPathReservoir;
+			RespirReservoir* offset = &taskState->reservoir;
 			const RespirReservoir* base = &tasks[taskState->currentNeighborGid].tmpReservoir;
 
 			// CALCULATE JACOBIAN DETERMINANT TO CORRECT BIAS
-			const float3 reconnectionPoint = VLOAD3F(&offset->selectedSample.reconnectionVertex.bsdf.hitPoint.p.x);
-			const float3 offsetPoint = VLOAD3F(&offset->selectedSample.prefixBsdf.hitPoint.p.x);
+			const float3 reconnectionPoint = VLOAD3F(&offset->sample.reconnection.bsdf.hitPoint.p.x);
+			const float3 offsetPoint = VLOAD3F(&offset->sample.bsdf.hitPoint.p.x);
 
-			const float3 basePoint = VLOAD3F(&base->selectedSample.prefixBsdf.hitPoint.p.x);
+			const float3 basePoint = VLOAD3F(&base->sample.bsdf.hitPoint.p.x);
 
 			float3 offsetToReconnection = reconnectionPoint - offsetPoint;
 			const float offsetDistanceSquared = dot(offsetToReconnection, offsetToReconnection);
@@ -1415,7 +1415,7 @@ __kernel void SpatialReuse_CheckVisibility(
 			baseToReconnection /= baseDistance;
 
 			// absolute value of Cos(angle from surface normal of reconnection point to prefix point) 
-			const float3 reconnectionGeometricN = HitPoint_GetGeometryN(&offset->selectedSample.reconnectionVertex.bsdf.hitPoint);
+			const float3 reconnectionGeometricN = HitPoint_GetGeometryN(&offset->sample.reconnection.bsdf.hitPoint);
 			const float offsetCosW = abs(dot(offsetToReconnection, reconnectionGeometricN));
 			const float baseCosW = abs(dot(baseToReconnection, reconnectionGeometricN));
 
@@ -1439,22 +1439,22 @@ __kernel void SpatialReuse_CheckVisibility(
 			// assume glossiness range is [0.f,1.f], and 1-glossiness is the roughness
 			// roughness threshold of at least 0.2 is recommended from GRIS paper, so we want glossiness to be <= 0.2
 			const float glossinessThreshold = 0.2;
-			if (BSDF_GetGlossiness(&offset->selectedSample.reconnectionVertex.bsdf MATERIALS_PARAM) > glossinessThreshold
-					|| BSDF_GetGlossiness(&base->selectedSample.reconnectionVertex.bsdf MATERIALS_PARAM) > glossinessThreshold 
-					|| BSDF_GetGlossiness(&offset->selectedSample.prefixBsdf MATERIALS_PARAM) > glossinessThreshold) {
+			if (BSDF_GetGlossiness(&offset->sample.reconnection.bsdf MATERIALS_PARAM) > glossinessThreshold
+					|| BSDF_GetGlossiness(&base->sample.reconnection.bsdf MATERIALS_PARAM) > glossinessThreshold 
+					|| BSDF_GetGlossiness(&offset->sample.bsdf MATERIALS_PARAM) > glossinessThreshold) {
 				return;
 			}
 
 			// RECALCULATE SAMPLE THROUGHPUT FOR NEW RIS WEIGHT
 			Radiance_Add(film,
-				offset->selectedSample.prefixRadiance, 
-				base->selectedSample.reconnectionVertex.postfixRadiance, 
-				offset->selectedSample.sampleResult.radiancePerPixelNormalized);
+				offset->sample.normPrefixRadiance, 
+				base->sample.reconnection.normPostfixRadiance, 
+				offset->sample.sampleResult.radiancePerPixelNormalized);
 				
-			offset->selectedWeight = jacobianDeterminant * Spectrum_Filter(SampleResult_GetUnscaledSpectrum(film, &offset->selectedSample.sampleResult));
+			offset->weight = jacobianDeterminant * Spectrum_Filter(SampleResult_GetUnscaledSpectrum(film, &offset->sample.sampleResult));
 			
 			// set offset reconnection vertex to base reconnection vertex
-			offset->selectedSample.reconnectionVertex = base->selectedSample.reconnectionVertex;
+			offset->sample.reconnection = base->sample.reconnection;
 
 			taskDirectLight->directLightResult = ILLUMINATED;
 		} else {
@@ -1483,7 +1483,7 @@ __kernel void SpatialReuse_FinishIteration(
 	//--------------------------------------------------------------------------
 	
 	__global const Film* film = &taskConfig->film;
-	__global RespirReservoir* reservoir = &taskState->initialPathReservoir;
+	__global RespirReservoir* reservoir = &taskState->reservoir;
 	__global SampleResult *sampleResult = &sampleResultsBuff[gid];
 
 	//--------------------------------------------------------------------------
@@ -1519,10 +1519,10 @@ __kernel void SpatialReuse_FinishReuse(
 	__global SampleResult *sampleResult = &sampleResultsBuff[gid];
 
 	// maintain integrity of pathtraacer by using time from before spatial reuse
-	ray->time = taskState->timeBeforeSpatialReuse;
+	ray->time = taskState->preSpatialReuseTime;
 
 	// Copy resampled sample from reservoir to sampleResultsBuff[gid] to be splatted like normal
-	*sampleResult = taskState->initialPathReservoir.selectedSample.sampleResult;
+	*sampleResult = taskState->reservoir.sample.sampleResult;
 	
 	// Reinitialize PixelIndexMap state in case the pixel this task is working on changes
 	PixelIndexMap_Set(pixelIndexMap, filmWidth, 

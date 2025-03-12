@@ -160,13 +160,13 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 	taskState->seedPassThroughEvent = initSeed;
 
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-	VSTORE3F(WHITE, taskState->lastWeight.c);
+	VSTORE3F(WHITE, taskState->prevIlluminationWeight.c);
 	taskState->bsdfPdfWProduct = 1.f;
-	taskState->initialPathReservoir.sumWeight = 0.0f;
-	taskState->initialPathReservoir.selectedWeight = 0.0f;
-	taskState->initialPathReservoir.selectedSample.sampleResult = *sampleResult;
-	Radiance_Clear(taskState->initialPathReservoir.selectedSample.prefixRadiance);
-	Radiance_Clear(taskState->initialPathReservoir.selectedSample.reconnectionVertex.postfixRadiance);
+	taskState->reservoir.sumWeight = 0.0f;
+	taskState->reservoir.weight = 0.0f;
+	taskState->reservoir.sample.sampleResult = *sampleResult;
+	Radiance_Clear(taskState->reservoir.sample.unnormalizedRadiance);
+	Radiance_Clear(taskState->reservoir.sample.reconnection.unnormalizedRadiance);
 #endif
 }
 
@@ -187,11 +187,11 @@ OPENCL_FORCE_INLINE void PixelIndexMap_Set(__global int* pixelIndexMap, const ui
 // Simply replace based on the new sample's weight and the reservoir's current sum weight.
 OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfiguration* restrict taskConfig, __global GPUTaskState* restrict taskState, 
 		__global SampleResult* restrict newSample) {
-	__global RespirReservoir* reservoir = &taskState->initialPathReservoir;
+	__global RespirReservoir* reservoir = &taskState->reservoir;
 
 	// normalized path contribution
 	float3 pathContribution = SampleResult_GetUnscaledSpectrum(&taskConfig->film, newSample);
-	float3 pathPdf = VLOAD3F(taskState->lastWeight.c);
+	float3 pathPdf = VLOAD3F(taskState->prevIlluminationWeight.c);
 
 	// correct zero components in pdf
 	if (pathPdf.x == 0) {
@@ -222,8 +222,8 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 
 	reservoir->sumWeight += weight;
 	if (random < (weight / reservoir->sumWeight)) {
-		reservoir->selectedSample.sampleResult = *newSample;
-		reservoir->selectedWeight = weight;
+		reservoir->sample.sampleResult = *newSample;
+		reservoir->weight = weight;
 #ifdef DEBUG
 		if (gid == 1) {
 			printf("made replacement\n");
@@ -233,13 +233,13 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 
 #ifdef DEBUG
 	if (gid == 1) {
-		float3 selectedContribution = SampleResult_GetUnscaledSpectrum(&taskConfig->film, &reservoir->selectedSample.sampleResult);
+		float3 selectedContribution = SampleResult_GetUnscaledSpectrum(&taskConfig->film, &reservoir->sample.sampleResult);
 
 		printf("contribution: (%f, %f, %f), pdf: (%f, %f, %f), throughput: (%f, %f, %f), lastweight: (%f, %f, %f), bsdfWProduct: %f, weight: %f, sumweight: %f, random: %f, replacement chance: %f, selected: (%f, %f, %f)\n\n", 
 			pathContribution.x, pathContribution.y, pathContribution.z,
 			pathPdf.x, pathPdf.y, pathPdf.z,
 			taskState->throughput.c[0], taskState->throughput.c[1], taskState->throughput.c[2],
-			taskState->lastWeight.c[0], taskState->lastWeight.c[1], taskState->lastWeight.c[2],
+			taskState->prevIlluminationWeight.c[0], taskState->prevIlluminationWeight.c[1], taskState->prevIlluminationWeight.c[2],
 			taskState->bsdfPdfWProduct,
 			weight, reservoir->sumWeight,
 			random, weight / reservoir->sumWeight,
@@ -289,12 +289,12 @@ OPENCL_FORCE_INLINE	bool RespirReservoir_SpatialUpdate(
 		Seed* seed) {
 	const size_t gid = get_global_id(0);
 	// the offset path is the current path we're working on
-	RespirReservoir* offset = &tasksState[gid].initialPathReservoir;
+	RespirReservoir* offset = &tasksState[gid].reservoir;
 	// the base path is the neighboring path we're resampling (from previous RIS resamples, to prevent race conditions)
 	const RespirReservoir* base = &tasks[tasksState[gid].currentNeighborGid].tmpReservoir;
 	// Resample the offset reservoir
 	offset->sumWeight += base->sumWeight;
-	if (Rnd_FloatValue(seed) < base->selectedWeight / offset->sumWeight) {
+	if (Rnd_FloatValue(seed) < base->weight / offset->sumWeight) {
 #ifdef DEBUG
 		if (get_global_id(0) == 1) {
 			printf("Spatial resampling succeeded.\n");
@@ -313,21 +313,21 @@ OPENCL_FORCE_INLINE	bool RespirReservoir_SpatialUpdate(
 		// shadow ray
 		*directLightVolInfo = pathInfo->volume;
 
-		const float3 reconnectionPoint = VLOAD3F(&base->selectedSample.reconnectionVertex.bsdf.hitPoint.p.x);
-		const float3 offsetPoint = VLOAD3F(&offset->selectedSample.prefixBsdf.hitPoint.p.x);
+		const float3 reconnectionPoint = VLOAD3F(&base->sample.reconnection.bsdf.hitPoint.p.x);
+		const float3 offsetPoint = VLOAD3F(&offset->sample.prefixBsdf.hitPoint.p.x);
 		float3 toReconnectionPoint = reconnectionPoint - offsetPoint;
 		const float toReconnectionPointDistanceSquared = dot(toReconnectionPoint, toReconnectionPoint);
 		const float toReconnectionPointDistance = sqrt(toReconnectionPointDistanceSquared);
 		toReconnectionPoint /= toReconnectionPointDistance;
 
-		const float3 shadowRayOrigin = BSDF_GetRayOrigin(&offset->selectedSample.prefixBsdf, toReconnectionPoint);
-		float3 shadowRayDir = reconnectionPoint + (BSDF_GetLandingGeometryN(&offset->selectedSample.prefixBsdf) 
-				* MachineEpsilon_E_Float3(reconnectionPoint) * (base->selectedSample.reconnectionVertex.bsdf.hitPoint.intoObject ? 1.f : -1.f) ) - 
+		const float3 shadowRayOrigin = BSDF_GetRayOrigin(&offset->sample.prefixBsdf, toReconnectionPoint);
+		float3 shadowRayDir = reconnectionPoint + (BSDF_GetLandingGeometryN(&offset->sample.prefixBsdf) 
+				* MachineEpsilon_E_Float3(reconnectionPoint) * (base->sample.reconnection.bsdf.hitPoint.intoObject ? 1.f : -1.f) ) - 
 				shadowRayOrigin;
 		const float shadowRayDirDistanceSquared = dot(shadowRayDir, shadowRayDir);
 		const float shadowRayDirDistance = sqrt(shadowRayDirDistanceSquared);
 		shadowRayDir /= shadowRayDirDistance;
-		Ray_Init4(ray, shadowRayOrigin, shadowRayDir, 0.f, shadowRayDirDistance, offset->selectedSample.hitTime);
+		Ray_Init4(ray, shadowRayOrigin, shadowRayDir, 0.f, shadowRayDirDistance, offset->sample.hitTime);
 		return true; 
 	}
 	return false;
@@ -390,7 +390,7 @@ OPENCL_FORCE_INLINE void DirectHitInfiniteLight(__constant const Film* restrict 
 			} else
 				weight = 1.f;
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-			VSTORE3F(VLOAD3F(taskState->lastWeight.c) * weight, taskState->lastWeight.c);
+			VSTORE3F(VLOAD3F(taskState->prevIlluminationWeight.c) * weight, taskState->prevIlluminationWeight.c);
 #endif
 
 			SampleResult_AddEmission(film, sampleResult, light->lightID, throughput, weight * envRadiance);
@@ -443,7 +443,7 @@ OPENCL_FORCE_INLINE void DirectHitFiniteLight(__constant const Film* restrict fi
 			weight = PowerHeuristic(pathInfo->lastBSDFPdfW * Light_GetAvgPassThroughTransparency(light LIGHTS_PARAM), directPdfW * lightPickProb);
 		}
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-		VSTORE3F(VLOAD3F(taskState->lastWeight.c) * weight, taskState->lastWeight.c);
+		VSTORE3F(VLOAD3F(taskState->prevIlluminationWeight.c) * weight, taskState->prevIlluminationWeight.c);
 #endif
 		SampleResult_AddEmission(film, sampleResult, BSDF_GetLightID(bsdf
 				MATERIALS_PARAM), VLOAD3F(taskState->throughput.c), weight * emittedRadiance);
@@ -567,7 +567,7 @@ OPENCL_FORCE_INLINE bool DirectLight_BSDFSampling(
 
 	const float weight = misEnabled ? PowerHeuristic(directLightSamplingPdfW, bsdfPdfW) : 1.f;
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-	VSTORE3F(VLOAD3F(taskState->lastWeight.c) * weight * factor * bsdfEval, taskState->lastWeight.c);
+	VSTORE3F(VLOAD3F(taskState->prevIlluminationWeight.c) * weight * factor * bsdfEval, taskState->prevIlluminationWeight.c);
 #endif
 
 	const float3 lightRadiance = VLOAD3F(info->lightRadiance.c);
