@@ -702,8 +702,8 @@ OPENCL_FORCE_INLINE bool DirectLight_BSDFSampling(
 
 #define KERNEL_ARGS_SPATIALREUSE \
 		, __global int* pixelIndexMap \
-		, __constant uint spatialRadius \
-		, __constant uint numSpatialNeighbors
+		, const uint spatialRadius \
+		, const uint numSpatialNeighbors
 
 //------------------------------------------------------------------------------
 // To initialize image maps page pointer table
