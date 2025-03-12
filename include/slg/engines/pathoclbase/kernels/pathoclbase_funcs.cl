@@ -160,7 +160,8 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 	taskState->seedPassThroughEvent = initSeed;
 
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-	VSTORE3F(WHITE, taskState->prevIlluminationWeight.c);
+	VSTORE3F(WHITE, taskState->pathPdf.c);
+	taskState->lastDirectLightPdf = 1.0f;
 	taskState->reservoir.sumWeight = 0.0f;
 	taskState->reservoir.weight = 0.0f;
 	taskState->reservoir.sample.sampleResult = *sampleResult;
@@ -186,39 +187,27 @@ OPENCL_FORCE_INLINE void PixelIndexMap_Set(__global int* pixelIndexMap, const ui
 
 // Add a sample to the streaming reservoir.
 // Simply replace based on the new sample's weight and the reservoir's current sum weight.
-OPENCL_FORCE_INLINE void RespirReservoir_Update(__global const GPUTaskConfiguration* restrict taskConfig, 
-		GPUTaskState* restrict taskState, SampleResult* restrict newSample) {
-	RespirReservoir* reservoir = &taskState->reservoir;
-
-	// normalized path contribution
-	float3 pathContribution = SampleResult_GetUnscaledSpectrum(&taskConfig->film, newSample);
-	float3 pathPdf = VLOAD3F(taskState->prevIlluminationWeight.c);
+OPENCL_FORCE_INLINE void RespirReservoir_Update(Reservoir* restrict reservoir, float3 pathContribution, 
+		const float lightPdf, const float3 pathPdf, Seed* restrict seed) {
+	float3 totalPathPdf = pathPdf * lightPdf;
 
 	// correct zero components in pdf
-	if (pathPdf.x == 0) {
+	if (totalPathPdf.x == 0) {
 		pathContribution.x = 0;
 		pathPdf.x = 1;
 	}
-	if (pathPdf.y == 0) {
+	if (totalPathPdf.y == 0) {
 		pathContribution.y = 0;
 		pathPdf.y = 1;
 	}
-	if (pathPdf.z == 0) {
+	if (totalPathPdf.z == 0) {
 		pathContribution.z = 0;
 		pathPdf.z = 1;
 	}
-
-	const float random = Rnd_FloatValue(&taskState->seedReservoirSampling);
-
-	// Weight of the sample is the grayscale of 
-	// (path contribution / path PDF)
-	// = (unnorm path contribution / path PDF) / path PDF
-
-	// TODO: current calculation is (pathContribution * path PDF) / path PDF which is probably wrong
+	
 	const float weight = Spectrum_Filter(pathContribution / pathPdf);
-
 	reservoir->sumWeight += weight;
-	if (random < (weight / reservoir->sumWeight)) {
+	if (Rnd_FloatValue(seed) < (weight / reservoir->sumWeight)) {
 		reservoir->sample.sampleResult = *newSample;
 		reservoir->weight = weight;
 	}
@@ -365,11 +354,13 @@ OPENCL_FORCE_INLINE void DirectHitInfiniteLight(__constant const Film* restrict 
 				weight = PowerHeuristic(pathInfo->lastBSDFPdfW, directPdfW * lightPickProb);
 			} else
 				weight = 1.f;
-#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-			VSTORE3F(VLOAD3F(taskState->prevIlluminationWeight.c) * weight, taskState->prevIlluminationWeight.c);
-#endif
 
 			SampleResult_AddEmission(film, sampleResult, light->lightID, throughput, weight * envRadiance);
+
+#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
+			// Add BSDF-importance (NEE MIS) sampled environment sample to reservoir
+			RespirReservoir_Update(&taskState->reservoir, throughput * weight * envRadiance, weight, taskState->pathPdf, &taskState->seed);
+#endif
 		}
 	}
 }
@@ -418,9 +409,6 @@ OPENCL_FORCE_INLINE void DirectHitFiniteLight(__constant const Film* restrict fi
 			// Note: mats[bsdf->materialIndex].avgPassThroughTransparency = lightSource->GetAvgPassThroughTransparency()
 			weight = PowerHeuristic(pathInfo->lastBSDFPdfW * Light_GetAvgPassThroughTransparency(light LIGHTS_PARAM), directPdfW * lightPickProb);
 		}
-#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-		VSTORE3F(VLOAD3F(taskState->prevIlluminationWeight.c) * weight, taskState->prevIlluminationWeight.c);
-#endif
 		SampleResult_AddEmission(film, sampleResult, BSDF_GetLightID(bsdf
 				MATERIALS_PARAM), VLOAD3F(taskState->throughput.c), weight * emittedRadiance);
 	}
@@ -543,7 +531,7 @@ OPENCL_FORCE_INLINE bool DirectLight_BSDFSampling(
 
 	const float weight = misEnabled ? PowerHeuristic(directLightSamplingPdfW, bsdfPdfW) : 1.f;
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-	VSTORE3F(VLOAD3F(taskState->prevIlluminationWeight.c) * weight * factor * bsdfEval, taskState->prevIlluminationWeight.c);
+	taskState->lastDirectLightPdf = weight * factor;
 #endif
 
 	const float3 lightRadiance = VLOAD3F(info->lightRadiance.c);

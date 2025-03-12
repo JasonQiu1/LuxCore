@@ -189,8 +189,6 @@ __kernel void AdvancePaths_MK_HIT_NOTHING(
 	}
 
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-	// Add BSDF-importance sampled environment sample to reservoir
-	RespirReservoir_Update(taskConfig, taskState, sampleResult);
 	taskState->state = SYNC;
 #else
 	taskState->state = MK_SPLAT_SAMPLE;
@@ -309,10 +307,6 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 				bsdf,
 				sampleResult
 				LIGHTS_PARAM);
-#if defined(RENDER_ENGINE_RESPIRPATHOCL)
-		// Add BSDF importance sampled light sample into the reservoir.
-		RespirReservoir_Update(taskConfig, taskState, sampleResult);
-#endif
 	}
 
 	//----------------------------------------------------------------------
@@ -519,7 +513,7 @@ __kernel void AdvancePaths_MK_RT_DL(
 
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
 	// add connectionThroughput contribution to pathThroughput when resampling
-	VSTORE3F(connectionThroughput * VLOAD3F(taskState->prevIlluminationWeight.c), taskState->prevIlluminationWeight.c);
+	VSTORE3F(connectionThroughput * VLOAD3F(taskState->pathPdf.c), taskState->pathPdf.c);
 #endif
 
 	const bool rayMiss = (rayHits[gid].meshIndex == NULL_INDEX);
@@ -553,12 +547,12 @@ __kernel void AdvancePaths_MK_RT_DL(
 							VLOAD3F(taskDirectLight->illumInfo.lightIrradiance.c);
 					VSTORE3F(irradiance, sampleResult->irradiance.c);
 				}
-			}
 
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-			// Add NEE-illuminated sample into the reservoir.
-			RespirReservoir_Update(taskConfig, taskState, sampleResult);
+				// Add NEE-illuminated (with BSDF MIS) sample into the reservoir.
+				RespirReservoir_Update(&taskState->reservoir, lightRadiance, taskState->lastDirectLightPdf, taskState->pathPdf, &taskState->seed);
 #endif
+			}
 
 			taskDirectLight->directLightResult = ILLUMINATED;
 		} else
@@ -889,6 +883,8 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 		throughputFactor *= bsdfSample;
 
 		VSTORE3F(throughputFactor * VLOAD3F(taskState->throughput.c), taskState->throughput.c);
+		// Accumulate pathPdf at each bounce from bsdf PDF and RR probability this bounce
+		VSTORE3F(rrProb * bsdfPdfW * VLOAD3F(taskState->pathPdf.c), taskState->pathPdf.c);
 
 		// This is valid for irradiance AOV only if it is not a SPECULAR material and
 		// first path vertex. Set or update sampleResult.irradiancePathThroughput
@@ -1366,8 +1362,8 @@ __kernel void SpatialReuse_CheckVisibility(
 	VSTORE3F(connectionThroughput * VLOAD3F(taskDirectLight->illumInfo.lightRadiance.c), taskDirectLight->illumInfo.lightRadiance.c);
 	VSTORE3F(connectionThroughput * VLOAD3F(taskDirectLight->illumInfo.lightIrradiance.c), taskDirectLight->illumInfo.lightIrradiance.c);
 
-	// add connectionThroughput contribution to pathThroughput when resampling
-	VSTORE3F(connectionThroughput * VLOAD3F(taskState->prevIlluminationWeight.c), taskState->prevIlluminationWeight.c);
+	// Multiply connectionThroughput contribution to total path pdf
+	VSTORE3F(connectionThroughput * VLOAD3F(taskState->pathPdf.c), taskState->pathPdf.c);
 
 	const bool rayMiss = (rayHits[gid].meshIndex == NULL_INDEX);
 
