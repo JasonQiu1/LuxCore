@@ -127,8 +127,6 @@ typedef struct {
 
 	// keep track of the MIS weights of the most recent direct lighting event
 	Spectrum prevIlluminationWeight;
-	// product of all bsdfPdfW
-	float bsdfPdfWProduct;
 	
 	// TODO: MOVE INTO SEPARATE BUFFER IN THE FUTURE
 	uint preSpatialReuseTime; // save time before spatial reuse to make sure rays after spatial reuse are using the correct time

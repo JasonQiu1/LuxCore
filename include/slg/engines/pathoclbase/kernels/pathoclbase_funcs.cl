@@ -161,7 +161,6 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
 	VSTORE3F(WHITE, taskState->prevIlluminationWeight.c);
-	taskState->bsdfPdfWProduct = 1.f;
 	taskState->reservoir.sumWeight = 0.0f;
 	taskState->reservoir.weight = 0.0f;
 	taskState->reservoir.sample.sampleResult = *sampleResult;
