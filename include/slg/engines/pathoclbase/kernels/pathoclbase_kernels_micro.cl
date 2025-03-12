@@ -1199,10 +1199,10 @@ __kernel void SpatialReuse_Init(
 	//--------------------------------------------------------------------------
 	// Start of variables setup
 	//--------------------------------------------------------------------------
-	__global SampleResult *sampleResult = &sampleResultsBuff[gid];
-	__constant const Film* restrict film = &taskConfig->film;
-	__global RespirReservoir* reservoir = &taskState->reservoir;
-	__global const Ray* ray = &rays[gid];
+	SampleResult *sampleResult = &sampleResultsBuff[gid];
+	const Film* restrict film = &taskConfig->film;
+	RespirReservoir* reservoir = &taskState->reservoir;
+	const Ray* ray = &rays[gid];
 
 	// Read the seed
 	Seed seedValue = task->seed;
@@ -1274,8 +1274,8 @@ __kernel void SpatialReuse_ResampleNeighbor(
 		) {
 	const size_t gid = get_global_id(0);
 
-	__global GPUTask *task = &tasks[gid];
-	__global GPUTaskState *taskState = &tasksState[gid];
+	GPUTask *task = &tasks[gid];
+	GPUTaskState *taskState = &tasksState[gid];
 	if (taskState->state != SR_RESAMPLE_NEIGHBOR)
 		return;
 
@@ -1283,7 +1283,7 @@ __kernel void SpatialReuse_ResampleNeighbor(
 	// Start of variables setup
 	//--------------------------------------------------------------------------
 
-	__global SampleResult *sampleResult = &sampleResultsBuff[gid];
+	SampleResult *sampleResult = &sampleResultsBuff[gid];
 
 	//--------------------------------------------------------------------------
 	// End of variables setup
@@ -1327,8 +1327,8 @@ __kernel void SpatialReuse_CheckVisibility(
 	const size_t gid = get_global_id(0);
 
 	// Read the path state
-	__global GPUTask *task = &tasks[gid];
-	__global GPUTaskState *taskState = &tasksState[gid];
+	GPUTask *task = &tasks[gid];
+	GPUTaskState *taskState = &tasksState[gid];
 	if (taskState->state != SR_CHECK_VISIBILITY) {
 		return;
 	}
@@ -1337,10 +1337,10 @@ __kernel void SpatialReuse_CheckVisibility(
 	// Start of variables setup
 	//--------------------------------------------------------------------------
 
-	__constant const Film* restrict film = &taskConfig->film;
-	__global GPUTaskDirectLight *taskDirectLight = &tasksDirectLight[gid];
-	__constant const Scene* restrict scene = &taskConfig->scene;
-	__global SampleResult *sampleResult = &sampleResultsBuff[gid];
+	const Film* restrict film = &taskConfig->film;
+	GPUTaskDirectLight *taskDirectLight = &tasksDirectLight[gid];
+	const Scene* restrict scene = &taskConfig->scene;
+	SampleResult *sampleResult = &sampleResultsBuff[gid];
 
 	// Initialize image maps page pointer table
 	INIT_IMAGEMAPS_PAGES
@@ -1498,16 +1498,16 @@ __kernel void SpatialReuse_FinishIteration(
 	const size_t gid = get_global_id(0);
 
 	// Read the path state
-	__global GPUTask *task = &tasks[gid];
-	__global GPUTaskState *taskState = &tasksState[gid];
+	GPUTask *task = &tasks[gid];
+	GPUTaskState *taskState = &tasksState[gid];
 
 	//--------------------------------------------------------------------------
 	// Start of variables setup
 	//--------------------------------------------------------------------------
 	
-	__global const Film* film = &taskConfig->film;
-	__global RespirReservoir* reservoir = &taskState->reservoir;
-	__global SampleResult *sampleResult = &sampleResultsBuff[gid];
+	const Film* film = &taskConfig->film;
+	RespirReservoir* reservoir = &taskState->reservoir;
+	SampleResult *sampleResult = &sampleResultsBuff[gid];
 
 	//--------------------------------------------------------------------------
 	// End of variables setup
@@ -1544,9 +1544,9 @@ __kernel void SpatialReuse_FinishReuse(
 		) {
 	const size_t gid = get_global_id(0);
 
-	__global GPUTaskState *taskState = &tasksState[gid];
-	__global Ray *ray = &rays[gid];
-	__global SampleResult *sampleResult = &sampleResultsBuff[gid];
+	GPUTaskState *taskState = &tasksState[gid];
+	Ray *ray = &rays[gid];
+	SampleResult *sampleResult = &sampleResultsBuff[gid];
 
 	// maintain integrity of pathtraacer by using time from before spatial reuse
 	ray->time = taskState->preSpatialReuseTime;
@@ -1570,7 +1570,7 @@ __kernel void SpatialReuse_SetSplat(
 		) {
 	const size_t gid = get_global_id(0);
 
-	__global GPUTaskState *taskState = &tasksState[gid];
+	GPUTaskState *taskState = &tasksState[gid];
 
 	taskState->state = MK_SPLAT_SAMPLE;
 }

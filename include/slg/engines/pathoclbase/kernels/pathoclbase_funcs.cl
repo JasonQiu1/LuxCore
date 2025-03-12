@@ -187,9 +187,9 @@ OPENCL_FORCE_INLINE void PixelIndexMap_Set(__global int* pixelIndexMap, const ui
 
 // Add a sample to the streaming reservoir.
 // Simply replace based on the new sample's weight and the reservoir's current sum weight.
-OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfiguration* restrict taskConfig, __global GPUTaskState* restrict taskState, 
-		__global SampleResult* restrict newSample) {
-	__global RespirReservoir* reservoir = &taskState->reservoir;
+OPENCL_FORCE_INLINE void RespirReservoir_Update(__global GPUTaskConfiguration* restrict taskConfig, 
+		GPUTaskState* restrict taskState, SampleResult* restrict newSample) {
+	RespirReservoir* reservoir = &taskState->reservoir;
 
 	// normalized path contribution
 	float3 pathContribution = SampleResult_GetUnscaledSpectrum(&taskConfig->film, newSample);
@@ -218,36 +218,11 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(const __global GPUTaskConfigurat
 	// TODO: current calculation is (pathContribution * path PDF) / path PDF which is probably wrong
 	const float weight = Spectrum_Filter(pathContribution / pathPdf);
 
-#ifdef DEBUG
-	const size_t gid = get_global_id(0);
-#endif
-
 	reservoir->sumWeight += weight;
 	if (random < (weight / reservoir->sumWeight)) {
 		reservoir->sample.sampleResult = *newSample;
 		reservoir->weight = weight;
-#ifdef DEBUG
-		if (gid == 1) {
-			printf("made replacement\n");
-		}
-#endif
 	}
-
-#ifdef DEBUG
-	if (gid == 1) {
-		float3 selectedContribution = SampleResult_GetUnscaledSpectrum(&taskConfig->film, &reservoir->sample.sampleResult);
-
-		printf("contribution: (%f, %f, %f), pdf: (%f, %f, %f), throughput: (%f, %f, %f), lastweight: (%f, %f, %f), bsdfWProduct: %f, weight: %f, sumweight: %f, random: %f, replacement chance: %f, selected: (%f, %f, %f)\n\n", 
-			pathContribution.x, pathContribution.y, pathContribution.z,
-			pathPdf.x, pathPdf.y, pathPdf.z,
-			taskState->throughput.c[0], taskState->throughput.c[1], taskState->throughput.c[2],
-			taskState->prevIlluminationWeight.c[0], taskState->prevIlluminationWeight.c[1], taskState->prevIlluminationWeight.c[2],
-			taskState->bsdfPdfWProduct,
-			weight, reservoir->sumWeight,
-			random, weight / reservoir->sumWeight,
-			selectedContribution.x, selectedContribution.y, selectedContribution.z);
-	}
-#endif
 }
 
 // Find the spatial neighbors around the pixel this work-item is handling for now

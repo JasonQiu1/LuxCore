@@ -171,7 +171,7 @@ OPENCL_FORCE_INLINE float SampleResult_GetRadianceY(__constant const Film* restr
 }
 
 OPENCL_FORCE_INLINE float3 SampleResult_GetUnscaledSpectrum(__constant const Film* restrict film,
-		__global SampleResult *sampleResult) {
+		SampleResult *sampleResult) {
 	float3 c = BLACK;
 	
 	for (uint i = 0; i < film->radianceGroupCount; ++i)
@@ -181,16 +181,16 @@ OPENCL_FORCE_INLINE float3 SampleResult_GetUnscaledSpectrum(__constant const Fil
 }
 
 OPENCL_FORCE_INLINE float3 SampleResult_GetUnscaledUnnormalizedSpectrum(__constant const Film* restrict film,
-	__global SampleResult *sampleResult) {
-float3 c = BLACK;
+		SampleResult *sampleResult) {
+	float3 c = BLACK;
 
-for (uint i = 0; i < film->radianceGroupCount; ++i)
-	c += VLOAD3F(sampleResult->radiancePerPixelUnnormalized[i].c);
+	for (uint i = 0; i < film->radianceGroupCount; ++i)
+		c += VLOAD3F(sampleResult->radiancePerPixelUnnormalized[i].c);
 
-return c;
+	return c;
 }
 
-OPENCL_FORCE_INLINE void Radiance_Clear(__global Spectrum* radiance) {
+OPENCL_FORCE_INLINE void Radiance_Clear(Spectrum* radiance) {
 	VSTORE3F(BLACK, radiance[0].c);
 	VSTORE3F(BLACK, radiance[1].c);
 	VSTORE3F(BLACK, radiance[2].c);
@@ -202,28 +202,28 @@ OPENCL_FORCE_INLINE void Radiance_Clear(__global Spectrum* radiance) {
 }
 
 OPENCL_FORCE_INLINE void Radiance_Add(__constant const Film* restrict film, 
-	__constant const Spectrum* a, __constant const Spectrum* b, __global Spectrum* out) {
+	const Spectrum* a, const Spectrum* b, Spectrum* out) {
 	for (uint i = 0; i < film->radianceGroupCount; i++) {
 		VSTORE3F(VLOAD3F(a[i].c) + VLOAD3F(b[i].c), out[i].c);
 	}
 }
 
 OPENCL_FORCE_INLINE void Radiance_Add_Scaled(__constant const Film* restrict film, 
-	__constant const Spectrum* a, __constant const Spectrum* b, const float scale, __global Spectrum* out) {
+	const Spectrum* a, const Spectrum* b, const float scale, Spectrum* out) {
 	for (uint i = 0; i < film->radianceGroupCount; i++) {
 		VSTORE3F((VLOAD3F(a[i].c) + (VLOAD3F(b[i].c) * scale)), out[i].c);
 	}
 }
 
 OPENCL_FORCE_INLINE void Radiance_Sub(__constant const Film* restrict film, 
-	__constant const Spectrum* a, __constant const Spectrum* b, __global Spectrum* out) {
+	const Spectrum* a, const Spectrum* b, Spectrum* out) {
 	for (uint i = 0; i < film->radianceGroupCount; i++) {
 		VSTORE3F(VLOAD3F(a[i].c) - VLOAD3F(b[i].c), out[i].c);
 	}
 }
 
 OPENCL_FORCE_INLINE void Radiance_Copy(__constant const Film* restrict film, 
-	__constant const Spectrum* radiance, __global Spectrum* out) {
+	const Spectrum* radiance, Spectrum* out) {
 	for (uint i = 0; i < film->radianceGroupCount; i++) {
 		VSTORE3F(VLOAD3F(radiance[i].c), out[i].c);
 	}
