@@ -192,8 +192,8 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(__global const GPUTaskConfigurat
 	RespirReservoir* reservoir = &taskState->reservoir;
 
 	// normalized path contribution
-	float3 pathContribution = SampleResult_GetUnscaledUnnormalizedSpectrum(&taskConfig->film, newSample);
-	float3 pathPdf = VLOAD3F(taskState->throughput.c) * VLOAD3F(taskState->prevIlluminationWeight.c);
+	float3 pathContribution = SampleResult_GetUnscaledSpectrum(&taskConfig->film, newSample);
+	float3 pathPdf = VLOAD3F(taskState->prevIlluminationWeight.c);
 
 	// correct zero components in pdf
 	if (pathPdf.x == 0) {
@@ -212,9 +212,11 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(__global const GPUTaskConfigurat
 	const float random = Rnd_FloatValue(&taskState->seedReservoirSampling);
 
 	// Weight of the sample is the grayscale of 
-	// (unnormalized path contribution / path PDF)
-	// = (normalized path contribution / path PDF) / path PDF
-	const float weight = Spectrum_Filter(pathContribution / pathPdf);
+	// (path contribution / path PDF)
+	// = (unnorm path contribution / path PDF) / path PDF
+
+	// TODO: current calculation is (pathContribution * path PDF) / path PDF which is probably wrong
+	const float weight = Spectrum_Filter(pathContribution);
 
 	reservoir->sumWeight += weight;
 	if (random < (weight / reservoir->sumWeight)) {
