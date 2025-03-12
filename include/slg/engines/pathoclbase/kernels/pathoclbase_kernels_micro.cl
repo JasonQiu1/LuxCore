@@ -1235,6 +1235,7 @@ __kernel void SpatialReuse_Init(
 		reservoir->weight = reservoir->sumWeight /
 			Spectrum_Filter(SampleResult_GetUnscaledUnnormalizedSpectrum(film, &reservoir->sample.sampleResult));
 	}
+	reservoir->sumWeight = reservoir->weight;
 
 	// PRIME LOOP
 	// Prime neighbor search
@@ -1517,6 +1518,7 @@ __kernel void SpatialReuse_FinishIteration(
 		reservoir->weight = reservoir->sumWeight /
 			Spectrum_Filter(SampleResult_GetUnscaledUnnormalizedSpectrum(film, &reservoir->sample.sampleResult));
 	}
+	reservoir->sumWeight = reservoir->weight;
 
 	// PRIME LOOP
 	// Prime neighbor search
