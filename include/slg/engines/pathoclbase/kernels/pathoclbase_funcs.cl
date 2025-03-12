@@ -187,7 +187,7 @@ OPENCL_FORCE_INLINE void PixelIndexMap_Set(__global int* pixelIndexMap, const ui
 
 // Add a sample to the streaming reservoir.
 // Simply replace based on the new sample's weight and the reservoir's current sum weight.
-OPENCL_FORCE_INLINE void RespirReservoir_Update(__global GPUTaskConfiguration* restrict taskConfig, 
+OPENCL_FORCE_INLINE void RespirReservoir_Update(__global const GPUTaskConfiguration* restrict taskConfig, 
 		GPUTaskState* restrict taskState, SampleResult* restrict newSample) {
 	RespirReservoir* reservoir = &taskState->reservoir;
 
