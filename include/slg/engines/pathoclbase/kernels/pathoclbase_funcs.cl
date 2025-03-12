@@ -262,7 +262,7 @@ OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(GPUTaskState* taskState,
 	}
 
 	// randomly choose a pixel in the radius (inclusive) not including self
-	const int searchX = sampleResult->pixelX;//DEBUG 
+	const int searchX = sampleResult->pixelX;//DEBUG
 	const int searchY = sampleResult->pixelY;//DEBUG
 	taskState->numNeighborsLeft--;
 
@@ -284,9 +284,9 @@ OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(GPUTaskState* taskState,
 // If successful, set up shadow ray from the offset path to the base path at the reconnection vertex.
 OPENCL_FORCE_INLINE	bool RespirReservoir_SpatialUpdate(
 		__constant GPUTask* tasks, __global GPUTaskState* tasksState, 
-		Ray* ray, GPUTaskDirectLight* taskDirectLight, 
-		PathVolumeInfo* directLightVolInfo, EyePathInfo *pathInfo,
-		Seed* seed) {
+		__global Ray* ray, __global GPUTaskDirectLight* taskDirectLight, 
+		__global PathVolumeInfo* directLightVolInfo, __global EyePathInfo *pathInfo,
+		__global Seed* seed) {
 	const size_t gid = get_global_id(0);
 	// the offset path is the current path we're working on
 	RespirReservoir* offset = &tasksState[gid].initialPathReservoir;
