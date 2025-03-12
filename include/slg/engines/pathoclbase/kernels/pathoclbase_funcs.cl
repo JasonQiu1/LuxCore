@@ -167,6 +167,8 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 	taskState->reservoir.sample.sampleResult = *sampleResult;
 	Radiance_Clear(taskState->reservoir.sample.normPrefixRadiance);
 	Radiance_Clear(taskState->reservoir.sample.reconnection.normPostfixRadiance);
+	Radiance_Clear(taskState->reservoir.sample.prefixRadiance);
+	Radiance_Clear(taskState->reservoir.sample.reconnection.postfixRadiance);
 #endif
 }
 

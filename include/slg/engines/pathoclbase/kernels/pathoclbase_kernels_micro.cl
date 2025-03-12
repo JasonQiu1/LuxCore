@@ -853,6 +853,11 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 			sampleResult->radiancePerPixelNormalized,
 			taskState->reservoir.sample.normPrefixRadiance
 		);
+		Radiance_Copy(
+			&taskConfig->film,
+			sampleResult->radiancePerPixelUnnormalized,
+			taskState->reservoir.sample.prefixRadiance
+		);
 		// Cache bsdf hit point of the first path vertex (vertex right before reconnection vertex)
 		taskState->reservoir.sample.prefixBsdf = *bsdf;
 		// Cache hit time of first path vertex
@@ -1218,6 +1223,18 @@ __kernel void SpatialReuse_Init(
 		reservoir->sample.normPrefixRadiance,
 		reservoir->sample.reconnection.normPostfixRadiance
 	);
+	Radiance_Sub(
+		film,
+		sampleResult->radiancePerPixelUnnormalized,
+		reservoir->sample.prefixRadiance,
+		reservoir->sample.reconnection.postfixRadiance
+	);
+
+	// Recalculate unbiased contribution weight
+	if (reservoir->weight != 0) {
+		reservoir->weight = reservoir->sumWeight /
+			Spectrum_Filter(SampleResult_GetUnscaledUnnormalizedSpectrum(film, &offset->sample.sampleResult));
+	}
 
 	// PRIME LOOP
 	// Prime neighbor search
@@ -1450,8 +1467,13 @@ __kernel void SpatialReuse_CheckVisibility(
 				offset->sample.normPrefixRadiance, 
 				base->sample.reconnection.normPostfixRadiance, 
 				offset->sample.sampleResult.radiancePerPixelNormalized);
+
+			const float newGrayscaleRadiance = Spectrum_Filter(SampleResult_GetUnscaledSpectrum(film, &offset->sample.sampleResult));
 				
-			offset->weight = jacobianDeterminant * Spectrum_Filter(SampleResult_GetUnscaledSpectrum(film, &offset->sample.sampleResult));
+			offset->weight = 0;
+			if (newGrayscaleRadiance != 0) {
+				offset->weight = jacobianDeterminant * newGrayscaleRadiance;
+			}
 			
 			// set offset reconnection vertex to base reconnection vertex
 			offset->sample.reconnection = base->sample.reconnection;
@@ -1489,6 +1511,12 @@ __kernel void SpatialReuse_FinishIteration(
 	//--------------------------------------------------------------------------
 	// End of variables setup
 	//--------------------------------------------------------------------------
+
+	// Recalculate unbiased contribution weight
+	if (reservoir->weight != 0) {
+		reservoir->weight = reservoir->sumWeight /
+			Spectrum_Filter(SampleResult_GetUnscaledUnnormalizedSpectrum(film, &offset->sample.sampleResult));
+	}
 
 	// PRIME LOOP
 	// Prime neighbor search

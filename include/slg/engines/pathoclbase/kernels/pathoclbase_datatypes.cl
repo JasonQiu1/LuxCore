@@ -91,6 +91,7 @@ typedef struct {
 // Stores information about the reconnection vertex for a particular path in the ReSTIR algorithm.
 typedef struct {
 	Spectrum normPostfixRadiance[FILM_MAX_RADIANCE_GROUP_COUNT]; // the radiance of the path of the path at the reconnection vertex and after
+	Spectrum postfixRadiance[FILM_MAX_RADIANCE_GROUP_COUNT];
 	BSDF bsdf; // contains info on the exact hit point on the reconnection vertex
 	// TODO: find out if LuxCoreRender has multi-lobed materials
 	// uint prevLobeIndex; // the sampled lobe index of the material at the previous vertex 
@@ -101,6 +102,7 @@ typedef struct {
 typedef struct {
 	ReconnectionVertex reconnection; // the chosen reconnection vertex for this path
 	Spectrum normPrefixRadiance[FILM_MAX_RADIANCE_GROUP_COUNT]; // the radiance of the path at the vertices before the reconnection vertex
+	Spectrum prefixRadiance[FILM_MAX_RADIANCE_GROUP_COUNT];
 	SampleResult sampleResult; // the cached sampleresult data of the entire path
 	BSDF prefixBsdf; // the BSDF point where the vertex before the reconnection vertex was hit
 	float hitTime; // time the reconnection vertex was hit. we use this to shoot a visibility ray backwards to the connecting offset path vertex
