@@ -439,11 +439,6 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 	}
 #endif
 
-#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-	// Add BSDF importance sampled light sample into the reservoir.
-	RespirReservoir_Update(taskConfig, taskState, sampleResult);
-#endif
-
 	//----------------------------------------------------------------------
 	// Check if this is the last path vertex (but not also the first)
 	//
