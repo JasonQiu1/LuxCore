@@ -524,7 +524,7 @@ __kernel void AdvancePaths_MK_RT_DL(
 
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
 	// add connectionThroughput contribution to pathThroughput when resampling
-	VSTORE3F(connectionThroughput * VLOAD3F(taskState->lastWeight.c), taskState->lastWeight.c);
+	VSTORE3F(connectionThroughput * VLOAD3F(taskState->prevIlluminationWeight.c), taskState->prevIlluminationWeight.c);
 #endif
 
 	const bool rayMiss = (rayHits[gid].meshIndex == NULL_INDEX);
@@ -854,7 +854,7 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 			taskState->reservoir.sample.normPrefixRadiance
 		);
 		// Cache bsdf hit point of the first path vertex (vertex right before reconnection vertex)
-		taskState->reservoir.sample.bsdf = *bsdf;
+		taskState->reservoir.sample.prefixBsdf = *bsdf;
 		// Cache hit time of first path vertex
 		taskState->reservoir.sample.hitTime = ray->time;
 	}
@@ -1358,7 +1358,7 @@ __kernel void SpatialReuse_CheckVisibility(
 	VSTORE3F(connectionThroughput * VLOAD3F(taskDirectLight->illumInfo.lightIrradiance.c), taskDirectLight->illumInfo.lightIrradiance.c);
 
 	// add connectionThroughput contribution to pathThroughput when resampling
-	VSTORE3F(connectionThroughput * VLOAD3F(taskState->lastWeight.c), taskState->lastWeight.c);
+	VSTORE3F(connectionThroughput * VLOAD3F(taskState->prevIlluminationWeight.c), taskState->prevIlluminationWeight.c);
 
 	const bool rayMiss = (rayHits[gid].meshIndex == NULL_INDEX);
 
@@ -1400,9 +1400,9 @@ __kernel void SpatialReuse_CheckVisibility(
 
 			// CALCULATE JACOBIAN DETERMINANT TO CORRECT BIAS
 			const float3 reconnectionPoint = VLOAD3F(&offset->sample.reconnection.bsdf.hitPoint.p.x);
-			const float3 offsetPoint = VLOAD3F(&offset->sample.bsdf.hitPoint.p.x);
+			const float3 offsetPoint = VLOAD3F(&offset->sample.prefixBsdf.hitPoint.p.x);
 
-			const float3 basePoint = VLOAD3F(&base->sample.bsdf.hitPoint.p.x);
+			const float3 basePoint = VLOAD3F(&base->sample.prefixBsdf.hitPoint.p.x);
 
 			float3 offsetToReconnection = reconnectionPoint - offsetPoint;
 			const float offsetDistanceSquared = dot(offsetToReconnection, offsetToReconnection);
@@ -1441,7 +1441,7 @@ __kernel void SpatialReuse_CheckVisibility(
 			const float glossinessThreshold = 0.2;
 			if (BSDF_GetGlossiness(&offset->sample.reconnection.bsdf MATERIALS_PARAM) > glossinessThreshold
 					|| BSDF_GetGlossiness(&base->sample.reconnection.bsdf MATERIALS_PARAM) > glossinessThreshold 
-					|| BSDF_GetGlossiness(&offset->sample.bsdf MATERIALS_PARAM) > glossinessThreshold) {
+					|| BSDF_GetGlossiness(&offset->sample.prefixBsdf MATERIALS_PARAM) > glossinessThreshold) {
 				return;
 			}
 
