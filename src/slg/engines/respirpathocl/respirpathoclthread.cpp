@@ -42,7 +42,8 @@ using namespace slg;
 RespirPathOCLRenderThread::RespirPathOCLRenderThread(const u_int index, luxrays::HardwareIntersectionDevice *device,
         RespirPathOCLRenderEngine *re)
     : PathOCLOpenCLRenderThread(index, device, re), 
-	  spatialRadius(re->spatialRadius)
+	  spatialRadius(re->spatialRadius),
+	  numSpatialNeighbors(re->numSpatialNeighbors)
 {
 	pixelIndexMapBuff = nullptr;
 
