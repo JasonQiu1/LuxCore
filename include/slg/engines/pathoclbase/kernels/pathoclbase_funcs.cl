@@ -46,7 +46,7 @@ OPENCL_FORCE_INLINE void InitSampleResult(
 	const size_t gid = get_global_id(0);
 	__global SampleResult *sampleResult = &sampleResultsBuff[gid];
 
-	SampleResult_Init(sampleResult);
+	SampleResult_Init(&taskConfig->film, sampleResult);
 
 	float filmX = Sampler_GetSample(taskConfig, IDX_SCREEN_X SAMPLER_PARAM);
 	float filmY = Sampler_GetSample(taskConfig, IDX_SCREEN_Y SAMPLER_PARAM);
@@ -187,7 +187,7 @@ OPENCL_FORCE_INLINE void PixelIndexMap_Set(__global int* pixelIndexMap, const ui
 
 // Add a sample to the streaming reservoir.
 // Simply replace based on the new sample's weight and the reservoir's current sum weight.
-OPENCL_FORCE_INLINE void RespirReservoir_Update(Reservoir* restrict reservoir, SampleResult* restrict pathSample, 
+OPENCL_FORCE_INLINE void RespirReservoir_Update(Reservoir* restrict reservoir, const SampleResult* restrict pathSample, 
 		const float lightPdf, const float3 pathPdf, Seed* restrict seed) {
 	float3 pathContribution = SampleResult_GetUnscaledSpectrum(pathSample);
 	float3 totalPathPdf = pathPdf * lightPdf;
@@ -357,7 +357,7 @@ OPENCL_FORCE_INLINE void DirectHitInfiniteLight(__constant const Film* restrict 
 				weight = 1.f;
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
 			// Clear sample result to only hold the radiance from this light source.
-			SampleResult_Init(sampleResult);
+			SampleResult_Init(film, sampleResult);
 #endif
 			SampleResult_AddEmission(film, sampleResult, light->lightID, throughput, weight * envRadiance);
 

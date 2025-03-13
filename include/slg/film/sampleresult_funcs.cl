@@ -38,7 +38,8 @@ OPENCL_FORCE_INLINE void SampleResult_ClearRadiance(__global SampleResult *sampl
 	VSTORE3F(BLACK, sampleResult->radiancePerPixelUnnormalized[7].c);
 }
 
-OPENCL_FORCE_INLINE void SampleResult_Init(__global SampleResult *sampleResult) {
+OPENCL_FORCE_INLINE void SampleResult_Init(__constant const Film* restrict film,
+		__global SampleResult *sampleResult) {
 	// Initialize only Spectrum fields
 
 	SampleResult_ClearRadiance(sampleResult);
