@@ -226,14 +226,6 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(RespirReservoir* restrict reserv
 OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(GPUTaskState* restrict taskState, 
 		const SampleResult* restrict sampleResult, const int spatialRadius,
 		const int* restrict pixelIndexMap, const uint filmWidth, const uint filmHeight, Seed* restrict seed) {
-	// DEBUG IDENTITY SHIFT
-	if (taskState->numNeighborsLeft == 0) {
-		return false;
-	}
-	taskState->currentNeighborGid = get_global_id(0);
-	taskState->numNeighborsLeft--;
-	return true;
-	
 	taskState->currentNeighborGid = -1;
 	if (taskState->numNeighborsLeft == 0) {
 		return false;
