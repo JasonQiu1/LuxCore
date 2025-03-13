@@ -1207,10 +1207,8 @@ __kernel void SpatialReuse_Init(
 		return;
 	}
 
-	if (gid == 1) {
-		printf("Prefix point: (%f, %f, %f)\n", taskState->reservoir.sample.prefixBsdf.hitPoint.p.x, taskState->reservoir.sample.prefixBsdf.hitPoint.p.y, taskState->reservoir.sample.prefixBsdf.hitPoint.p.z);
-		printf("Reconnection point: (%f, %f, %f)\n", taskState->reservoir.sample.reconnection.bsdf.hitPoint.p.x, taskState->reservoir.sample.reconnection.bsdf.hitPoint.p.y, taskState->reservoir.sample.reconnection.bsdf.hitPoint.p.z);
-	}
+	printf("Prefix point: (%f, %f, %f)\n", taskState->reservoir.sample.prefixBsdf.hitPoint.p.x, taskState->reservoir.sample.prefixBsdf.hitPoint.p.y, taskState->reservoir.sample.prefixBsdf.hitPoint.p.z);
+	printf("Reconnection point: (%f, %f, %f)\n", taskState->reservoir.sample.reconnection.bsdf.hitPoint.p.x, taskState->reservoir.sample.reconnection.bsdf.hitPoint.p.y, taskState->reservoir.sample.reconnection.bsdf.hitPoint.p.z);
 
 	// Save ray time state
 	taskState->preSpatialReuseTime = ray->time;
