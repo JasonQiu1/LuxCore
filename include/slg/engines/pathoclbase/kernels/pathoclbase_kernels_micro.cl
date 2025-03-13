@@ -1280,7 +1280,6 @@ __kernel void SpatialReuse_ResampleNeighbor(
 	const Film* restrict film = &taskConfig->film;
 	const Scene* restrict scene = &taskConfig->scene;
 	RespirReservoir* offset = &taskState->reservoir; 
-	const RespirReservoir* base = &tasks[taskState->currentNeighborGid].tmpReservoir;
 
 	// Initialize image maps page pointer table
 	INIT_IMAGEMAPS_PAGES
@@ -1295,6 +1294,8 @@ __kernel void SpatialReuse_ResampleNeighbor(
 		taskState, sampleResult, 
 		spatialRadius, pixelIndexMap, filmWidth, filmHeight, &task->seed
 	)) {
+		const RespirReservoir* base = &tasks[taskState->currentNeighborGid].tmpReservoir;
+
 		// CALCULATE RESAMPLING WEIGHT
 		// CALCULATE JACOBIAN DETERMINANT TO FIND UNSHADOWED SHIFTED CONTRIBUTION
 		const float3 reconnectionPoint = VLOAD3F(&offset->sample.reconnection.bsdf.hitPoint.p.x);
