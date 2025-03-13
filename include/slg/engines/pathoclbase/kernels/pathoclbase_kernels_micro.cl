@@ -1206,10 +1206,7 @@ __kernel void SpatialReuse_Init(
 		// keep pixelIndexMap to be -1 so this pixel isn't resampled from
 		return;
 	}
-
-	printf("Prefix point: (%f, %f, %f)\n", taskState->reservoir.sample.prefixBsdf.hitPoint.p.x, taskState->reservoir.sample.prefixBsdf.hitPoint.p.y, taskState->reservoir.sample.prefixBsdf.hitPoint.p.z);
-	printf("Reconnection point: (%f, %f, %f)\n", taskState->reservoir.sample.reconnection.bsdf.hitPoint.p.x, taskState->reservoir.sample.reconnection.bsdf.hitPoint.p.y, taskState->reservoir.sample.reconnection.bsdf.hitPoint.p.z);
-
+	
 	// Save ray time state
 	taskState->preSpatialReuseTime = ray->time;
 
