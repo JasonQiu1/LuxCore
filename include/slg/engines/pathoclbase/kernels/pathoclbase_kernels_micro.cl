@@ -1314,7 +1314,7 @@ __kernel void SpatialReuse_ResampleNeighbor(
 		baseToReconnection /= baseDistance;
 
 		// absolute value of Cos(angle from surface normal of reconnection point to prefix point) 
-		const float3 reconnectionGeometricN = HitPoint_GetGeometryN(&offset->sample.reconnection.bsdf.hitPoint);
+		const float3 reconnectionGeometricN = HitPoint_GetGeometryN(&base->sample.reconnection.bsdf.hitPoint);
 		const float offsetCosW = abs(dot(offsetToReconnection, reconnectionGeometricN));
 		const float baseCosW = abs(dot(baseToReconnection, reconnectionGeometricN));
 
@@ -1489,32 +1489,6 @@ __kernel void SpatialReuse_CheckVisibility(
 		taskState->state = SR_RESAMPLE_NEIGHBOR;
 		if (rayMiss) {
 			// Nothing was hit, the light source is visible
-			
-			__global BSDF *bsdf = &taskState->bsdf;
-
-			if (!BSDF_IsShadowCatcher(bsdf MATERIALS_PARAM)) {
-				// const float3 lightRadiance = VLOAD3F(taskDirectLight->illumInfo.lightRadiance.c);
-				// SampleResult_AddDirectLight(&taskConfig->film,
-				// 		sampleResult, taskDirectLight->illumInfo.lightID,
-				// 		BSDF_GetEventTypes(bsdf
-				// 			MATERIALS_PARAM),
-				// 		VLOAD3F(taskState->throughput.c), lightRadiance,
-				// 		1.f);
-
-				// The first path vertex is not handled by AddDirectLight(). This is valid
-				// for irradiance AOV only if it is not a SPECULAR material.
-				//
-				// Note: irradiance samples the light sources only here (i.e. no
-				// direct hit, no MIS, it would be useless)
-				if ((sampleResult->firstPathVertex) && !(BSDF_GetEventTypes(bsdf
-							MATERIALS_PARAM) & SPECULAR)) {
-					const float3 irradiance = (M_1_PI_F * fabs(dot(
-								VLOAD3F(&bsdf->hitPoint.shadeN.x),
-								VLOAD3F(&rays[gid].d.x)))) *
-							VLOAD3F(taskDirectLight->illumInfo.lightIrradiance.c);
-					VSTORE3F(irradiance, sampleResult->irradiance.c);
-				}
-			}
 
 			// VISIBLE: FINISH SUCCESSFUL RESAMPLING PROCESS
 			RespirReservoir* offset = &taskState->reservoir;
