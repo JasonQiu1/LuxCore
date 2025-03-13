@@ -1332,9 +1332,9 @@ __kernel void SpatialReuse_ResampleNeighbor(
 		const float3 offsetToOffsetReconnection = offsetPoint - VLOAD3F(&offset->sample.reconnection.bsdf.hitPoint.p.x);
 		const float offsetToOffsetReconnectionDistance = sqrt(dot(offsetToOffsetReconnection, offsetToOffsetReconnection));
 		const float distanceThreshold = worldRadius * 2 * 0.025; 
-		if (abs(offsetDistance) <= distanceThreshold 
-			|| abs(baseDistance) <= distanceThreshold
-			|| abs(offsetToOffsetReconnectionDistance) <= distanceThreshold) 
+		if (offsetDistance <= distanceThreshold 
+			|| baseDistance <= distanceThreshold
+			|| offsetToOffsetReconnectionDistance <= distanceThreshold) 
 		{
 			continue;
 		}
@@ -1345,7 +1345,7 @@ __kernel void SpatialReuse_ResampleNeighbor(
 		const float glossinessThreshold = 0.2;
 		if (BSDF_GetGlossiness(&offset->sample.reconnection.bsdf MATERIALS_PARAM) > glossinessThreshold
 				|| BSDF_GetGlossiness(&base->sample.reconnection.bsdf MATERIALS_PARAM) > glossinessThreshold 
-				|| BSDF_GetGlossiness(&offset->sample.prefixBsdf MATERIALS_PARAM) > glossinessThreshold) {
+				|| BSDF_GetGlossiness(&offset->sample.prefixBsdf MATERIALS_PARAM) > glossinessThreshold
 				|| BSDF_GetGlossiness(&base->sample.prefixBsdf MATERIALS_PARAM) > glossinessThreshold) {
 			continue;
 		}
