@@ -1276,13 +1276,15 @@ __kernel void SpatialReuse_ResampleNeighbor(
 	// Start of variables setup
 	//--------------------------------------------------------------------------
 
-	SampleResult* sampleResult = &sampleResultsBuff[gid];
+	const SampleResult* restrict sampleResult = &sampleResultsBuff[gid];
+	const Film* restrict film = &taskConfig->film;
+	const Scene* restrict scene = &taskConfig->scene;
 	RespirReservoir* offset = &taskState->reservoir; 
 	const RespirReservoir* base = &tasks[taskState->currentNeighborGid].tmpReservoir;
 
 	// Initialize image maps page pointer table
 	INIT_IMAGEMAPS_PAGES
-	
+
 	//--------------------------------------------------------------------------
 	// End of variables setup
 	//--------------------------------------------------------------------------
@@ -1352,7 +1354,8 @@ __kernel void SpatialReuse_ResampleNeighbor(
 			taskState->resamplingRadiance);
 
 		// Calculate resampling weight
-		const float newGrayscaleRadiance = Spectrum_Filter(Radiance_GetUnscaledSpectrum(film, resamplingRadiance));
+		const float newGrayscaleRadiance = 
+				Spectrum_Filter(Radiance_GetUnscaledSpectrum(film, taskState->resamplingRadiance));
 		if (newGrayscaleRadiance != 0) {
 			taskState->resamplingWeight = jacobianDeterminant * newGrayscaleRadiance / offset->weight;
 		} else {
@@ -1383,8 +1386,6 @@ __kernel void SpatialReuse_ResampleNeighbor(
 		// shadow ray
 		directLightVolInfos[gid] = eyePathInfos[gid].volume;
 
-		const float3 reconnectionPoint = VLOAD3F(&base->sample.reconnection.bsdf.hitPoint.p.x);
-		const float3 offsetPoint = VLOAD3F(&offset->sample.prefixBsdf.hitPoint.p.x);
 		float3 toReconnectionPoint = reconnectionPoint - offsetPoint;
 		const float toReconnectionPointDistanceSquared = dot(toReconnectionPoint, toReconnectionPoint);
 		const float toReconnectionPointDistance = sqrt(toReconnectionPointDistanceSquared);

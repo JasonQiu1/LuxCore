@@ -223,9 +223,9 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(RespirReservoir* restrict reserv
 // Advances taskState->currentNeighborGid to the next neighbor.
 // Return true if a neighbor was found, otherwise false.
 // TODO: upgrade to n-rooks sampling around pixel and customizable spatial radius and number of spatial neighbors
-OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(GPUTaskState* taskState, 
-		const SampleResult* sampleResult, const int spatialRadius,
-		const int* pixelIndexMap, const uint filmWidth, const uint filmHeight, Seed* seed) {
+OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(GPUTaskState* restrict taskState, 
+		const SampleResult* restrict sampleResult, const int spatialRadius,
+		const int* restrict pixelIndexMap, const uint filmWidth, const uint filmHeight, Seed* restrict seed) {
 	taskState->currentNeighborGid = -1;
 	if (taskState->numNeighborsLeft == 0) {
 		return false;
