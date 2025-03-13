@@ -1299,7 +1299,7 @@ __kernel void SpatialReuse_ResampleNeighbor(
 
 		// CALCULATE RESAMPLING WEIGHT
 		// CALCULATE JACOBIAN DETERMINANT TO FIND UNSHADOWED SHIFTED CONTRIBUTION
-		const float3 reconnectionPoint = VLOAD3F(&offset->sample.reconnection.bsdf.hitPoint.p.x);
+		const float3 reconnectionPoint = VLOAD3F(&base->sample.reconnection.bsdf.hitPoint.p.x);
 		const float3 offsetPoint = VLOAD3F(&offset->sample.prefixBsdf.hitPoint.p.x);
 		const float3 basePoint = VLOAD3F(&base->sample.prefixBsdf.hitPoint.p.x);
 
@@ -1329,8 +1329,13 @@ __kernel void SpatialReuse_ResampleNeighbor(
 
 		// TODO: move this to the reconnection vertex selection in the future
 		// distance threshold of 2-5% world size recommended by GRIS paper
+		const float offsetToOffsetReconnectionDistance = 
+				normalize(offsetPoint - VLOAD3F(&offset->sample.reconnection.bsdf.hitPoint.p.x))
 		const float distanceThreshold = worldRadius * 2 * 0.025; 
-		if (abs(offsetDistance) <= distanceThreshold || abs(baseDistance) <= distanceThreshold) {
+		if (abs(offsetDistance) <= distanceThreshold 
+			|| abs(baseDistance) <= distanceThreshold
+			|| abs(offsetToOffsetReconnectionDistance) <= distanceThreshold) 
+		{
 			continue;
 		}
 
@@ -1341,6 +1346,7 @@ __kernel void SpatialReuse_ResampleNeighbor(
 		if (BSDF_GetGlossiness(&offset->sample.reconnection.bsdf MATERIALS_PARAM) > glossinessThreshold
 				|| BSDF_GetGlossiness(&base->sample.reconnection.bsdf MATERIALS_PARAM) > glossinessThreshold 
 				|| BSDF_GetGlossiness(&offset->sample.prefixBsdf MATERIALS_PARAM) > glossinessThreshold) {
+				|| BSDF_GetGlossiness(&base->sample.prefixBsdf MATERIALS_PARAM) > glossinessThreshold) {
 			continue;
 		}
 
