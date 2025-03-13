@@ -1289,10 +1289,13 @@ __kernel void SpatialReuse_ResampleNeighbor(
 		spatialRadius, pixelIndexMap, filmWidth, filmHeight, &task->seed
 	)) {
 		// There is a neighbor
-		if (RespirReservoir_SpatialUpdate(tasks, tasksState, 
-			&rays[gid], &tasksDirectLight[gid],
-			&directLightVolInfos[gid], &eyePathInfos[gid],
-			&task->seed)) {
+		if (RespirReservoir_SpatialUpdate(
+			&taskState->reservoir, 
+			&tasks[taskState->currentNeighborGid].tmpReservoir,
+			worldRadius, &rays[gid], &tasksDirectLight[gid],
+			&directLightVolInfos[gid], &eyePathInfos[gid], &task->seed,
+			taskState->resamplingRadiance, taskState->resamplingWeight)) 
+		{
 			// Resampling succeeds, we need to check visibility from offset prereconnection vertex to base reconnection vertex
 			taskState->state = SR_CHECK_VISIBILITY;
 			break;
@@ -1405,74 +1408,15 @@ __kernel void SpatialReuse_CheckVisibility(
 				}
 			}
 
-			// VISIBLE: FINISH RESAMPLING PROCESS
+			// VISIBLE: FINISH SUCCESSFUL RESAMPLING PROCESS
 			RespirReservoir* offset = &taskState->reservoir;
 			const RespirReservoir* base = &tasks[taskState->currentNeighborGid].tmpReservoir;
-
-			// CALCULATE JACOBIAN DETERMINANT TO CORRECT BIAS
-			const float3 reconnectionPoint = VLOAD3F(&offset->sample.reconnection.bsdf.hitPoint.p.x);
-			const float3 offsetPoint = VLOAD3F(&offset->sample.prefixBsdf.hitPoint.p.x);
-
-			const float3 basePoint = VLOAD3F(&base->sample.prefixBsdf.hitPoint.p.x);
-
-			float3 offsetToReconnection = reconnectionPoint - offsetPoint;
-			const float offsetDistanceSquared = dot(offsetToReconnection, offsetToReconnection);
-			const float offsetDistance = sqrt(offsetDistanceSquared);
-			offsetToReconnection /= offsetDistance;
-
-			float3 baseToReconnection = reconnectionPoint - basePoint;
-			const float baseDistanceSquared = dot(baseToReconnection, baseToReconnection);
-			const float baseDistance = sqrt(baseDistanceSquared);
-			baseToReconnection /= baseDistance;
-
-			// absolute value of Cos(angle from surface normal of reconnection point to prefix point) 
-			const float3 reconnectionGeometricN = HitPoint_GetGeometryN(&offset->sample.reconnection.bsdf.hitPoint);
-			const float offsetCosW = abs(dot(offsetToReconnection, reconnectionGeometricN));
-			const float baseCosW = abs(dot(baseToReconnection, reconnectionGeometricN));
-
-			const float jacobianDeterminant = (offsetCosW / baseCosW) * (baseDistanceSquared / offsetDistanceSquared);
-
-			if (gid == 1) {
-				printf("offsetDistance (%f), baseDistance(%f)\n", offsetDistance, baseDistance);
-				printf("Reconnection geometric normal: (%f, %f, %f)\n", reconnectionGeometricN.x, reconnectionGeometricN.y, reconnectionGeometricN.z);
-				printf("OffsetCosW (%f), BaseCosW(%f)\n", offsetCosW, baseCosW);
-				printf("Jacobian determinant: %f\n", jacobianDeterminant);
-			}
-
-			// TODO: move this to the reconnection vertex selection in the future
-			// distance threshold of 2-5% world size recommended by GRIS paper
-			const float distanceThreshold = worldRadius * 2 * 0.025; 
-			if (abs(offsetDistance) <= distanceThreshold || abs(baseDistance) <= distanceThreshold) {
-				return;
-			}
-
-			// TODO: move this to the reconnection vertex selection in the future
-			// assume glossiness range is [0.f,1.f], and 1-glossiness is the roughness
-			// roughness threshold of at least 0.2 is recommended from GRIS paper, so we want glossiness to be <= 0.2
-			const float glossinessThreshold = 0.2;
-			if (BSDF_GetGlossiness(&offset->sample.reconnection.bsdf MATERIALS_PARAM) > glossinessThreshold
-					|| BSDF_GetGlossiness(&base->sample.reconnection.bsdf MATERIALS_PARAM) > glossinessThreshold 
-					|| BSDF_GetGlossiness(&offset->sample.prefixBsdf MATERIALS_PARAM) > glossinessThreshold) {
-				return;
-			}
-
-			// RECALCULATE SAMPLE THROUGHPUT FOR NEW RIS WEIGHT
-			Radiance_Add(film,
-				offset->sample.normPrefixRadiance, 
-				base->sample.reconnection.normPostfixRadiance, 
-				offset->sample.sampleResult.radiancePerPixelNormalized);
-			Radiance_Scale(film,
-				offset->sample.sampleResult.radiancePerPixelNormalized,
-				jacobianDeterminant,
-				offset->sample.sampleResult.radiancePerPixelNormalized);
-
-			const float newGrayscaleRadiance = Spectrum_Filter(SampleResult_GetUnscaledSpectrum(film, &offset->sample.sampleResult));
-				
-			offset->weight = 0;
-			if (newGrayscaleRadiance != 0) {
-				offset->weight = jacobianDeterminant * newGrayscaleRadiance;
-			}
 			
+			Radiance_Copy(film, 
+				taskState->resamplingRadiance,
+				offset->sample.sampleResult.radiancePerPixelNormalized);
+			offset->weight = taskState->resamplingWeight;
+
 			// set offset reconnection vertex to base reconnection vertex
 			offset->sample.reconnection = base->sample.reconnection;
 
@@ -1513,7 +1457,8 @@ __kernel void SpatialReuse_FinishIteration(
 	// Recalculate unbiased contribution weight
 	if (reservoir->weight != 0) {
 		reservoir->weight = reservoir->sumWeight /
-			Spectrum_Filter(SampleResult_GetUnscaledSpectrum(film, &reservoir->sample.sampleResult));
+			Spectrum_Filter(SampleResult_GetUnscaledSpectrum(film, 
+				&reservoir->sample.sampleResult));
 	}
 	reservoir->sumWeight = reservoir->weight;
 

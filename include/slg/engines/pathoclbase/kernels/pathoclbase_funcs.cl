@@ -192,21 +192,25 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(RespirReservoir* restrict reserv
 	float3 pathContribution = SampleResult_GetUnscaledSpectrum(film, pathSample);
 	float3 totalPathPdf = pathPdf * lightPdf;
 
-	// correct zero components in pdf
-	if (totalPathPdf.x == 0) {
-		pathContribution.x = 0;
-		totalPathPdf.x = 1;
-	}
-	if (totalPathPdf.y == 0) {
-		pathContribution.y = 0;
-		totalPathPdf.y = 1;
-	}
-	if (totalPathPdf.z == 0) {
-		pathContribution.z = 0;
-		totalPathPdf.z = 1;
+	// correct zero components in pdf if not a null (black) sample
+	float weight = 0; 
+	if (!Spectrum_IsBlack(pathContribution)) {
+		if (totalPathPdf.x == 0) {
+			pathContribution.x = 0;
+			totalPathPdf.x = 1;
+		}
+		if (totalPathPdf.y == 0) {
+			pathContribution.y = 0;
+			totalPathPdf.y = 1;
+		}
+		if (totalPathPdf.z == 0) {
+			pathContribution.z = 0;
+			totalPathPdf.z = 1;
+		}
+
+		weight = Spectrum_Filter(pathContribution / totalPathPdf);
 	}
 	
-	const float weight = Spectrum_Filter(pathContribution / totalPathPdf);
 	reservoir->sumWeight += weight;
 	if (Rnd_FloatValue(seed) < (weight / reservoir->sumWeight)) {
 		reservoir->sample.sampleResult = *pathSample;
@@ -249,54 +253,116 @@ OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(GPUTaskState* taskState,
 // Resample the offset path onto the base path. 
 // If successful, set up shadow ray from the offset path to the base path at the reconnection vertex.
 OPENCL_FORCE_INLINE	bool RespirReservoir_SpatialUpdate(
-		__constant GPUTask* tasks, __global GPUTaskState* tasksState, 
-		Ray* ray, GPUTaskDirectLight* taskDirectLight, 
-		PathVolumeInfo* directLightVolInfo, EyePathInfo *pathInfo,
-		Seed* seed) {
-	const size_t gid = get_global_id(0);
-	// the offset path is the current path we're working on
-	RespirReservoir* offset = &tasksState[gid].reservoir;
-	// the base path is the neighboring path we're resampling (from previous RIS resamples, to prevent race conditions)
-	const RespirReservoir* base = &tasks[tasksState[gid].currentNeighborGid].tmpReservoir;
-	// Resample the offset reservoir
+		RespirReservoir* offset, const RespirReservoir* base, 
+		const float worldRadius, Ray* ray, GPUTaskDirectLight* taskDirectLight, 
+		PathVolumeInfo* directLightVolInfo, EyePathInfo *pathInfo, Seed* seed, 
+		Spectrum* resamplingRadiance, float& resamplingWeight) {
+	// CALCULATE RESAMPLING WEIGHT
+	// CALCULATE JACOBIAN DETERMINANT TO FIND UNSHADOWED SHIFTED CONTRIBUTION
+	const float3 reconnectionPoint = VLOAD3F(&offset->sample.reconnection.bsdf.hitPoint.p.x);
+	const float3 offsetPoint = VLOAD3F(&offset->sample.prefixBsdf.hitPoint.p.x);
+
+	const float3 basePoint = VLOAD3F(&base->sample.prefixBsdf.hitPoint.p.x);
+
+	float3 offsetToReconnection = reconnectionPoint - offsetPoint;
+	const float offsetDistanceSquared = dot(offsetToReconnection, offsetToReconnection);
+	const float offsetDistance = sqrt(offsetDistanceSquared);
+	offsetToReconnection /= offsetDistance;
+
+	float3 baseToReconnection = reconnectionPoint - basePoint;
+	const float baseDistanceSquared = dot(baseToReconnection, baseToReconnection);
+	const float baseDistance = sqrt(baseDistanceSquared);
+	baseToReconnection /= baseDistance;
+
+	// absolute value of Cos(angle from surface normal of reconnection point to prefix point) 
+	const float3 reconnectionGeometricN = HitPoint_GetGeometryN(&offset->sample.reconnection.bsdf.hitPoint);
+	const float offsetCosW = abs(dot(offsetToReconnection, reconnectionGeometricN));
+	const float baseCosW = abs(dot(baseToReconnection, reconnectionGeometricN));
+
+	const float jacobianDeterminant = (offsetCosW / baseCosW) * (baseDistanceSquared / offsetDistanceSquared);
+
+	if (get_global_id(0) == 1) {
+		printf("offsetDistance (%f), baseDistance(%f)\n", offsetDistance, baseDistance);
+		printf("Reconnection geometric normal: (%f, %f, %f)\n", reconnectionGeometricN.x, reconnectionGeometricN.y, reconnectionGeometricN.z);
+		printf("OffsetCosW (%f), BaseCosW(%f)\n", offsetCosW, baseCosW);
+		printf("Jacobian determinant: %f\n", jacobianDeterminant);
+	}
+
+	// TODO: move this to the reconnection vertex selection in the future
+	// distance threshold of 2-5% world size recommended by GRIS paper
+	const float distanceThreshold = worldRadius * 2 * 0.025; 
+	if (abs(offsetDistance) <= distanceThreshold || abs(baseDistance) <= distanceThreshold) {
+		return false;
+	}
+
+	// TODO: move this to the reconnection vertex selection in the future
+	// assume glossiness range is [0.f,1.f], and 1-glossiness is the roughness
+	// roughness threshold of at least 0.2 is recommended from GRIS paper, so we want glossiness to be <= 0.2
+	const float glossinessThreshold = 0.2;
+	if (BSDF_GetGlossiness(&offset->sample.reconnection.bsdf MATERIALS_PARAM) > glossinessThreshold
+			|| BSDF_GetGlossiness(&base->sample.reconnection.bsdf MATERIALS_PARAM) > glossinessThreshold 
+			|| BSDF_GetGlossiness(&offset->sample.prefixBsdf MATERIALS_PARAM) > glossinessThreshold) {
+		return false;
+	}
+
+	// RECALCULATE UNSHADOWED SAMPLE THROUGHPUT
+	Radiance_Add(film,
+		offset->sample.normPrefixRadiance, 
+		base->sample.reconnection.normPostfixRadiance, 
+		resamplingRadiance);
+	Radiance_Scale(film,
+		resamplingRadiance,
+		jacobianDeterminant,
+		resamplingRadiance);
+
+	// Calculate resampling weight
+	const float newGrayscaleRadiance = Spectrum_Filter(Radiance_GetUnscaledSpectrum(film, resamplingRadiance));
+	if (newGrayscaleRadiance != 0) {
+		resamplingWeight = jacobianDeterminant * newGrayscaleRadiance / offset->weight;
+	} else {
+		resamplingWeight = 0;
+	}
+
+	// Resample the base reservoir into the offset reservoir
 	offset->sumWeight += base->sumWeight;
-	if (Rnd_FloatValue(seed) < base->weight / offset->sumWeight) {
+	if (Rnd_FloatValue(seed) >= resamplingWeight / offset->sumWeight) {
+		// Failed resampling chance.
+		return false;
+	}
+
+	// SET UP SHADOW RAY TO FINISH RESAMPLING PROCESS
 #ifdef DEBUG
 		if (get_global_id(0) == 1) {
 			printf("Spatial resampling succeeded.\n");
 		}
 #endif
-		// Using the simplest but biased reconnection shift mapping for now
-		// TODO: upgrade to hybrid shift mapping
-		// TODO: If not good/invalid reconnection vertex, then skip
+	// Using the simplest but biased reconnection shift mapping for now
+	// TODO: upgrade to hybrid shift mapping
 
-		// Do visibility check from base primary hit vertex to offset secondary hit vertex
-		// set up shadow ray
-		// Initialize the trough a shadow transparency flag used by Scene_Intersect()
-		taskDirectLight->throughShadowTransparency = false;
+	// Do visibility check from base primary hit vertex to offset secondary hit vertex
+	// Initialize the trough a shadow transparency flag used by Scene_Intersect()
+	taskDirectLight->throughShadowTransparency = false;
 
-		// Make a copy of current PathVolumeInfo for tracing the
-		// shadow ray
-		*directLightVolInfo = pathInfo->volume;
+	// Make a copy of current PathVolumeInfo for tracing the
+	// shadow ray
+	*directLightVolInfo = pathInfo->volume;
 
-		const float3 reconnectionPoint = VLOAD3F(&base->sample.reconnection.bsdf.hitPoint.p.x);
-		const float3 offsetPoint = VLOAD3F(&offset->sample.prefixBsdf.hitPoint.p.x);
-		float3 toReconnectionPoint = reconnectionPoint - offsetPoint;
-		const float toReconnectionPointDistanceSquared = dot(toReconnectionPoint, toReconnectionPoint);
-		const float toReconnectionPointDistance = sqrt(toReconnectionPointDistanceSquared);
-		toReconnectionPoint /= toReconnectionPointDistance;
+	const float3 reconnectionPoint = VLOAD3F(&base->sample.reconnection.bsdf.hitPoint.p.x);
+	const float3 offsetPoint = VLOAD3F(&offset->sample.prefixBsdf.hitPoint.p.x);
+	float3 toReconnectionPoint = reconnectionPoint - offsetPoint;
+	const float toReconnectionPointDistanceSquared = dot(toReconnectionPoint, toReconnectionPoint);
+	const float toReconnectionPointDistance = sqrt(toReconnectionPointDistanceSquared);
+	toReconnectionPoint /= toReconnectionPointDistance;
 
-		const float3 shadowRayOrigin = BSDF_GetRayOrigin(&offset->sample.prefixBsdf, toReconnectionPoint);
-		float3 shadowRayDir = reconnectionPoint + (BSDF_GetLandingGeometryN(&offset->sample.prefixBsdf) 
-				* MachineEpsilon_E_Float3(reconnectionPoint) * (base->sample.reconnection.bsdf.hitPoint.intoObject ? 1.f : -1.f) ) - 
-				shadowRayOrigin;
-		const float shadowRayDirDistanceSquared = dot(shadowRayDir, shadowRayDir);
-		const float shadowRayDirDistance = sqrt(shadowRayDirDistanceSquared);
-		shadowRayDir /= shadowRayDirDistance;
-		Ray_Init4(ray, shadowRayOrigin, shadowRayDir, 0.f, shadowRayDirDistance, offset->sample.hitTime);
-		return true; 
-	}
-	return false;
+	const float3 shadowRayOrigin = BSDF_GetRayOrigin(&offset->sample.prefixBsdf, toReconnectionPoint);
+	float3 shadowRayDir = reconnectionPoint + (BSDF_GetLandingGeometryN(&offset->sample.prefixBsdf) 
+			* MachineEpsilon_E_Float3(reconnectionPoint) * (base->sample.reconnection.bsdf.hitPoint.intoObject ? 1.f : -1.f) ) - 
+			shadowRayOrigin;
+	const float shadowRayDirDistanceSquared = dot(shadowRayDir, shadowRayDir);
+	const float shadowRayDirDistance = sqrt(shadowRayDirDistanceSquared);
+	shadowRayDir /= shadowRayDirDistance;
+	Ray_Init4(ray, shadowRayOrigin, shadowRayDir, 0.f, shadowRayDirDistance, offset->sample.hitTime);
+	return true;
 }
 
 #endif
