@@ -554,7 +554,9 @@ __kernel void AdvancePaths_MK_RT_DL(
 
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
 				// Add NEE-illuminated (with BSDF MIS) sample into the reservoir.
-				RespirReservoir_Update(&taskState->reservoir, sampleResult, taskState->lastDirectLightPdf, VLOAD3F(taskState->pathPdf.c), &taskState->seed);
+				RespirReservoir_Update(&taskState->reservoir, sampleResult, 
+						taskState->lastDirectLightPdf, VLOAD3F(taskState->pathPdf.c), 
+						&taskConfig->film, &taskState->seedReservoirSampling);
 #endif
 			}
 

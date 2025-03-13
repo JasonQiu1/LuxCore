@@ -188,8 +188,8 @@ OPENCL_FORCE_INLINE void PixelIndexMap_Set(__global int* pixelIndexMap, const ui
 // Add a sample to the streaming reservoir.
 // Simply replace based on the new sample's weight and the reservoir's current sum weight.
 OPENCL_FORCE_INLINE void RespirReservoir_Update(RespirReservoir* restrict reservoir, SampleResult* restrict pathSample, 
-		const float lightPdf, const float3 pathPdf, Seed* restrict seed) {
-	float3 pathContribution = SampleResult_GetUnscaledSpectrum(pathSample);
+		const float lightPdf, const float3 pathPdf, __constant const Film* restrict film, Seed* restrict seed) {
+	float3 pathContribution = SampleResult_GetUnscaledSpectrum(film, pathSample);
 	float3 totalPathPdf = pathPdf * lightPdf;
 
 	// correct zero components in pdf
@@ -363,7 +363,9 @@ OPENCL_FORCE_INLINE void DirectHitInfiniteLight(__constant const Film* restrict 
 
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
 			// Add BSDF-importance (NEE MIS) sampled environment sample to reservoir
-			RespirReservoir_Update(&taskState->reservoir, sampleResult, weight, VLOAD3F(taskState->pathPdf.c), &taskState->seed);
+			RespirReservoir_Update(&taskState->reservoir, sampleResult, 
+					weight, VLOAD3F(taskState->pathPdf.c), 
+					film, &taskState->seedReservoirSampling);
 #endif
 		}
 	}
