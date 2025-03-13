@@ -1300,7 +1300,6 @@ __kernel void SpatialReuse_ResampleNeighbor(
 		// CALCULATE JACOBIAN DETERMINANT TO FIND UNSHADOWED SHIFTED CONTRIBUTION
 		const float3 reconnectionPoint = VLOAD3F(&offset->sample.reconnection.bsdf.hitPoint.p.x);
 		const float3 offsetPoint = VLOAD3F(&offset->sample.prefixBsdf.hitPoint.p.x);
-
 		const float3 basePoint = VLOAD3F(&base->sample.prefixBsdf.hitPoint.p.x);
 
 		float3 offsetToReconnection = reconnectionPoint - offsetPoint;
@@ -1320,9 +1319,9 @@ __kernel void SpatialReuse_ResampleNeighbor(
 
 		const float jacobianDeterminant = (offsetCosW / baseCosW) * (baseDistanceSquared / offsetDistanceSquared);
 
-		if (get_global_id(0) == 1) {
-			printf("offsetDistance (%f), baseDistance(%f)\n", offsetDistance, baseDistance);
+		if (get_global_id(0) == filmWidth * filmHeight / 2 ) {
 			printf("Reconnection geometric normal: (%f, %f, %f)\n", reconnectionGeometricN.x, reconnectionGeometricN.y, reconnectionGeometricN.z);
+			printf("offsetDistance (%f), baseDistance(%f)\n", offsetDistance, baseDistance);
 			printf("OffsetCosW (%f), BaseCosW(%f)\n", offsetCosW, baseCosW);
 			printf("Jacobian determinant: %f\n", jacobianDeterminant);
 		}
