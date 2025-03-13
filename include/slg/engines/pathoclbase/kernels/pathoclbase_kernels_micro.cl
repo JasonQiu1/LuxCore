@@ -1318,6 +1318,9 @@ __kernel void SpatialReuse_ResampleNeighbor(
 		const float jacobianDeterminant = (offsetCosW / baseCosW) * (baseDistanceSquared / offsetDistanceSquared);
 
 		if (get_global_id(0) == filmWidth * filmHeight / 2 ) {
+			printf("Offset prefix point: (%f, %f, %f)\n", offsetPoint.x, offsetPoint.y, offsetPoint.z);
+			printf("Base prefix point: (%f, %f, %f)\n", basePoint.x, basePoint.y, basePoint.z);
+			printf("Reconnection vertex point: (%f, %f, %f)\n", reconnectionPoint.x, reconnectionPoint.y, reconnectionPoint.z);
 			printf("Reconnection geometric normal: (%f, %f, %f)\n", reconnectionGeometricN.x, reconnectionGeometricN.y, reconnectionGeometricN.z);
 			printf("offsetDistance (%f), baseDistance(%f)\n", offsetDistance, baseDistance);
 			printf("OffsetCosW (%f), BaseCosW(%f)\n", offsetCosW, baseCosW);
