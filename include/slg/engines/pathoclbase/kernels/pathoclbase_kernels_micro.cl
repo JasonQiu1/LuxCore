@@ -1276,7 +1276,9 @@ __kernel void SpatialReuse_ResampleNeighbor(
 	// Start of variables setup
 	//--------------------------------------------------------------------------
 
-	SampleResult *sampleResult = &sampleResultsBuff[gid];
+	SampleResult* sampleResult = &sampleResultsBuff[gid];
+	RespirReservoir* offset = &taskState->reservoir; 
+	const RespirReservoir* base = &tasks[taskState->currentNeighborGid].tmpReservoir;
 
 	//--------------------------------------------------------------------------
 	// End of variables setup
@@ -1288,19 +1290,113 @@ __kernel void SpatialReuse_ResampleNeighbor(
 		taskState, sampleResult, 
 		spatialRadius, pixelIndexMap, filmWidth, filmHeight, &task->seed
 	)) {
-		// There is a neighbor
-		if (RespirReservoir_SpatialUpdate(
-			&taskState->reservoir, 
-			&tasks[taskState->currentNeighborGid].tmpReservoir,
-			worldRadius, &rays[gid], &tasksDirectLight[gid],
-			&directLightVolInfos[gid], &eyePathInfos[gid], &task->seed,
-			taskState->resamplingRadiance, taskState->resamplingWeight
-			MATERIALS_PARAMS)) 
-		{
-			// Resampling succeeds, we need to check visibility from offset prereconnection vertex to base reconnection vertex
-			taskState->state = SR_CHECK_VISIBILITY;
-			break;
+		// CALCULATE RESAMPLING WEIGHT
+		// CALCULATE JACOBIAN DETERMINANT TO FIND UNSHADOWED SHIFTED CONTRIBUTION
+		const float3 reconnectionPoint = VLOAD3F(&offset->sample.reconnection.bsdf.hitPoint.p.x);
+		const float3 offsetPoint = VLOAD3F(&offset->sample.prefixBsdf.hitPoint.p.x);
+
+		const float3 basePoint = VLOAD3F(&base->sample.prefixBsdf.hitPoint.p.x);
+
+		float3 offsetToReconnection = reconnectionPoint - offsetPoint;
+		const float offsetDistanceSquared = dot(offsetToReconnection, offsetToReconnection);
+		const float offsetDistance = sqrt(offsetDistanceSquared);
+		offsetToReconnection /= offsetDistance;
+
+		float3 baseToReconnection = reconnectionPoint - basePoint;
+		const float baseDistanceSquared = dot(baseToReconnection, baseToReconnection);
+		const float baseDistance = sqrt(baseDistanceSquared);
+		baseToReconnection /= baseDistance;
+
+		// absolute value of Cos(angle from surface normal of reconnection point to prefix point) 
+		const float3 reconnectionGeometricN = HitPoint_GetGeometryN(&offset->sample.reconnection.bsdf.hitPoint);
+		const float offsetCosW = abs(dot(offsetToReconnection, reconnectionGeometricN));
+		const float baseCosW = abs(dot(baseToReconnection, reconnectionGeometricN));
+
+		const float jacobianDeterminant = (offsetCosW / baseCosW) * (baseDistanceSquared / offsetDistanceSquared);
+
+		if (get_global_id(0) == 1) {
+			printf("offsetDistance (%f), baseDistance(%f)\n", offsetDistance, baseDistance);
+			printf("Reconnection geometric normal: (%f, %f, %f)\n", reconnectionGeometricN.x, reconnectionGeometricN.y, reconnectionGeometricN.z);
+			printf("OffsetCosW (%f), BaseCosW(%f)\n", offsetCosW, baseCosW);
+			printf("Jacobian determinant: %f\n", jacobianDeterminant);
 		}
+
+		// TODO: move this to the reconnection vertex selection in the future
+		// distance threshold of 2-5% world size recommended by GRIS paper
+		const float distanceThreshold = worldRadius * 2 * 0.025; 
+		if (abs(offsetDistance) <= distanceThreshold || abs(baseDistance) <= distanceThreshold) {
+			continue;
+		}
+
+		// TODO: move this to the reconnection vertex selection in the future
+		// assume glossiness range is [0.f,1.f], and 1-glossiness is the roughness
+		// roughness threshold of at least 0.2 is recommended from GRIS paper, so we want glossiness to be <= 0.2
+		const float glossinessThreshold = 0.2;
+		if (BSDF_GetGlossiness(&offset->sample.reconnection.bsdf MATERIALS_PARAM) > glossinessThreshold
+				|| BSDF_GetGlossiness(&base->sample.reconnection.bsdf MATERIALS_PARAM) > glossinessThreshold 
+				|| BSDF_GetGlossiness(&offset->sample.prefixBsdf MATERIALS_PARAM) > glossinessThreshold) {
+			continue;
+		}
+
+		// RECALCULATE UNSHADOWED SAMPLE THROUGHPUT
+		Radiance_Add(film,
+			offset->sample.normPrefixRadiance, 
+			base->sample.reconnection.normPostfixRadiance, 
+			taskState->resamplingRadiance);
+		Radiance_Scale(film,
+			taskState->resamplingRadiance,
+			jacobianDeterminant,
+			taskState->resamplingRadiance);
+
+		// Calculate resampling weight
+		const float newGrayscaleRadiance = Spectrum_Filter(Radiance_GetUnscaledSpectrum(film, resamplingRadiance));
+		if (newGrayscaleRadiance != 0) {
+			taskState->resamplingWeight = jacobianDeterminant * newGrayscaleRadiance / offset->weight;
+		} else {
+			taskState->resamplingWeight = 0;
+		}
+
+		// Resample the base reservoir into the offset reservoir
+		offset->sumWeight += base->sumWeight;
+		if (Rnd_FloatValue(&task->seed) >= taskState->resamplingWeight / offset->sumWeight) {
+			// Failed resampling chance.
+			continue;
+		}
+
+		// SET UP SHADOW RAY TO FINISH RESAMPLING PROCESS
+	#ifdef DEBUG
+			if (get_global_id(0) == 1) {
+				printf("Spatial resampling succeeded.\n");
+			}
+	#endif
+		// Using the simplest but biased reconnection shift mapping for now
+		// TODO: upgrade to hybrid shift mapping
+
+		// Do visibility check from base primary hit vertex to offset secondary hit vertex
+		// Initialize the trough a shadow transparency flag used by Scene_Intersect()
+		tasksDirectLight[gid].throughShadowTransparency = false;
+
+		// Make a copy of current PathVolumeInfo for tracing the
+		// shadow ray
+		directLightVolInfos[gid] = eyePathInfos[gid].volume;
+
+		const float3 reconnectionPoint = VLOAD3F(&base->sample.reconnection.bsdf.hitPoint.p.x);
+		const float3 offsetPoint = VLOAD3F(&offset->sample.prefixBsdf.hitPoint.p.x);
+		float3 toReconnectionPoint = reconnectionPoint - offsetPoint;
+		const float toReconnectionPointDistanceSquared = dot(toReconnectionPoint, toReconnectionPoint);
+		const float toReconnectionPointDistance = sqrt(toReconnectionPointDistanceSquared);
+		toReconnectionPoint /= toReconnectionPointDistance;
+
+		const float3 shadowRayOrigin = BSDF_GetRayOrigin(&offset->sample.prefixBsdf, toReconnectionPoint);
+		float3 shadowRayDir = reconnectionPoint + (BSDF_GetLandingGeometryN(&offset->sample.prefixBsdf) 
+				* MachineEpsilon_E_Float3(reconnectionPoint) * (base->sample.reconnection.bsdf.hitPoint.intoObject ? 1.f : -1.f) ) - 
+				shadowRayOrigin;
+		const float shadowRayDirDistanceSquared = dot(shadowRayDir, shadowRayDir);
+		const float shadowRayDirDistance = sqrt(shadowRayDirDistanceSquared);
+		shadowRayDir /= shadowRayDirDistance;
+		Ray_Init4(&rays[gid], shadowRayOrigin, shadowRayDir, 0.f, shadowRayDirDistance, offset->sample.hitTime);
+		
+		taskState->state = SR_CHECK_VISIBILITY;
 	}
 	if (taskState->state != SR_CHECK_VISIBILITY) {
 		// If no more neighbors, then this spatial iteration is finished 
