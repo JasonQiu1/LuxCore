@@ -845,11 +845,6 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 			sampleResult->radiancePerPixelNormalized,
 			taskState->reservoir.sample.normPrefixRadiance
 		);
-		Radiance_Copy(
-			&taskConfig->film,
-			sampleResult->radiancePerPixelUnnormalized,
-			taskState->reservoir.sample.prefixRadiance
-		);
 		// Cache bsdf hit point of the first path vertex (vertex right before reconnection vertex)
 		taskState->reservoir.sample.prefixBsdf = *bsdf;
 
@@ -1214,12 +1209,6 @@ __kernel void SpatialReuse_Init(
 		sampleResult->radiancePerPixelNormalized,
 		reservoir->sample.normPrefixRadiance,
 		reservoir->sample.reconnection.normPostfixRadiance
-	);
-	Radiance_Sub(
-		film,
-		sampleResult->radiancePerPixelUnnormalized,
-		reservoir->sample.prefixRadiance,
-		reservoir->sample.reconnection.postfixRadiance
 	);
 
 	// Recalculate unbiased contribution weight

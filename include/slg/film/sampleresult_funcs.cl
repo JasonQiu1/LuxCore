@@ -27,15 +27,6 @@ OPENCL_FORCE_INLINE void SampleResult_ClearRadiance(__global SampleResult *sampl
 	VSTORE3F(BLACK, sampleResult->radiancePerPixelNormalized[5].c);
 	VSTORE3F(BLACK, sampleResult->radiancePerPixelNormalized[6].c);
 	VSTORE3F(BLACK, sampleResult->radiancePerPixelNormalized[7].c);
-
-	VSTORE3F(BLACK, sampleResult->radiancePerPixelUnnormalized[0].c);
-	VSTORE3F(BLACK, sampleResult->radiancePerPixelUnnormalized[1].c);
-	VSTORE3F(BLACK, sampleResult->radiancePerPixelUnnormalized[2].c);
-	VSTORE3F(BLACK, sampleResult->radiancePerPixelUnnormalized[3].c);
-	VSTORE3F(BLACK, sampleResult->radiancePerPixelUnnormalized[4].c);
-	VSTORE3F(BLACK, sampleResult->radiancePerPixelUnnormalized[5].c);
-	VSTORE3F(BLACK, sampleResult->radiancePerPixelUnnormalized[6].c);
-	VSTORE3F(BLACK, sampleResult->radiancePerPixelUnnormalized[7].c);
 }
 
 OPENCL_FORCE_INLINE void SampleResult_Init(__global SampleResult *sampleResult) {
@@ -79,7 +70,6 @@ OPENCL_FORCE_INLINE void SampleResult_AddEmission(__constant const Film* restric
 	// with RT modes.
 	const uint id = min(lightID, film->radianceGroupCount - 1u);
 	VADD3F(sampleResult->radiancePerPixelNormalized[id].c, radiance);
-	VADD3F(sampleResult->radiancePerPixelUnnormalized[id].c, incomingRadiance);
 
 	if (sampleResult->firstPathVertex) {
 		VADD3F(sampleResult->emission.c, radiance);
@@ -113,7 +103,6 @@ OPENCL_FORCE_INLINE void SampleResult_AddDirectLight(__constant const Film* rest
 	// with RT modes.
 	const uint id = min(lightID, film->radianceGroupCount - 1u);
 	VADD3F(sampleResult->radiancePerPixelNormalized[id].c, radiance);
-	VADD3F(sampleResult->radiancePerPixelUnnormalized[id].c, incomingRadiance);
 
 	if (sampleResult->firstPathVertex) {
 		sampleResult->directShadowMask = fmax(0.f, sampleResult->directShadowMask - lightScale);
@@ -175,16 +164,6 @@ OPENCL_FORCE_INLINE float3 SampleResult_GetUnscaledSpectrum(__constant const Fil
 	
 	for (uint i = 0; i < film->radianceGroupCount; ++i)
 		c += VLOAD3F(sampleResult->radiancePerPixelNormalized[i].c);
-
-	return c;
-}
-
-OPENCL_FORCE_INLINE float3 SampleResult_GetUnscaledUnnormalizedSpectrum(__constant const Film* restrict film,
-		const SampleResult *sampleResult) {
-	float3 c = BLACK;
-
-	for (uint i = 0; i < film->radianceGroupCount; ++i)
-		c += VLOAD3F(sampleResult->radiancePerPixelUnnormalized[i].c);
 
 	return c;
 }
