@@ -38,6 +38,31 @@ OPENCL_FORCE_INLINE void SampleResult_ClearRadiance(__global SampleResult *sampl
 	VSTORE3F(BLACK, sampleResult->radiancePerPixelUnnormalized[7].c);
 }
 
+OPENCL_FORCE_INLINE void SampleResult_ClearSpectrumData(__global SampleResult *sampleResult) {
+	// Initialize only Spectrum fields
+
+	SampleResult_ClearRadiance(sampleResult);
+
+	VSTORE3F(BLACK, sampleResult->directDiffuse.c);
+	VSTORE3F(BLACK, sampleResult->directDiffuseReflect.c);
+	VSTORE3F(BLACK, sampleResult->directDiffuseTransmit.c);
+	VSTORE3F(BLACK, sampleResult->directGlossy.c);
+	VSTORE3F(BLACK, sampleResult->directGlossyReflect.c);
+	VSTORE3F(BLACK, sampleResult->directGlossyTransmit.c);
+	VSTORE3F(BLACK, sampleResult->emission.c);
+	VSTORE3F(BLACK, sampleResult->indirectDiffuse.c);
+	VSTORE3F(BLACK, sampleResult->indirectDiffuseReflect.c);
+	VSTORE3F(BLACK, sampleResult->indirectDiffuseTransmit.c);
+	VSTORE3F(BLACK, sampleResult->indirectGlossy.c);
+	VSTORE3F(BLACK, sampleResult->indirectGlossyReflect.c);
+	VSTORE3F(BLACK, sampleResult->indirectGlossyTransmit.c);
+	VSTORE3F(BLACK, sampleResult->indirectSpecular.c);
+	VSTORE3F(BLACK, sampleResult->indirectSpecularReflect.c);
+	VSTORE3F(BLACK, sampleResult->indirectSpecularTransmit.c);
+	VSTORE3F(BLACK, sampleResult->irradiance.c);
+	VSTORE3F(BLACK, sampleResult->albedo.c);
+}
+
 OPENCL_FORCE_INLINE void SampleResult_Init(__global SampleResult *sampleResult) {
 	// Initialize only Spectrum fields
 
