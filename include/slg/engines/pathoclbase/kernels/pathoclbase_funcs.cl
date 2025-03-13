@@ -210,7 +210,7 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(RespirReservoir* restrict reserv
 
 		weight = Spectrum_Filter(pathContribution / totalPathPdf);
 	}
-	
+
 	reservoir->sumWeight += weight;
 	if (Rnd_FloatValue(seed) < (weight / reservoir->sumWeight)) {
 		reservoir->sample.sampleResult = *pathSample;
@@ -306,10 +306,7 @@ OPENCL_FORCE_INLINE void DirectHitInfiniteLight(__constant const Film* restrict 
 				weight = PowerHeuristic(pathInfo->lastBSDFPdfW, directPdfW * lightPickProb);
 			} else
 				weight = 1.f;
-#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-			// Clear sample result to only hold the radiance from this light source.
-			//SampleResult_Init(sampleResult);
-#endif
+
 			SampleResult_AddEmission(film, sampleResult, light->lightID, throughput, weight * envRadiance);
 
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
@@ -368,6 +365,13 @@ OPENCL_FORCE_INLINE void DirectHitFiniteLight(__constant const Film* restrict fi
 		}
 		SampleResult_AddEmission(film, sampleResult, BSDF_GetLightID(bsdf
 				MATERIALS_PARAM), VLOAD3F(taskState->throughput.c), weight * emittedRadiance);
+#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
+		// Add BSDF-illuminated (with cheater NEE) sample into the reservoir.
+		// TODO: THIS MAY RUN INTO ISSUES SINCE IT HAS THE SAME PATH LENGTH AS ILLUMINATED PATHS
+		RespirReservoir_Update(&taskState->reservoir, sampleResult, 
+				weight, VLOAD3F(taskState->pathPdf.c), 
+				&taskConfig->film, &taskState->seedReservoirSampling);
+#endif
 	}
 }
 
