@@ -139,7 +139,6 @@ typedef struct {
 	uint numNeighborsLeft;
 	// Resampling caching
 	Spectrum resamplingRadiance[FILM_MAX_RADIANCE_GROUP_COUNT];
-	float resamplingWeight;
 	
 	int albedoToDo, photonGICacheEnabledOnLastHit,
 			photonGICausticCacheUsed, photonGIShowIndirectPathMixUsed,

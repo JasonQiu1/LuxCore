@@ -527,7 +527,7 @@ __kernel void AdvancePaths_MK_RT_DL(
 
 			if (!BSDF_IsShadowCatcher(bsdf MATERIALS_PARAM)) {
 				const float3 lightRadiance = VLOAD3F(taskDirectLight->illumInfo.lightRadiance.c);
-				
+
 				SampleResult_AddDirectLight(&taskConfig->film,
 						sampleResult, taskDirectLight->illumInfo.lightID,
 						BSDF_GetEventTypes(bsdf
@@ -1293,7 +1293,7 @@ __kernel void SpatialReuse_ResampleNeighbor(
 		spatialRadius, pixelIndexMap, filmWidth, filmHeight, &task->seed
 	)) {
 		const RespirReservoir* base = &tasks[taskState->currentNeighborGid].tmpReservoir;
-
+offset->weight
 		// CALCULATE RESAMPLING WEIGHT
 		// CALCULATE JACOBIAN DETERMINANT TO FIND UNSHADOWED SHIFTED CONTRIBUTION
 		const float3 reconnectionPoint = VLOAD3F(&base->sample.reconnection.bsdf.hitPoint.p.x);
@@ -1358,18 +1358,18 @@ __kernel void SpatialReuse_ResampleNeighbor(
 			taskState->resamplingRadiance);
 
 		// Calculate resampling weight
-		const float newGrayscaleRadiance = 
+		const float shiftedContribution = 
 				Spectrum_Filter(Radiance_GetUnscaledSpectrum(film, taskState->resamplingRadiance));
-		if (newGrayscaleRadiance != 0) {
+		if (shiftedContribution != 0) {
 			// missing MIS weight factor
-			taskState->resamplingWeight = newGrayscaleRadiance * base->weight * jacobianDeterminant;
+			offset->weight = shiftedContribution * base->weight * jacobianDeterminant;
 		} else {
-			taskState->resamplingWeight = 0;
+			offset->weight = 0;
 		}
 
 		// Resample the base reservoir into the offset reservoir
 		offset->sumWeight += base->sumWeight;
-		if (Rnd_FloatValue(&task->seed) >= taskState->resamplingWeight / offset->sumWeight) {
+		if (Rnd_FloatValue(&task->seed) >= offset->weight / offset->sumWeight) {
 			// Failed resampling chance.
 			continue;
 		}
@@ -1494,7 +1494,6 @@ __kernel void SpatialReuse_CheckVisibility(
 			Radiance_Copy(film, 
 				taskState->resamplingRadiance,
 				offset->sample.sampleResult.radiancePerPixelNormalized);
-			offset->weight = taskState->resamplingWeight;
 
 			// set offset reconnection vertex to base reconnection vertex
 			offset->sample.reconnection = base->sample.reconnection;

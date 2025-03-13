@@ -193,7 +193,7 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(RespirReservoir* restrict reserv
 	float3 totalPathPdf = pathPdf * lightPdf;
 
 	// correct zero components in pdf if not a null (black) sample
-	float weight = 0; 
+	reservoir->weight = 0.0f; 
 	if (!Spectrum_IsBlack(pathContribution)) {
 		if (totalPathPdf.x == 0) {
 			pathContribution.x = 0;
@@ -208,13 +208,12 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(RespirReservoir* restrict reserv
 			totalPathPdf.z = 1;
 		}
 
-		weight = Spectrum_Filter(pathContribution / totalPathPdf);
+		reservoir->weight = Spectrum_Filter(pathContribution / totalPathPdf);
 	}
 
-	reservoir->sumWeight += weight;
-	if (Rnd_FloatValue(seed) < (weight / reservoir->sumWeight)) {
+	reservoir->sumWeight += reservoir->weight;
+	if (Rnd_FloatValue(seed) < (reservoir->weight / reservoir->sumWeight)) {
 		reservoir->sample.sampleResult = *pathSample;
-		reservoir->weight = weight;
 	}
 }
 
