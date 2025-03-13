@@ -855,6 +855,7 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 	if (pathInfo->depth.depth == 1) {
 		// Cache hit point on reconnection vertex (secondary path vertex for reconnection shift)
 		taskState->reservoir.sample.reconnection.bsdf = *bsdf;
+		taskState->doReuse = true;
 #endif
 	}
 
@@ -1200,8 +1201,16 @@ __kernel void SpatialReuse_Init(
 	// End of variables setup
 	//--------------------------------------------------------------------------
 
-	printf("Prefix point: (%f, %f, %f)\n", taskState->reservoir.sample.prefixBsdf.hitPoint.p.x, taskState->reservoir.sample.prefixBsdf.hitPoint.p.y, taskState->reservoir.sample.prefixBsdf.hitPoint.p.z);
-	printf("Reconnection point: (%f, %f, %f)\n", taskState->reservoir.sample.reconnection.bsdf.hitPoint.p.x, taskState->reservoir.sample.reconnection.bsdf.hitPoint.p.y, taskState->reservoir.sample.reconnection.bsdf.hitPoint.p.z);
+	if (taskState->doReuse == false) {
+		// keep pathstate to sync so that resampling and visibility kernels do not run
+		// keep pixelIndexMap to be -1 so this pixel isn't resampled from
+		return;
+	}
+
+	if (gid == 1) {
+		printf("Prefix point: (%f, %f, %f)\n", taskState->reservoir.sample.prefixBsdf.hitPoint.p.x, taskState->reservoir.sample.prefixBsdf.hitPoint.p.y, taskState->reservoir.sample.prefixBsdf.hitPoint.p.z);
+		printf("Reconnection point: (%f, %f, %f)\n", taskState->reservoir.sample.reconnection.bsdf.hitPoint.p.x, taskState->reservoir.sample.reconnection.bsdf.hitPoint.p.y, taskState->reservoir.sample.reconnection.bsdf.hitPoint.p.z);
+	}
 
 	// Save ray time state
 	taskState->preSpatialReuseTime = ray->time;
@@ -1514,6 +1523,9 @@ __kernel void SpatialReuse_FinishIteration(
 	// Read the path state
 	GPUTask *task = &tasks[gid];
 	GPUTaskState *taskState = &tasksState[gid];
+	if (taskState->doReuse == false) {
+		return;
+	}
 
 	//--------------------------------------------------------------------------
 	// Start of variables setup
@@ -1562,12 +1574,16 @@ __kernel void SpatialReuse_FinishReuse(
 	Ray *ray = &rays[gid];
 	SampleResult *sampleResult = &sampleResultsBuff[gid];
 
-	// maintain integrity of pathtraacer by using time from before spatial reuse
-	ray->time = taskState->preSpatialReuseTime;
-
 	// Copy resampled sample from reservoir to sampleResultsBuff[gid] to be splatted like normal
 	*sampleResult = taskState->reservoir.sample.sampleResult;
 	
+	if (taskState->doReuse == false) {
+		return;
+	}
+
+	// maintain integrity of pathtraacer by using time from before spatial reuse
+	ray->time = taskState->preSpatialReuseTime;
+
 	// Reinitialize PixelIndexMap state in case the pixel this task is working on changes
 	PixelIndexMap_Set(pixelIndexMap, filmWidth, 
 		sampleResult->pixelX, sampleResult->pixelY, 

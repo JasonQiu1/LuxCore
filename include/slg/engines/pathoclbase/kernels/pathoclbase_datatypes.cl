@@ -131,6 +131,7 @@ typedef struct {
 	uint preSpatialReuseTime; // save time before spatial reuse to make sure rays after spatial reuse are using the correct time
 	// Reservoir data structure for initial path resampling using RIS
 	RespirReservoir reservoir;
+	int doReuse; // true if a reconnection vertex was found, false otherwise
 	
 	// Neighbor search info
 	int currentNeighborGid;
