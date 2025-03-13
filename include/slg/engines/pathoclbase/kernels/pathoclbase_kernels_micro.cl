@@ -848,9 +848,7 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 		// Cache bsdf hit point of the first path vertex (vertex right before reconnection vertex)
 		taskState->reservoir.sample.prefixBsdf = *bsdf;
 
-		if (get_global_id(0) == filmWidth * filmHeight / 2 ) {			
-			printf("Assigned prefix point: (%f, %f, %f)\n", bsdf->hitPoint.p.x, bsdf->hitPoint.p.y, bsdf->hitPoint.p.z);
-		}
+		printf("Assigned prefix point: (%f, %f, %f)\n", bsdf->hitPoint.p.x, bsdf->hitPoint.p.y, bsdf->hitPoint.p.z);
 
 		// Cache hit time of first path vertex
 		taskState->reservoir.sample.hitTime = ray->time;
@@ -859,9 +857,7 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 	if (pathInfo->depth.depth == 1) {
 		// Cache hit point on reconnection vertex (secondary path vertex for reconnection shift)
 		taskState->reservoir.sample.reconnection.bsdf = *bsdf;
-		if (get_global_id(0) == filmWidth * filmHeight / 2 ) {			
-			printf("Assigned reconnection point: (%f, %f, %f)\n", bsdf->hitPoint.p.x, bsdf->hitPoint.p.y, bsdf->hitPoint.p.z);
-		}
+		printf("Assigned reconnection point: (%f, %f, %f)\n", bsdf->hitPoint.p.x, bsdf->hitPoint.p.y, bsdf->hitPoint.p.z);
 #endif
 	}
 
