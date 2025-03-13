@@ -852,13 +852,12 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 		);
 		// Cache bsdf hit point of the first path vertex (vertex right before reconnection vertex)
 		taskState->reservoir.sample.prefixBsdf = *bsdf;
-		printf("FIRST PATH VERTEX: DEPTH = %d\n", pathInfo->depth.depth);
 
 		// Cache hit time of first path vertex
 		taskState->reservoir.sample.hitTime = ray->time;
 	}
 
-	if (pathInfo->depth.depth == 2) {
+	if (pathInfo->depth.depth == 1) {
 		// Cache hit point on reconnection vertex (secondary path vertex for reconnection shift)
 		taskState->reservoir.sample.reconnection.bsdf = *bsdf;
 #endif
