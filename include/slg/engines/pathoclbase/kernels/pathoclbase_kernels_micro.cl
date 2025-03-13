@@ -1357,7 +1357,8 @@ __kernel void SpatialReuse_ResampleNeighbor(
 		const float newGrayscaleRadiance = 
 				Spectrum_Filter(Radiance_GetUnscaledSpectrum(film, taskState->resamplingRadiance));
 		if (newGrayscaleRadiance != 0) {
-			taskState->resamplingWeight = jacobianDeterminant * newGrayscaleRadiance / offset->weight;
+			// missing MIS weight factor
+			taskState->resamplingWeight = newGrayscaleRadiance * base->weight * jacobianDeterminant;
 		} else {
 			taskState->resamplingWeight = 0;
 		}
