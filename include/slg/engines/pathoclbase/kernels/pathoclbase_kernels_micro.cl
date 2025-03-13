@@ -1329,8 +1329,8 @@ __kernel void SpatialReuse_ResampleNeighbor(
 
 		// TODO: move this to the reconnection vertex selection in the future
 		// distance threshold of 2-5% world size recommended by GRIS paper
-		float offsetToOffsetReconnection = offsetPoint - VLOAD3F(&offset->sample.reconnection.bsdf.hitPoint.p.x);
-		const float offsetToOffsetReconnectionDistance = abs(sqrt(dot(offsetToOffsetReconnection, offsetToOffsetReconnection)));
+		const float3 offsetToOffsetReconnection = offsetPoint - VLOAD3F(&offset->sample.reconnection.bsdf.hitPoint.p.x);
+		const float offsetToOffsetReconnectionDistance = sqrt(dot(offsetToOffsetReconnection, offsetToOffsetReconnection));
 		const float distanceThreshold = worldRadius * 2 * 0.025; 
 		if (abs(offsetDistance) <= distanceThreshold 
 			|| abs(baseDistance) <= distanceThreshold
