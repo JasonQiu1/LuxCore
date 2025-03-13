@@ -127,7 +127,8 @@ typedef struct {
 
 	// keep track of the MIS weights of the most recent direct lighting event
 	Spectrum pathPdf;
-	float lastDirectLightPdf;
+	float lastDirectLightPdf; // for direct light illumination sampled from NEE (+ cheater BSDF)
+	float lastDirectHitFiniteLightPdf; // for the ray directly hitting a light vertex from BSDF (+ cheater NEE)
 	
 	// TODO: MOVE INTO SEPARATE BUFFER IN THE FUTURE
 	uint preSpatialReuseTime; // save time before spatial reuse to make sure rays after spatial reuse are using the correct time
