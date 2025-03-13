@@ -1280,6 +1280,9 @@ __kernel void SpatialReuse_ResampleNeighbor(
 	RespirReservoir* offset = &taskState->reservoir; 
 	const RespirReservoir* base = &tasks[taskState->currentNeighborGid].tmpReservoir;
 
+	// Initialize image maps page pointer table
+	INIT_IMAGEMAPS_PAGES
+	
 	//--------------------------------------------------------------------------
 	// End of variables setup
 	//--------------------------------------------------------------------------
@@ -1397,11 +1400,10 @@ __kernel void SpatialReuse_ResampleNeighbor(
 		Ray_Init4(&rays[gid], shadowRayOrigin, shadowRayDir, 0.f, shadowRayDirDistance, offset->sample.hitTime);
 		
 		taskState->state = SR_CHECK_VISIBILITY;
+		return;
 	}
-	if (taskState->state != SR_CHECK_VISIBILITY) {
-		// If no more neighbors, then this spatial iteration is finished 
-		taskState->state = SYNC;
-	}
+	// If no more neighbors, then this spatial iteration is finished 
+	taskState->state = SYNC;
 }
 
 //------------------------------------------------------------------------------
