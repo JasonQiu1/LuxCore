@@ -1294,7 +1294,8 @@ __kernel void SpatialReuse_ResampleNeighbor(
 			&tasks[taskState->currentNeighborGid].tmpReservoir,
 			worldRadius, &rays[gid], &tasksDirectLight[gid],
 			&directLightVolInfos[gid], &eyePathInfos[gid], &task->seed,
-			taskState->resamplingRadiance, taskState->resamplingWeight)) 
+			taskState->resamplingRadiance, taskState->resamplingWeight
+			MATERIALS_PARAMS)) 
 		{
 			// Resampling succeeds, we need to check visibility from offset prereconnection vertex to base reconnection vertex
 			taskState->state = SR_CHECK_VISIBILITY;

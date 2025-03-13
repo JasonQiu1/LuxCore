@@ -256,7 +256,8 @@ OPENCL_FORCE_INLINE	bool RespirReservoir_SpatialUpdate(
 		RespirReservoir* offset, const RespirReservoir* base, 
 		const float worldRadius, Ray* ray, GPUTaskDirectLight* taskDirectLight, 
 		PathVolumeInfo* directLightVolInfo, EyePathInfo *pathInfo, Seed* seed, 
-		Spectrum* resamplingRadiance, float& resamplingWeight) {
+		Spectrum* resamplingRadiance, float& resamplingWeight
+		MATERIALS_PARAM_DECL) {
 	// CALCULATE RESAMPLING WEIGHT
 	// CALCULATE JACOBIAN DETERMINANT TO FIND UNSHADOWED SHIFTED CONTRIBUTION
 	const float3 reconnectionPoint = VLOAD3F(&offset->sample.reconnection.bsdf.hitPoint.p.x);
