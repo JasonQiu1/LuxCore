@@ -1382,13 +1382,13 @@ __kernel void SpatialReuse_CheckVisibility(
 			__global BSDF *bsdf = &taskState->bsdf;
 
 			if (!BSDF_IsShadowCatcher(bsdf MATERIALS_PARAM)) {
-				const float3 lightRadiance = VLOAD3F(taskDirectLight->illumInfo.lightRadiance.c);
-				SampleResult_AddDirectLight(&taskConfig->film,
-						sampleResult, taskDirectLight->illumInfo.lightID,
-						BSDF_GetEventTypes(bsdf
-							MATERIALS_PARAM),
-						VLOAD3F(taskState->throughput.c), lightRadiance,
-						1.f);
+				// const float3 lightRadiance = VLOAD3F(taskDirectLight->illumInfo.lightRadiance.c);
+				// SampleResult_AddDirectLight(&taskConfig->film,
+				// 		sampleResult, taskDirectLight->illumInfo.lightID,
+				// 		BSDF_GetEventTypes(bsdf
+				// 			MATERIALS_PARAM),
+				// 		VLOAD3F(taskState->throughput.c), lightRadiance,
+				// 		1.f);
 
 				// The first path vertex is not handled by AddDirectLight(). This is valid
 				// for irradiance AOV only if it is not a SPECULAR material.
