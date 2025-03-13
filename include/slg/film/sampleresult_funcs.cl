@@ -207,10 +207,17 @@ OPENCL_FORCE_INLINE void Radiance_Add(__constant const Film* restrict film,
 	}
 }
 
-OPENCL_FORCE_INLINE void Radiance_Add_Scaled(__constant const Film* restrict film, 
-	const Spectrum* a, const Spectrum* b, const float scale, Spectrum* out) {
+OPENCL_FORCE_INLINE void Radiance_Add_Weighted(__constant const Film* restrict film, 
+	const Spectrum* a, const Spectrum* b, const float weight, Spectrum* out) {
 	for (uint i = 0; i < film->radianceGroupCount; i++) {
-		VSTORE3F((VLOAD3F(a[i].c) + (VLOAD3F(b[i].c) * scale)), out[i].c);
+		VSTORE3F((VLOAD3F(a[i].c) + (VLOAD3F(b[i].c) * weight)), out[i].c);
+	}
+}
+
+OPENCL_FORCE_INLINE void Radiance_Scale(__constant const Film* restrict film, 
+	const Spectrum* a, const float scale, Spectrum* out) {
+	for (uint i = 0; i < film->radianceGroupCount; i++) {
+		VSTORE3F((VLOAD3F(a[i].c) * scale), out[i].c);
 	}
 }
 

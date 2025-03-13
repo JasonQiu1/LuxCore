@@ -1461,6 +1461,10 @@ __kernel void SpatialReuse_CheckVisibility(
 				offset->sample.normPrefixRadiance, 
 				base->sample.reconnection.normPostfixRadiance, 
 				offset->sample.sampleResult.radiancePerPixelNormalized);
+			Radiance_Scale(film,
+				offset->sample.sampleResult.radiancePerPixelNormalized,
+				jacobianDeterminant,
+				offset->sample.sampleResult.radiancePerPixelNormalized);
 
 			const float newGrayscaleRadiance = Spectrum_Filter(SampleResult_GetUnscaledSpectrum(film, &offset->sample.sampleResult));
 				
