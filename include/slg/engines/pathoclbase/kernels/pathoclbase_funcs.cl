@@ -46,7 +46,7 @@ OPENCL_FORCE_INLINE void InitSampleResult(
 	const size_t gid = get_global_id(0);
 	__global SampleResult *sampleResult = &sampleResultsBuff[gid];
 
-	SampleResult_Init(&taskConfig->film, sampleResult);
+	SampleResult_Init(sampleResult);
 
 	float filmX = Sampler_GetSample(taskConfig, IDX_SCREEN_X SAMPLER_PARAM);
 	float filmY = Sampler_GetSample(taskConfig, IDX_SCREEN_Y SAMPLER_PARAM);
@@ -187,28 +187,29 @@ OPENCL_FORCE_INLINE void PixelIndexMap_Set(__global int* pixelIndexMap, const ui
 
 // Add a sample to the streaming reservoir.
 // Simply replace based on the new sample's weight and the reservoir's current sum weight.
-OPENCL_FORCE_INLINE void RespirReservoir_Update(Reservoir* restrict reservoir, float3 pathContribution, 
+OPENCL_FORCE_INLINE void RespirReservoir_Update(Reservoir* restrict reservoir, SampleResult* pathSample, 
 		const float lightPdf, const float3 pathPdf, Seed* restrict seed) {
+	float3 pathContribution = SampleResult_GetUnscaledSpectrum(pathSample);
 	float3 totalPathPdf = pathPdf * lightPdf;
 
 	// correct zero components in pdf
 	if (totalPathPdf.x == 0) {
 		pathContribution.x = 0;
-		pathPdf.x = 1;
+		totalPathPdf.x = 1;
 	}
 	if (totalPathPdf.y == 0) {
 		pathContribution.y = 0;
-		pathPdf.y = 1;
+		totalPathPdf.y = 1;
 	}
 	if (totalPathPdf.z == 0) {
 		pathContribution.z = 0;
-		pathPdf.z = 1;
+		totalPathPdf.z = 1;
 	}
 	
-	const float weight = Spectrum_Filter(pathContribution / pathPdf);
+	const float weight = Spectrum_Filter(pathContribution / totalPathPdf);
 	reservoir->sumWeight += weight;
 	if (Rnd_FloatValue(seed) < (weight / reservoir->sumWeight)) {
-		reservoir->sample.sampleResult = *newSample;
+		reservoir->sample.sampleResult = *pathSample;
 		reservoir->weight = weight;
 	}
 }
@@ -354,12 +355,15 @@ OPENCL_FORCE_INLINE void DirectHitInfiniteLight(__constant const Film* restrict 
 				weight = PowerHeuristic(pathInfo->lastBSDFPdfW, directPdfW * lightPickProb);
 			} else
 				weight = 1.f;
-
+#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
+			// Clear sample result to only hold the radiance from this light source.
+			SampleResult_Init(sampleResult);
+#endif
 			SampleResult_AddEmission(film, sampleResult, light->lightID, throughput, weight * envRadiance);
 
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
 			// Add BSDF-importance (NEE MIS) sampled environment sample to reservoir
-			RespirReservoir_Update(&taskState->reservoir, throughput * weight * envRadiance, weight, taskState->pathPdf, &taskState->seed);
+			RespirReservoir_Update(&taskState->reservoir, sampleResult, weight, VLOAD3F(taskState->pathPdf.c), &taskState->seed);
 #endif
 		}
 	}

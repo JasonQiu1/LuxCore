@@ -527,6 +527,10 @@ __kernel void AdvancePaths_MK_RT_DL(
 
 			if (!BSDF_IsShadowCatcher(bsdf MATERIALS_PARAM)) {
 				const float3 lightRadiance = VLOAD3F(taskDirectLight->illumInfo.lightRadiance.c);
+#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
+				// Clear sample result to only hold the radiance from this light source.
+				SampleResult_Init(sampleResult);
+#endif
 				SampleResult_AddDirectLight(&taskConfig->film,
 						sampleResult, taskDirectLight->illumInfo.lightID,
 						BSDF_GetEventTypes(bsdf
@@ -550,7 +554,7 @@ __kernel void AdvancePaths_MK_RT_DL(
 
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
 				// Add NEE-illuminated (with BSDF MIS) sample into the reservoir.
-				RespirReservoir_Update(&taskState->reservoir, lightRadiance, taskState->lastDirectLightPdf, taskState->pathPdf, &taskState->seed);
+				RespirReservoir_Update(&taskState->reservoir, sampleResult, taskState->lastDirectLightPdf, VLOAD3F(taskState->pathPdf), &taskState->seed);
 #endif
 			}
 
