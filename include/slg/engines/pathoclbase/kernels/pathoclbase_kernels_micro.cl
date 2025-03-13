@@ -529,7 +529,7 @@ __kernel void AdvancePaths_MK_RT_DL(
 				const float3 lightRadiance = VLOAD3F(taskDirectLight->illumInfo.lightRadiance.c);
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
 				// Clear sample result to only hold the radiance from this light source.
-				SampleResult_Init(sampleResult);
+				//SampleResult_Init(sampleResult);
 #endif
 				SampleResult_AddDirectLight(&taskConfig->film,
 						sampleResult, taskDirectLight->illumInfo.lightID,

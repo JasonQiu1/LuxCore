@@ -357,7 +357,7 @@ OPENCL_FORCE_INLINE void DirectHitInfiniteLight(__constant const Film* restrict 
 				weight = 1.f;
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
 			// Clear sample result to only hold the radiance from this light source.
-			SampleResult_Init(sampleResult);
+			//SampleResult_Init(sampleResult);
 #endif
 			SampleResult_AddEmission(film, sampleResult, light->lightID, throughput, weight * envRadiance);
 
