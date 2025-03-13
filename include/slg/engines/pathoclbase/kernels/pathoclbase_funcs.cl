@@ -187,7 +187,7 @@ OPENCL_FORCE_INLINE void PixelIndexMap_Set(__global int* pixelIndexMap, const ui
 
 // Add a sample to the streaming reservoir.
 // Simply replace based on the new sample's weight and the reservoir's current sum weight.
-OPENCL_FORCE_INLINE void RespirReservoir_Update(Reservoir* restrict reservoir, SampleResult* pathSample, 
+OPENCL_FORCE_INLINE void RespirReservoir_Update(Reservoir* restrict reservoir, SampleResult* restrict pathSample, 
 		const float lightPdf, const float3 pathPdf, Seed* restrict seed) {
 	float3 pathContribution = SampleResult_GetUnscaledSpectrum(pathSample);
 	float3 totalPathPdf = pathPdf * lightPdf;
