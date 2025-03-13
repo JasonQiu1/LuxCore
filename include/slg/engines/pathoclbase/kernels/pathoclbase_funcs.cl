@@ -370,7 +370,7 @@ OPENCL_FORCE_INLINE void DirectHitFiniteLight(__constant const Film* restrict fi
 		// TODO: THIS MAY RUN INTO ISSUES SINCE IT HAS THE SAME PATH LENGTH AS ILLUMINATED PATHS
 		RespirReservoir_Update(&taskState->reservoir, sampleResult, 
 				weight, VLOAD3F(taskState->pathPdf.c), 
-				&taskConfig->film, &taskState->seedReservoirSampling);
+				film, &taskState->seedReservoirSampling);
 #endif
 	}
 }
