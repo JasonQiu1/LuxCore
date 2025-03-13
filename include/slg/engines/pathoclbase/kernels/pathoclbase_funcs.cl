@@ -161,6 +161,8 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
 	VSTORE3F(WHITE, taskState->pathPdf.c);
+	VSTORE3F(BLACK, &taskState->reservoir.sample.prefixBsdf.hitPoint.p.x);
+	VSTORE3F(BLACK, &taskState->reservoir.sample.reconnection.bsdf.hitPoint.p.x);
 	taskState->lastDirectLightPdf = 1.0f;
 	taskState->reservoir.sumWeight = 0.0f;
 	taskState->reservoir.weight = 0.0f;
