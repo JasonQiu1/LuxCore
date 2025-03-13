@@ -1231,7 +1231,6 @@ __kernel void SpatialReuse_Init(
 	// PRIME LOOP
 	// Prime neighbor search
 	taskState->numNeighborsLeft = numSpatialNeighbors;
-	taskState->currentNeighborGid = -1;
 	PixelIndexMap_Set(pixelIndexMap, filmWidth, 
 			sampleResult->pixelX, sampleResult->pixelY, 
 			gid);
@@ -1293,7 +1292,7 @@ __kernel void SpatialReuse_ResampleNeighbor(
 		spatialRadius, pixelIndexMap, filmWidth, filmHeight, &task->seed
 	)) {
 		const RespirReservoir* base = &tasks[taskState->currentNeighborGid].tmpReservoir;
-		
+
 		// CALCULATE RESAMPLING WEIGHT
 		// CALCULATE JACOBIAN DETERMINANT TO FIND UNSHADOWED SHIFTED CONTRIBUTION
 		const float3 reconnectionPoint = VLOAD3F(&base->sample.reconnection.bsdf.hitPoint.p.x);
@@ -1543,7 +1542,6 @@ __kernel void SpatialReuse_FinishIteration(
 	// PRIME LOOP
 	// Prime neighbor search
 	taskState->numNeighborsLeft = numSpatialNeighbors;
-	taskState->currentNeighborGid = -1;
 	PixelIndexMap_Set(pixelIndexMap, filmWidth, 
 			sampleResult->pixelX, sampleResult->pixelY, 
 			gid);
