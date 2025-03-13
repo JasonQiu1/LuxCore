@@ -340,11 +340,11 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 			}
 			
 			// Finish up reuse
-			if (numSpatialReuseIterations > 0) {
+			// if (numSpatialReuseIterations > 0) {
 				SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Spatial reuse passes are complete, finishing reuse.");
 				intersectionDevice->EnqueueKernel(spatialReuseKernel_MK_FINISH_REUSE,
                     HardwareDeviceRange(engine->taskCount), HardwareDeviceRange(spatialReuseWorkGroupSize));
-			}
+			// }
 
 			// Check halt conditions
 			if (engine->film->GetConvergence() == 1.f)
