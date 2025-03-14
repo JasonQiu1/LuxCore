@@ -1241,7 +1241,7 @@ __kernel void SpatialReuse_Init(
 	// Resample current pixel
 	// TODO: replace with correct MIS weight
 	// identity shift, so jacobian identity is 1
-	reservoir->weight = (1 / numSpatialNeighbors) * grayscaleContribution * reservoir->weight;
+	reservoir->weight = (1.0f / numSpatialNeighbors) * grayscaleContribution * reservoir->weight;
 	reservoir->sumWeight = reservoir->weight;
 	// Prime pathstate
 	taskState->state = SR_RESAMPLE_NEIGHBOR;
@@ -1559,7 +1559,7 @@ __kernel void SpatialReuse_FinishIteration(
 	// Resample current pixel
 	// TODO: replace with correct MIS weight
 	// identity shift, so jacobian identity is 1
-	reservoir->weight = (1 / numSpatialNeighbors) * grayscaleContribution * reservoir->weight;
+	reservoir->weight = (1.0f / numSpatialNeighbors) * grayscaleContribution * reservoir->weight;
 	reservoir->sumWeight = reservoir->weight;
 	// Prime pathstate
 	taskState->state = SR_RESAMPLE_NEIGHBOR;
