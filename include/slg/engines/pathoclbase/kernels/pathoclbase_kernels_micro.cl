@@ -1206,7 +1206,7 @@ __kernel void SpatialReuse_Init(
 		// keep pixelIndexMap to be -1 so this pixel isn't resampled from
 		return;
 	}
-	
+
 	// Save ray time state
 	taskState->preSpatialReuseTime = ray->time;
 
@@ -1351,10 +1351,6 @@ __kernel void SpatialReuse_ResampleNeighbor(
 		Radiance_Add(film,
 			offset->sample.normPrefixRadiance, 
 			base->sample.reconnection.normPostfixRadiance, 
-			taskState->resamplingRadiance);
-		Radiance_Scale(film,
-			taskState->resamplingRadiance,
-			jacobianDeterminant,
 			taskState->resamplingRadiance);
 
 		// Calculate resampling weight
