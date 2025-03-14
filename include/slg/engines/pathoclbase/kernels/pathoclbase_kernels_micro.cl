@@ -1357,8 +1357,8 @@ __kernel void SpatialReuse_ResampleNeighbor(
 		const float shiftedContribution = 
 				Spectrum_Filter(Radiance_GetUnscaledSpectrum(film, taskState->resamplingRadiance));
 		if (shiftedContribution != 0) {
-			// missing MIS weight factor
-			offset->weight = shiftedContribution * base->weight * jacobianDeterminant;
+			// TODO: change 1/M to correct MIS weight factor
+			offset->weight = (1.0f / numSpatialNeighbors) * shiftedContribution * base->weight * jacobianDeterminant;
 		} else {
 			offset->weight = 0;
 		}
