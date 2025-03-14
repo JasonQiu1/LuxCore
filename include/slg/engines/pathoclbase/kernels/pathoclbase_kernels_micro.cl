@@ -1218,14 +1218,14 @@ __kernel void SpatialReuse_Init(
 		reservoir->sample.reconnection.normPostfixRadiance
 	);
 
+	// PRIME LOOP
 	// Recalculate unbiased contribution weight
+	const float grayscaleContribution = Spectrum_Filter(SampleResult_GetUnscaledSpectrum(film, &reservoir->sample.sampleResult));
 	if (reservoir->weight != 0) {
-		reservoir->weight = reservoir->sumWeight /
-			Spectrum_Filter(SampleResult_GetUnscaledSpectrum(film, &reservoir->sample.sampleResult));
+		reservoir->weight = reservoir->sumWeight / grayscaleContribution;
 	}
 	reservoir->sumWeight = reservoir->weight;
 
-	// PRIME LOOP
 	// Prime neighbor search
 	taskState->numNeighborsLeft = numSpatialNeighbors;
 	taskState->currentNeighborGid = -1;
@@ -1238,6 +1238,11 @@ __kernel void SpatialReuse_Init(
 	}
 	// Prime previous reservoir with final initial path sample
 	task->tmpReservoir = *reservoir;
+	// Resample current pixel
+	// TODO: replace with correct MIS weight
+	// identity shift, so jacobian identity is 1
+	reservoir->weight = (1 / numSpatialNeighbors) * grayscaleContribution * reservoir->weight;
+	reservoir->sumWeight = reservoir->weight;
 	// Prime pathstate
 	taskState->state = SR_RESAMPLE_NEIGHBOR;
 
@@ -1531,23 +1536,31 @@ __kernel void SpatialReuse_FinishIteration(
 	// End of variables setup
 	//--------------------------------------------------------------------------
 
+	// PRIME LOOP
 	// Recalculate unbiased contribution weight
+	const float grayscaleContribution = Spectrum_Filter(SampleResult_GetUnscaledSpectrum(film, &reservoir->sample.sampleResult));
 	if (reservoir->weight != 0) {
-		reservoir->weight = reservoir->sumWeight /
-			Spectrum_Filter(SampleResult_GetUnscaledSpectrum(film, 
-				&reservoir->sample.sampleResult));
+		reservoir->weight = reservoir->sumWeight / grayscaleContribution;
 	}
 	reservoir->sumWeight = reservoir->weight;
 
-	// PRIME LOOP
 	// Prime neighbor search
 	taskState->numNeighborsLeft = numSpatialNeighbors;
 	taskState->currentNeighborGid = -1;
 	PixelIndexMap_Set(pixelIndexMap, filmWidth, 
 			sampleResult->pixelX, sampleResult->pixelY, 
 			gid);
+	if (gid == 1) {
+		printf("[SR_INIT] Spatial radius: %d\n", spatialRadius);
+		printf("[SR_INIT] Number of neighbors: %d\n", numSpatialNeighbors);
+	}
 	// Prime previous reservoir with final initial path sample
 	task->tmpReservoir = *reservoir;
+	// Resample current pixel
+	// TODO: replace with correct MIS weight
+	// identity shift, so jacobian identity is 1
+	reservoir->weight = (1 / numSpatialNeighbors) * grayscaleContribution * reservoir->weight;
+	reservoir->sumWeight = reservoir->weight;
 	// Prime pathstate
 	taskState->state = SR_RESAMPLE_NEIGHBOR;
 }
