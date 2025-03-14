@@ -92,9 +92,6 @@ typedef struct {
 typedef struct {
 	Spectrum normPostfixRadiance[FILM_MAX_RADIANCE_GROUP_COUNT]; // the radiance of the path of the path at the reconnection vertex and after
 	BSDF bsdf; // contains info on the exact hit point on the reconnection vertex
-	// TODO: find out if LuxCoreRender has multi-lobed materials
-	// uint prevLobeIndex; // the sampled lobe index of the material at the previous vertex 
-	// uint currLobeIndex; // the sampled lobe index of the material at the reconnection vertex
 } ReconnectionVertex;
 
 // Stores reuse information about a selected ReSPIR sample. (spatial reuse only)
