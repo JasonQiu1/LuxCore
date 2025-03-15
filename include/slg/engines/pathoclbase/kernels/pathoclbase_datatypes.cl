@@ -52,8 +52,12 @@ typedef enum {
 	MK_GENERATE_CAMERA_RAY = 9,
 	MK_DONE = 10,
 	SYNC = 11,
-	SR_RESAMPLE_NEIGHBOR = 12,
-	SR_CHECK_VISIBILITY = 13
+	SR_MK_NEXT_NEIGHBOR = 12,
+	SR_MK_SHIFT = 13,
+	SR_MK_CHECK_VISIBILITY = 14,
+	SR_MK_RESAMPLE = 15,
+	SR_MK_FINISH_RESAMPLE = 16
+
 } PathState;
 
 typedef struct {
@@ -90,24 +94,28 @@ typedef struct {
 
 // Stores information about the reconnection vertex for a particular path in the ReSTIR algorithm.
 typedef struct {
-	Spectrum normPostfixRadiance[FILM_MAX_RADIANCE_GROUP_COUNT]; // the radiance of the path of the path at the rc vertex and after
+	Spectrum irradiance[FILM_MAX_RADIANCE_GROUP_COUNT]; // the radiance of the path of the path at the rc vertex and after
 	BSDF bsdf; // contains info on the exact hit point on the rc vertex
+	// the bsdf contains the incident direction coming into the reconnection vertex
+	float jacobian; // cache the prefix vertex part of the jacobian (squared distance to self rc vertex / cos angle to norm of rc vertex)
+	int pathDepth; // -1 (no rcVertex), 0 is primary hit, 1 is secondary hit, ...
 } RcVertex;
 
 // Stores reuse information about a selected ReSPIR sample. (spatial reuse only)
 typedef struct {
-	RcVertex rc; // the chosen rc vertex for this path
-	Spectrum normPrefixRadiance[FILM_MAX_RADIANCE_GROUP_COUNT]; // the radiance of the path at the vertices before the rc vertex
-	SampleResult sampleResult; // the cached sampleresult data of the entire path
+	Spectrum integrand[FILM_MAX_RADIANCE_GROUP_COUNT]; // the cached integrand of the path, updated each time a new sample is selected
 	BSDF prefixBsdf; // the BSDF point where the vertex before the rc vertex was hit
-	float hitTime; // time the rc vertex was hit. we use this to shoot a visibility ray backwards to the connecting offset path vertex
+	RcVertex rc; // the chosen rc vertex for this path
+	float lightPdf; // the NEE light pick probability of the sample
+	float hitTime; // time the prefix vertex was hit. we use this to shoot a visibility ray to the rc vertex
 } RespirSample;
 
 // A streaming random-sampling reservoir for spatial reuse.
 typedef struct {
 	RespirSample sample; // selected sample result
-	float weight; // (unbiased contribution) weight of selected sample
-	float sumWeight; // sum weights
+	float M; // sample count
+	float weight; // sum weight when used during initial path resampling 
+				  // otherwise (unbiased contribution) weight of selected sample 1/p(sample) * 1/M * w_sum
 } RespirReservoir;
 
 // The state used to keep track of the rendered path
@@ -120,21 +128,23 @@ typedef struct {
 	Seed seedPassThroughEvent;
 	Seed seedReservoirSampling;
 
-	// keep track of the MIS weights of the most recent direct lighting event
-	Spectrum pathPdf;
+	// keep track of cumulative products
+	float pathPdf; // bsdfProduct and connectionThroughput
+	float rrProbProd;
 	float lastDirectLightPdf; // for direct light illumination sampled from NEE (+ cheater BSDF)
-	
+
 	// TODO: MOVE INTO SEPARATE BUFFER IN THE FUTURE
 	uint preSpatialReuseTime; // save time before spatial reuse to make sure rays after spatial reuse are using the correct time
 	// Reservoir data structure for initial path resampling using RIS
 	RespirReservoir reservoir;
-	int doReuse; // true if a rc vertex was found, false otherwise
 	
 	// Neighbor search info
 	int currentNeighborGid;
 	uint numNeighborsLeft;
-	// Resampling caching
+	// Resampling
 	Spectrum resamplingRadiance[FILM_MAX_RADIANCE_GROUP_COUNT];
+	float canonicalMisWeight;
+	RespirReservoir spatialReuseReservoir;
 	
 	int albedoToDo, photonGICacheEnabledOnLastHit,
 			photonGICausticCacheUsed, photonGIShowIndirectPathMixUsed,
@@ -202,9 +212,6 @@ typedef struct {
 	
 	// This is used by DirectLight_BSDFSampling()
 	PathDepthInfo tmpPathDepthInfo;
-
-	// Swap reservoir to use to hold the last spatial passes's reservoirs in order to prevent race conditions.
-	RespirReservoir tmpReservoir;
 } RespirGPUTask;
 
 

@@ -85,6 +85,19 @@ OPENCL_FORCE_INLINE void InitSampleResult(
 	sampleResult->lastPathVertex = (taskConfig->pathTracer.maxPathDepth.depth == 1);
 }
 
+OPENCL_FORCE_INLINE void RespirReservoir_Init(RespirReservoir* restrict reservoir) {
+	reservoir->weight = 0.0f;
+	reservoir->M = 0.0f;
+	Radiance_Clear(reservoir->sample.integrand);
+	VSTORE3F(BLACK, &reservoir->sample.prefixBsdf.hitPoint.p.x);
+	reservoir->sample.jacobian = 0.0f;
+	reservoir->sample.lightPdf = 0.0f;
+	reservoir->sample.hitTime = 0.0f;
+	Radiance_Clear(reservoir->sample.rc.irradiance);
+	VSTORE3F(BLACK, &reservoir->sample.rc.bsdf.hitPoint.p.x);
+	reservoir->sample.rc.pathDepth = -1;
+}
+
 OPENCL_FORCE_INLINE void GenerateEyePath(
 		__global GPUTask *task, 
 		__constant const GPUTaskConfiguration* restrict taskConfig,
@@ -159,17 +172,12 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 	Rnd_InitFloat(seedValue, &initSeed);
 	taskState->seedPassThroughEvent = initSeed;
 
-#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
+#if defined(RENDER_ENGINE_RESPIRPATHOCL)
+	RespirReservoir_Init(&taskState->reservoir)
+
 	VSTORE3F(WHITE, taskState->pathPdf.c);
-	VSTORE3F(BLACK, &taskState->reservoir.sample.prefixBsdf.hitPoint.p.x);
-	VSTORE3F(BLACK, &taskState->reservoir.sample.rc.bsdf.hitPoint.p.x);
-	taskState->doReuse = false;
+	taskState->rrProbProd = 1.0f;
 	taskState->lastDirectLightPdf = 1.0f;
-	taskState->reservoir.sumWeight = 0.0f;
-	taskState->reservoir.weight = 0.0f;
-	taskState->reservoir.sample.sampleResult = *sampleResult;
-	Radiance_Clear(taskState->reservoir.sample.normPrefixRadiance);
-	Radiance_Clear(taskState->reservoir.sample.rc.normPostfixRadiance);
 #endif
 }
 
@@ -188,34 +196,84 @@ OPENCL_FORCE_INLINE void PixelIndexMap_Set(__global int* pixelIndexMap, const ui
 
 // Add a sample to the streaming reservoir.
 // Simply replace based on the new sample's weight and the reservoir's current sum weight.
-OPENCL_FORCE_INLINE void RespirReservoir_Update(RespirReservoir* restrict reservoir, SampleResult* restrict pathSample, 
-		const float lightPdf, const float3 pathPdf, __constant const Film* restrict film, Seed* restrict seed) {
-	float3 pathContribution = SampleResult_GetUnscaledSpectrum(film, pathSample);
-	float3 totalPathPdf = pathPdf * lightPdf;
+OPENCL_FORCE_INLINE bool RespirReservoir_Add(RespirReservoir* restrict reservoir, 
+	const Radiance* restrict pathRadiance, float3 pdf, 
+	Seed* restrict seed, __constant const Film* restrict film) 
+{
+	// increase sample count
+	reservoir->M++;
+
+	float3 integrand = SampleResult_GetUnscaledSpectrum(film, pathRadiance);
 
 	// correct zero components in pdf if not a null (black) sample
-	reservoir->weight = 0.0f; 
-	if (!Spectrum_IsBlack(pathContribution)) {
-		if (totalPathPdf.x == 0) {
-			pathContribution.x = 0;
-			totalPathPdf.x = 1;
+	float weight = 0.f;
+	if (!Spectrum_IsBlack(integrand)) {
+		if (pdf.x == 0) {
+			integrand.x = 0;
+			pdf.x = 1;
 		}
-		if (totalPathPdf.y == 0) {
-			pathContribution.y = 0;
-			totalPathPdf.y = 1;
+		if (pdf.y == 0) {
+			integrand.y = 0;
+			pdf.y = 1;
 		}
-		if (totalPathPdf.z == 0) {
-			pathContribution.z = 0;
-			totalPathPdf.z = 1;
+		if (pdf.z == 0) {
+			integrand.z = 0;
+			pdf.z = 1;
 		}
 
-		reservoir->weight = Spectrum_Y(pathContribution / totalPathPdf);
+		weight = Spectrum_Y(integrand / pdf);
 	}
 
-	reservoir->sumWeight += reservoir->weight;
-	if (Rnd_FloatValue(seed) < (reservoir->weight / reservoir->sumWeight)) {
-		reservoir->sample.sampleResult = *pathSample;
+	// return if no chance of selection
+	if (isnan(weight) || weight == 0.f) {
+		return false;
 	}
+
+	reservoir->weight += weight;
+	if (Rnd_FloatValue(seed) * reservoir->weight <= weight) {
+		Radiance_Copy(reservoir->sample.integrand, integrand);
+		return true;
+	}
+	return false;
+}
+
+OPENCL_FORCE_INLINE bool RespirReservoir_AddNEEVertex(
+		RespirReservoir* restrict reservoir, 
+		// integrand is the path contribution up to and including this vertex
+		// postfixRadiance is the radiance emitted from the vertex
+		const Radiance* restrict integrand, const Radiance* restrict postfixRadiance,
+		// misWeight is the mis of the vertex's bsdfPdfW and lightPdf
+		// lightPdf is the NEE light pick prob
+		// pathPdf is cumulative product of all bsdfPdfW and connectionThroughput
+		// rrProbProd is the cumulative product of the russian roulette probability so far
+		const float misWeight, const float3 pathPdf, const float rrProbProd, const float lightPdf, 
+		const BSDF* restrict bsdf, const float time,
+		const int pathDepth, Seed* restrict seed, __constant const Film* restrict film)
+{
+	bool wasSelected = RespirReservoir_Add(reservoir, integrand, rrProbProd, seed, film);
+	if (wasSelected) {
+		reservoir->sample.lightPdf = lightPdf;
+		// reconnection shift always chooses primary vertex as prefix vertex
+		if (pathDepth == 0) { 
+			reservoir->sample.prefixBsdf = *bsdf;
+			taskState->reservoir.sample.hitTime = time;
+		}
+		// reconnection shift always chooses secondary vertex as rc vertex
+		if (pathDepth == 1) {
+			reservoir->sample.rc.pathDepth = pathDepth;
+			reservoir->sample.rc.bsdf = *bsdf;
+			// remove the weighting from the irradiance.
+			Radiance_Copy(postfixRadiance, reservoir->sample.rc.irradiance);
+			Radiance_Scale(&reservoir->sample.rc.irradiance, lightPdf / misWeight,
+				&reservoir->sample.rc.irradiance);
+			// precalculate partial jacobian here (squared distance / cos angle from rc norm)
+			const float3 toRc = VLOAD3F(bsdf->hitPoint.p.x) - VLOAD3F(reservoir->sample.prefixBsdf.p.x);
+			const float distanceSquared = dot(toRc, toRc);
+			const float cosAngle = dot(bsdf->hitPoint.fixedDir, BSDF_GetLandingGeometryN(bsdf));
+			reservoir->sample.rc.jacobian = distanceSquared / cosAngle;
+		}
+	}
+	return wasSelected;
 }
 
 // Find the spatial neighbors around the pixel this work-item is handling for now
@@ -308,13 +366,6 @@ OPENCL_FORCE_INLINE void DirectHitInfiniteLight(__constant const Film* restrict 
 				weight = 1.f;
 
 			SampleResult_AddEmission(film, sampleResult, light->lightID, throughput, weight * envRadiance);
-
-#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-			// Add BSDF-importance (NEE MIS) sampled environment sample to reservoir
-			RespirReservoir_Update(&taskState->reservoir, sampleResult, 
-					weight, VLOAD3F(taskState->pathPdf.c), 
-					film, &taskState->seedReservoirSampling);
-#endif
 		}
 	}
 }
@@ -340,8 +391,9 @@ OPENCL_FORCE_INLINE void DirectHitFiniteLight(__constant const Film* restrict fi
 	if (!Spectrum_IsBlack(emittedRadiance)) {
 		// Add emitted radiance
 		float weight = 1.f;
+		float lightPickProb = 1.f; // TODO: if specular then light pick prob should be 100%?
 		if (!(pathInfo->lastBSDFEvent & SPECULAR)) {
-			const float lightPickProb = LightStrategy_SampleLightPdf(lightsDistribution,
+			float lightPickProb = LightStrategy_SampleLightPdf(lightsDistribution,
 					dlscAllEntries,
 					dlscDistributions, dlscBVHNodes,
 					dlscRadius2, dlscNormalCosAngle,
@@ -367,10 +419,14 @@ OPENCL_FORCE_INLINE void DirectHitFiniteLight(__constant const Film* restrict fi
 				MATERIALS_PARAM), VLOAD3F(taskState->throughput.c), weight * emittedRadiance);
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
 		// Add BSDF-illuminated (with cheater NEE) sample into the reservoir.
-		// TODO: THIS MAY RUN INTO ISSUES SINCE IT HAS THE SAME PATH LENGTH AS ILLUMINATED PATHS
-		RespirReservoir_Update(&taskState->reservoir, sampleResult, 
-				weight, VLOAD3F(taskState->pathPdf.c), 
-				film, &taskState->seedReservoirSampling);
+		SampleResult postfix;
+		SampleResult_Init(&postfix);
+		SampleResult_AddEmission(film, &postfix, light->lightID, throughput, weight * envRadiance);
+		RespirReservoir_AddNEEVertex(&taskState->reservoir, 
+				sampleResult->radiancePerPixelNormalized, &postfix,
+				weight, VLOAD3F(taskState->throughput.c), taskState->rrProdProd, lightPickProb,
+				bsdf, ray->time, pathInfo->depth.depth, 
+				&taskState->seedReservoirSampling, film);
 #endif
 	}
 }

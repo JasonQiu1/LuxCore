@@ -86,6 +86,7 @@ __kernel void AdvancePaths_MK_RT_NEXT_VERTEX(
 			);
 	taskState->throughShadowTransparency = throughShadowTransparency;
 	VSTORE3F(connectionThroughput * VLOAD3F(taskState->throughput.c), taskState->throughput.c);
+	VSTORE3F(connectionThroughput * VLOAD3F(taskState->pathPdf.c), taskState->pathPdf.c);
 
 	// If continueToTrace, there is nothing to do, just keep the same state
 	if (!continueToTrace) {
@@ -511,11 +512,6 @@ __kernel void AdvancePaths_MK_RT_DL(
 	VSTORE3F(connectionThroughput * VLOAD3F(taskDirectLight->illumInfo.lightRadiance.c), taskDirectLight->illumInfo.lightRadiance.c);
 	VSTORE3F(connectionThroughput * VLOAD3F(taskDirectLight->illumInfo.lightIrradiance.c), taskDirectLight->illumInfo.lightIrradiance.c);
 
-#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-	// add connectionThroughput contribution to pathThroughput when resampling
-	VSTORE3F(connectionThroughput * VLOAD3F(taskState->pathPdf.c), taskState->pathPdf.c);
-#endif
-
 	const bool rayMiss = (rayHits[gid].meshIndex == NULL_INDEX);
 
 	// If continueToTrace, there is nothing to do, just keep the same state
@@ -550,10 +546,21 @@ __kernel void AdvancePaths_MK_RT_DL(
 				}
 
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-				// Add NEE-illuminated (with BSDF MIS) sample into the reservoir.
-				RespirReservoir_Update(&taskState->reservoir, sampleResult, 
-						taskState->lastDirectLightPdf, VLOAD3F(taskState->pathPdf.c), 
-						&taskConfig->film, &taskState->seedReservoirSampling);
+				// Add NEE-illuminated (with cheater BSDF) sample into the reservoir.
+				SampleResult postfix;
+				SampleResult_Init(&postfix);
+				SampleResult_AddDirectLight(&taskConfig->film,
+					sampleResult, taskDirectLight->illumInfo.lightID,
+					BSDF_GetEventTypes(bsdf
+						MATERIALS_PARAM),
+					VLOAD3F(taskState->throughput.c), lightRadiance,
+					1.f);
+				RespirReservoir_AddNEEVertex(&taskState->reservoir, 
+						sampleResult->radiancePerPixelNormalized, &postfix,
+						taskState->lastDirectLightPdf, VLOAD3F(taskState->pathPdf.c), taskState->rrProdProd, 
+						taskDirectLight->illumInfo.pickPdf,
+						bsdf, ray->time, pathInfo->depth.depth, 
+						&taskState->seedReservoirSampling, &taskConfig->film);
 #endif
 			}
 
@@ -837,26 +844,6 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 
 	if (sampleResult->firstPathVertex) {
 		sampleResult->firstPathVertexEvent = bsdfEvent;
-
-#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-		// Cache radiance from primary path vertex for RIS
-		Radiance_Copy(
-			&taskConfig->film,
-			sampleResult->radiancePerPixelNormalized,
-			taskState->reservoir.sample.normPrefixRadiance
-		);
-		// Cache bsdf hit point of the first path vertex (vertex right before rc vertex)
-		taskState->reservoir.sample.prefixBsdf = *bsdf;
-
-		// Cache hit time of first path vertex
-		taskState->reservoir.sample.hitTime = ray->time;
-	}
-
-	if (pathInfo->depth.depth == 1) {
-		// Cache hit point on rc vertex (secondary path vertex for rc shift)
-		taskState->reservoir.sample.rc.bsdf = *bsdf;
-		taskState->doReuse = true;
-#endif
 	}
 
 	EyePathInfo_AddVertex(pathInfo, bsdf, bsdfEvent, bsdfPdfW,
@@ -884,8 +871,8 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 
 		VSTORE3F(throughputFactor * VLOAD3F(taskState->throughput.c), taskState->throughput.c);
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-		// Accumulate pathPdf at each bounce from bsdf PDF and RR probability this bounce
-		VSTORE3F(rrProb * bsdfPdfW * VLOAD3F(taskState->pathPdf.c), taskState->pathPdf.c);
+		VSTORE3F(bsdfSample * VLOAD3F(&taskState->pathPdf.c), &taskState->pathPdf.c);
+		taskState->rrProbProd *= 1.0f - rrProb;
 #endif
 		// This is valid for irradiance AOV only if it is not a SPECULAR material and
 		// first path vertex. Set or update sampleResult.irradiancePathThroughput
@@ -1166,11 +1153,11 @@ __kernel void AdvancePaths_MK_GENERATE_CAMERA_RAY(
 // SPATIAL REUSE KERNELS BELOW
 
 //------------------------------------------------------------------------------
-// SpatialReuse_Init Kernel
+// SpatialReuse_MK_INIT Kernel
 //
 // Initializes the spatial reuse pass.
 //------------------------------------------------------------------------------
-__kernel void SpatialReuse_Init(
+__kernel void SpatialReuse_MK_INIT(
 		KERNEL_ARGS
 		KERNEL_ARGS_SPATIALREUSE
 		) {
@@ -1181,7 +1168,7 @@ __kernel void SpatialReuse_Init(
 	__global GPUTaskState *taskState = &tasksState[gid];
 #if defined(DEBUG_PRINTF_KERNEL_NAME)
 	if (gid == DEBUG_GID)
-		printf("Kernel: SpatialReuse_Init(state = %d)\n", taskState->state);
+		printf("Kernel: SpatialReuse_MK_INIT(state = %d)\n", taskState->state);
 #endif
 
 	//--------------------------------------------------------------------------
@@ -1201,8 +1188,12 @@ __kernel void SpatialReuse_Init(
 	// End of variables setup
 	//--------------------------------------------------------------------------
 
-	if (taskState->doReuse == false) {
-		// keep pathstate to sync so that resampling and visibility kernels do not run
+	taskState->reservoir.M = 1;
+
+	// no reconnection vertex, no invertible shift mapping
+	// CAN shift FROM other domains, CANNOT shift TO other domains
+	if (taskState->reservoir.sample.rc.pathDepth == -1) {
+		// keep pathstate to SYNC so that resampling and visibility kernels do not run
 		// keep pixelIndexMap to be -1 so this pixel isn't resampled from
 		return;
 	}
@@ -1210,21 +1201,12 @@ __kernel void SpatialReuse_Init(
 	// Save ray time state
 	taskState->preSpatialReuseTime = ray->time;
 
-	// Cache data for first iteration of RIS
-	Radiance_Sub(
-		film,
-		sampleResult->radiancePerPixelNormalized,
-		reservoir->sample.normPrefixRadiance,
-		reservoir->sample.rc.normPostfixRadiance
-	);
-
 	// PRIME LOOP
-	// Recalculate unbiased contribution weight
-	const float luminance = SampleResult_GetRadianceY(film, &reservoir->sample.sampleResult);
+	// Finalize RIS: calculate unbiased contribution weight of final sample
+	const float luminance = Radiance_Y(film, &reservoir->sample.integrand);
 	if (reservoir->weight != 0) {
-		reservoir->weight = reservoir->sumWeight / luminance;
+		reservoir->weight = reservoir->weight / luminance;
 	}
-	reservoir->sumWeight = reservoir->weight;
 
 	// Prime neighbor search
 	taskState->numNeighborsLeft = numSpatialNeighbors;
@@ -1232,17 +1214,11 @@ __kernel void SpatialReuse_Init(
 	PixelIndexMap_Set(pixelIndexMap, filmWidth, 
 			sampleResult->pixelX, sampleResult->pixelY, 
 			gid);
-	if (gid == 1) {
-		printf("[SR_INIT] Spatial radius: %d\n", spatialRadius);
-		printf("[SR_INIT] Number of neighbors: %d\n", numSpatialNeighbors);
-	}
-	// Prime previous reservoir with final initial path sample
-	task->tmpReservoir = *reservoir;
-	// Resample current pixel
-	// TODO: replace with correct MIS weight
-	// identity shift, so jacobian identity is 1
-	reservoir->weight = (1.0f / numSpatialNeighbors) * luminance * reservoir->weight;
-	reservoir->sumWeight = reservoir->weight;
+	
+	// Init resampling reservoir and canonical MIS weight
+	RespirReservoir_Init(&taskState->spatialReuseReservoir);
+	taskState->canonicalMisWeight = 1.f;
+	
 	// Prime pathstate
 	taskState->state = SR_RESAMPLE_NEIGHBOR;
 
@@ -1253,15 +1229,17 @@ __kernel void SpatialReuse_Init(
 }
 
 //------------------------------------------------------------------------------
-// SpatialReuse_ResampleNeighbor Kernel
+// SpatialReuse_MK_NEXT_NEIGHBOR Kernel
 //
-// Resamples neighbors until reservoir replacement succeeds.
+// Finds the next neighbor and stores it in TaskState.
+// Shift from current domain to neighbor domain for canonical pairwise MIS calculation.
 //
-// FROM: SpatialReuse_CheckVisibility (succeed or fail)
-// TO: SpatialReuse_CheckVisibility (if resampling succeeds for a neighbor)
-// TO: SYNC (if no more neighbors)
+// FROM: SpatialReuse_MK_INIT (begin the pass)
+// FROM: SpatialReuse_MK_FINISH_RESAMPLE (loop through all neighbors)
+// TO: SpatialReuse_MK_SHIFT (-> SpatialReuse_MK_FINISH_RESAMPLE)
+// TO: SYNC (no more neighbors)
 //------------------------------------------------------------------------------
-__kernel void SpatialReuse_ResampleNeighbor(
+__kernel void SpatialReuse_MK_NEXT_NEIGHBOR(
 		KERNEL_ARGS
 		KERNEL_ARGS_SPATIALREUSE
 		) {
@@ -1269,7 +1247,7 @@ __kernel void SpatialReuse_ResampleNeighbor(
 
 	GPUTask *task = &tasks[gid];
 	GPUTaskState *taskState = &tasksState[gid];
-	if (taskState->state != SR_RESAMPLE_NEIGHBOR)
+	if (taskState->state != SR_MK_NEXT_NEIGHBOR)
 		return;
 
 	//--------------------------------------------------------------------------
@@ -1413,26 +1391,54 @@ __kernel void SpatialReuse_ResampleNeighbor(
 }
 
 //------------------------------------------------------------------------------
-// SpatialReuse_CheckVisibility Kernel
+// SpatialReuse_MK_SHIFT Kernel
 //
-// Checks if the shadow ray shot for rc is blocked or not.
-// If visible, then update reservoir appropriately.
+// Shift from one reservoir (domain/pixel) to another (domain/pixel).
+// Stores results in (TODO EXACTLY WHAT ???).
 //
-// TO: SpatialReuse_CheckVisibility (if ray is not finished tracing)
-// TO: SpatialReuse_ResampleNeighbor (if ray is finished tracing)
+// FROM: SpatialReuse_MK_NEXT_NEIGHBOR (for canonical pairwise MIS calculation)
+// FROM: SpatialReuse_MK_RESAMPLE (for resampling neighbors into current reservoir)
+// TO: SpatialReuse_MK_CHECK_VISIBILITY (if jacobian is valid)
+// TO: PathState stored in TaskState (if jacobian is invalid)
+//		- SpatialReuse_MK_RESAMPLE if coming from SpatialReuse_MK_NEXT_NEIGHBOR
+//		- SpatialReuse_MK_FINISH_RESAMPLE if coming from SpatialReuse_MK_RESAMPLE
+//------------------------------------------------------------------------------
+__kernel void SpatialReuse_MK_SHIFT(
+	KERNEL_ARGS
+	KERNEL_ARGS_SPATIALREUSE
+	) {
+	const size_t gid = get_global_id(0);
+
+	GPUTask *task = &tasks[gid];
+	GPUTaskState *taskState = &tasksState[gid];
+	if (taskState->state != SR_MK_SHIFT)
+		return;
+
+	// TODO
+}
+
+//------------------------------------------------------------------------------
+// SpatialReuse_MK_CHECK_VISIBILITY Kernel
+//
+// Checks if the shadow ray shot to the reconnection vertex is blocked or not.
+// If visible, then update (TODO WHICH???) reservoir appropriately.
+//
+// FROM: SpatialReuse_MK_SHIFT
+// TO: SpatialReuse_MK_CHECK_VISIBILITY (if ray is not finished tracing)
+// TO: PathState stored in TaskState (if ray has finished tracing)
+//		- SpatialReuse_MK_RESAMPLE if coming from SpatialReuse_MK_NEXT_NEIGHBOR
+//		- SpatialReuse_MK_FINISH_RESAMPLE if coming from SpatialReuse_MK_RESAMPLE
 //
 //------------------------------------------------------------------------------
-__kernel void SpatialReuse_CheckVisibility(
+__kernel void SpatialReuse_MK_CHECK_VISIBILITY(
 	KERNEL_ARGS
 	) {
 	const size_t gid = get_global_id(0);
 
-	// Read the path state
 	GPUTask *task = &tasks[gid];
 	GPUTaskState *taskState = &tasksState[gid];
-	if (taskState->state != SR_CHECK_VISIBILITY) {
+	if (taskState->state != SR_MK_CHECK_VISIBILITY)
 		return;
-	}
 
 	//--------------------------------------------------------------------------
 	// Start of variables setup
@@ -1476,9 +1482,6 @@ __kernel void SpatialReuse_CheckVisibility(
 	VSTORE3F(connectionThroughput * VLOAD3F(taskDirectLight->illumInfo.lightRadiance.c), taskDirectLight->illumInfo.lightRadiance.c);
 	VSTORE3F(connectionThroughput * VLOAD3F(taskDirectLight->illumInfo.lightIrradiance.c), taskDirectLight->illumInfo.lightIrradiance.c);
 
-	// Multiply connectionThroughput contribution to total path pdf
-	VSTORE3F(connectionThroughput * VLOAD3F(taskState->pathPdf.c), taskState->pathPdf.c);
-
 	const bool rayMiss = (rayHits[gid].meshIndex == NULL_INDEX);
 
 	// If continueToTrace, there is nothing to do, just keep the same state
@@ -1506,11 +1509,57 @@ __kernel void SpatialReuse_CheckVisibility(
 }
 
 //------------------------------------------------------------------------------
-// SpatialReuse_FinishIteration Kernel
+// SpatialReuse_MK_RESAMPLE Kernel
 //
-// Completes the spatial reuse iteration.
+// Update the canonical pairwise MIS weight.
+// Resample the neighbor reservoir into the current reservoir.
+//
+// FROM: (SpatialReuse_MK_NEXT_NEIGHBOR->) SpatialReuse_MK_SHIFT
+// TO: SpatialReuse_MK_SHIFT (-> SpatialReuse_MK_FINISH_RESAMPLE)
 //------------------------------------------------------------------------------
-__kernel void SpatialReuse_FinishIteration(
+__kernel void SpatialReuse_MK_RESAMPLE(
+	KERNEL_ARGS
+	KERNEL_ARGS_SPATIALREUSE
+	) {
+	const size_t gid = get_global_id(0);
+
+	GPUTask *task = &tasks[gid];
+	GPUTaskState *taskState = &tasksState[gid];
+	if (taskState->state != SR_MK_RESAMPLE)
+		return;
+
+	// TODO
+}
+
+//------------------------------------------------------------------------------
+// SpatialReuse_MK_FINISH_RESAMPLE Kernel
+//
+// Finish resampling neighbor into current based off of shift mapping results.
+// Merge with spatialReuseReservoir using pairwise MIS.
+//
+// FROM: (SpatialReuse_MK_RESAMPLE->) SpatialReuse_MK_SHIFT
+// TO: SR_MK_NEXT_NEIGHBOR (continue iterating through other neighbors)
+//------------------------------------------------------------------------------
+__kernel void SpatialReuse_MK_FINISH_RESAMPLE(
+	KERNEL_ARGS
+	KERNEL_ARGS_SPATIALREUSE
+	) {
+	const size_t gid = get_global_id(0);
+
+	GPUTask *task = &tasks[gid];
+	GPUTaskState *taskState = &tasksState[gid];
+	if (taskState->state != SR_MK_FINISH_RESAMPLE)
+		return;
+
+	// TODO
+}
+
+//------------------------------------------------------------------------------
+// SpatialReuse_MK_FINISH_ITERATION Kernel
+//
+// Completes the spatial reuse iteration by finalizing GRIS and setting up the next iteration.
+//------------------------------------------------------------------------------
+__kernel void SpatialReuse_MK_FINISH_ITERATION(
 		KERNEL_ARGS
 		KERNEL_ARGS_SPATIALREUSE
 		) {
@@ -1519,7 +1568,7 @@ __kernel void SpatialReuse_FinishIteration(
 	// Read the path state
 	GPUTask *task = &tasks[gid];
 	GPUTaskState *taskState = &tasksState[gid];
-	if (taskState->doReuse == false) {
+	if (taskState->reservoir.sample.rc.pathDepth == -1) {
 		return;
 	}
 
@@ -1565,11 +1614,11 @@ __kernel void SpatialReuse_FinishIteration(
 }
 
 //------------------------------------------------------------------------------
-// SpatialReuse_FinishReuse Kernel
+// SpatialReuse_MK_FINISH_REUSE Kernel
 //
 // Runs after all iterations are complete.
 //------------------------------------------------------------------------------
-__kernel void SpatialReuse_FinishReuse(
+__kernel void SpatialReuse_MK_FINISH_REUSE(
 		KERNEL_ARGS
 		KERNEL_ARGS_SPATIALREUSE
 		) {
@@ -1579,17 +1628,20 @@ __kernel void SpatialReuse_FinishReuse(
 	Ray *ray = &rays[gid];
 	SampleResult *sampleResult = &sampleResultsBuff[gid];
 
-	// Copy resampled sample from reservoir to sampleResultsBuff[gid] to be splatted like normal
+	// Copy final sample's radiance from reservoir to sampleResultsBuff[gid] to be splatted like normal
+	Radiance_Scale(&taskState->reservoir.sample.integrand,
+			&taskState->reservoir.weight,
+			&taskState->reservoir.sample.integrand)
 	Radiance_Copy(&taskConfig->film,
 		taskState->reservoir.sample.sampleResult.radiancePerPixelNormalized,
 		sampleResult->radiancePerPixelNormalized
 	);
 	
-	if (taskState->doReuse == false) {
+	if (taskState->reservoir.sample.rc.pathDepth == -1) {
 		return;
 	}
 
-	// maintain integrity of pathtraacer by using time from before spatial reuse
+	// maintain integrity of pathtracer by using time from before spatial reuse
 	ray->time = taskState->preSpatialReuseTime;
 
 	// Reinitialize PixelIndexMap state in case the pixel this task is working on changes
@@ -1599,11 +1651,11 @@ __kernel void SpatialReuse_FinishReuse(
 }
 
 //------------------------------------------------------------------------------
-// SpatialReuse_SetSplat Kernel
+// SpatialReuse_MK_SET_SPLAT Kernel
 //
 // Sets path state to splat.
 //------------------------------------------------------------------------------
-__kernel void SpatialReuse_SetSplat(
+__kernel void SpatialReuse_MK_SET_SPLAT(
 		KERNEL_ARGS
 		) {
 	const size_t gid = get_global_id(0);
