@@ -845,7 +845,7 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 			sampleResult->radiancePerPixelNormalized,
 			taskState->reservoir.sample.normPrefixRadiance
 		);
-		// Cache bsdf hit point of the first path vertex (vertex right before reconnection vertex)
+		// Cache bsdf hit point of the first path vertex (vertex right before rc vertex)
 		taskState->reservoir.sample.prefixBsdf = *bsdf;
 
 		// Cache hit time of first path vertex
@@ -853,8 +853,8 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 	}
 
 	if (pathInfo->depth.depth == 1) {
-		// Cache hit point on reconnection vertex (secondary path vertex for reconnection shift)
-		taskState->reservoir.sample.reconnection.bsdf = *bsdf;
+		// Cache hit point on rc vertex (secondary path vertex for rc shift)
+		taskState->reservoir.sample.rc.bsdf = *bsdf;
 		taskState->doReuse = true;
 #endif
 	}
@@ -1215,7 +1215,7 @@ __kernel void SpatialReuse_Init(
 		film,
 		sampleResult->radiancePerPixelNormalized,
 		reservoir->sample.normPrefixRadiance,
-		reservoir->sample.reconnection.normPostfixRadiance
+		reservoir->sample.rc.normPostfixRadiance
 	);
 
 	// PRIME LOOP
@@ -1279,7 +1279,7 @@ __kernel void SpatialReuse_ResampleNeighbor(
 	const SampleResult* restrict sampleResult = &sampleResultsBuff[gid];
 	const Film* restrict film = &taskConfig->film;
 	const Scene* restrict scene = &taskConfig->scene;
-	RespirReservoir* offset = &taskState->reservoir; 
+	RespirReservoir* src = &taskState->reservoir; 
 
 	// Initialize image maps page pointer table
 	INIT_IMAGEMAPS_PAGES
@@ -1294,68 +1294,68 @@ __kernel void SpatialReuse_ResampleNeighbor(
 		taskState, sampleResult, 
 		spatialRadius, pixelIndexMap, filmWidth, filmHeight, &task->seed
 	)) {
-		const RespirReservoir* base = &tasks[taskState->currentNeighborGid].tmpReservoir;
+		const RespirReservoir* dst = &tasks[taskState->currentNeighborGid].tmpReservoir;
 		
 		// CALCULATE RESAMPLING WEIGHT
 		// CALCULATE JACOBIAN DETERMINANT TO FIND UNSHADOWED SHIFTED CONTRIBUTION
-		const float3 reconnectionPoint = VLOAD3F(&base->sample.reconnection.bsdf.hitPoint.p.x);
-		const float3 offsetPoint = VLOAD3F(&offset->sample.prefixBsdf.hitPoint.p.x);
-		const float3 basePoint = VLOAD3F(&base->sample.prefixBsdf.hitPoint.p.x);
+		const float3 rcPoint = VLOAD3F(&dst->sample.rc.bsdf.hitPoint.p.x);
+		const float3 srcPoint = VLOAD3F(&src->sample.prefixBsdf.hitPoint.p.x);
+		const float3 dstPoint = VLOAD3F(&dst->sample.prefixBsdf.hitPoint.p.x);
 
-		float3 offsetToReconnection = reconnectionPoint - offsetPoint;
-		const float offsetDistanceSquared = dot(offsetToReconnection, offsetToReconnection);
-		const float offsetDistance = sqrt(offsetDistanceSquared);
-		offsetToReconnection /= offsetDistance;
+		float3 srcToRc = rcPoint - srcPoint;
+		const float srcDistanceSquared = dot(srcToRc, srcToRc);
+		const float srcDistance = sqrt(srcDistanceSquared);
+		srcToRc /= srcDistance;
 
-		float3 baseToReconnection = reconnectionPoint - basePoint;
-		const float baseDistanceSquared = dot(baseToReconnection, baseToReconnection);
-		const float baseDistance = sqrt(baseDistanceSquared);
-		baseToReconnection /= baseDistance;
+		float3 dstToRc = rcPoint - dstPoint;
+		const float dstDistanceSquared = dot(dstToRc, dstToRc);
+		const float dstDistance = sqrt(dstDistanceSquared);
+		dstToRc /= dstDistance;
 
-		// absolute value of Cos(angle from surface normal of reconnection point to prefix point) 
-		const float3 reconnectionGeometricN = HitPoint_GetGeometryN(&base->sample.reconnection.bsdf.hitPoint);
-		const float offsetCosW = abs(dot(offsetToReconnection, reconnectionGeometricN));
-		const float baseCosW = abs(dot(baseToReconnection, reconnectionGeometricN));
+		// absolute value of Cos(angle from surface normal of rc point to prefix point) 
+		const float3 rcGeometricN = HitPoint_GetGeometryN(&dst->sample.rc.bsdf.hitPoint);
+		const float srcCosW = abs(dot(srcToRc, rcGeometricN));
+		const float dstCosW = abs(dot(dstToRc, rcGeometricN));
 
-		const float jacobianDeterminant = (offsetCosW / baseCosW) * (baseDistanceSquared / offsetDistanceSquared);
+		const float jacobianDeterminant = (srcCosW / dstCosW) * (dstDistanceSquared / srcDistanceSquared);
 
 		if (get_global_id(0) == filmWidth * filmHeight / 2 ) {
-			printf("Offset prefix point: (%f, %f, %f)\n", offsetPoint.x, offsetPoint.y, offsetPoint.z);
-			printf("Base prefix point: (%f, %f, %f)\n", basePoint.x, basePoint.y, basePoint.z);
-			printf("Reconnection vertex point: (%f, %f, %f)\n", reconnectionPoint.x, reconnectionPoint.y, reconnectionPoint.z);
-			printf("Reconnection geometric normal: (%f, %f, %f)\n", reconnectionGeometricN.x, reconnectionGeometricN.y, reconnectionGeometricN.z);
-			printf("offsetDistance (%f), baseDistance(%f)\n", offsetDistance, baseDistance);
-			printf("OffsetCosW (%f), BaseCosW(%f)\n", offsetCosW, baseCosW);
+			printf("Src prefix point: (%f, %f, %f)\n", srcPoint.x, srcPoint.y, srcPoint.z);
+			printf("Dst prefix point: (%f, %f, %f)\n", dstPoint.x, dstPoint.y, dstPoint.z);
+			printf("Rc vertex point: (%f, %f, %f)\n", rcPoint.x, rcPoint.y, rcPoint.z);
+			printf("Rc geometric normal: (%f, %f, %f)\n", rcGeometricN.x, rcGeometricN.y, rcGeometricN.z);
+			printf("srcDistance (%f), dstDistance(%f)\n", srcDistance, dstDistance);
+			printf("SrcCosW (%f), DstCosW(%f)\n", srcCosW, dstCosW);
 			printf("Jacobian determinant: %f\n", jacobianDeterminant);
 		}
 
-		// TODO: move this to the reconnection vertex selection in the future
+		// TODO: move this to the rc vertex selection in the future
 		// distance threshold of 2-5% world size recommended by GRIS paper
-		const float3 offsetToOffsetReconnection = offsetPoint - VLOAD3F(&offset->sample.reconnection.bsdf.hitPoint.p.x);
-		const float offsetToOffsetReconnectionDistance = sqrt(dot(offsetToOffsetReconnection, offsetToOffsetReconnection));
+		const float3 srcToSrcRc = srcPoint - VLOAD3F(&src->sample.rc.bsdf.hitPoint.p.x);
+		const float srcToSrcRcDistance = sqrt(dot(srcToSrcRc, srcToSrcRc));
 		const float distanceThreshold = worldRadius * 2 * 0.025; 
-		if (offsetDistance <= distanceThreshold 
-			|| baseDistance <= distanceThreshold
-			|| offsetToOffsetReconnectionDistance <= distanceThreshold) 
+		if (srcDistance <= distanceThreshold 
+			|| dstDistance <= distanceThreshold
+			|| srcToSrcRcDistance <= distanceThreshold) 
 		{
 			continue;
 		}
 
-		// TODO: move this to the reconnection vertex selection in the future
+		// TODO: move this to the rc vertex selection in the future
 		// assume glossiness range is [0.f,1.f], and 1-glossiness is the roughness
 		// roughness threshold of at least 0.2 is recommended from GRIS paper, so we want glossiness to be <= 0.2
 		const float glossinessThreshold = 0.2;
-		if (BSDF_GetGlossiness(&offset->sample.reconnection.bsdf MATERIALS_PARAM) > glossinessThreshold
-				|| BSDF_GetGlossiness(&base->sample.reconnection.bsdf MATERIALS_PARAM) > glossinessThreshold 
-				|| BSDF_GetGlossiness(&offset->sample.prefixBsdf MATERIALS_PARAM) > glossinessThreshold
-				|| BSDF_GetGlossiness(&base->sample.prefixBsdf MATERIALS_PARAM) > glossinessThreshold) {
+		if (BSDF_GetGlossiness(&src->sample.rc.bsdf MATERIALS_PARAM) > glossinessThreshold
+				|| BSDF_GetGlossiness(&dst->sample.rc.bsdf MATERIALS_PARAM) > glossinessThreshold 
+				|| BSDF_GetGlossiness(&src->sample.prefixBsdf MATERIALS_PARAM) > glossinessThreshold
+				|| BSDF_GetGlossiness(&dst->sample.prefixBsdf MATERIALS_PARAM) > glossinessThreshold) {
 			continue;
 		}
 
 		// RECALCULATE UNSHADOWED SAMPLE THROUGHPUT
 		Radiance_Add(film,
-			offset->sample.normPrefixRadiance, 
-			base->sample.reconnection.normPostfixRadiance, 
+			src->sample.normPrefixRadiance, 
+			dst->sample.rc.normPostfixRadiance, 
 			taskState->resamplingRadiance);
 
 		// Calculate resampling weight
@@ -1363,14 +1363,14 @@ __kernel void SpatialReuse_ResampleNeighbor(
 				SampleResult_GetRadianceY((film, taskState->resamplingRadiance));
 		if (shiftedContribution != 0) {
 			// TODO: change 1/M to correct MIS weight factor
-			offset->weight = (1.0f / numSpatialNeighbors) * shiftedContribution * base->weight * jacobianDeterminant;
+			src->weight = (1.0f / numSpatialNeighbors) * shiftedContribution * dst->weight * jacobianDeterminant;
 		} else {
-			offset->weight = 0;
+			src->weight = 0;
 		}
 
-		// Resample the base reservoir into the offset reservoir
-		offset->sumWeight += base->sumWeight;
-		if (Rnd_FloatValue(&task->seed) >= offset->weight / offset->sumWeight) {
+		// Resample the dst reservoir into the src reservoir
+		src->sumWeight += dst->sumWeight;
+		if (Rnd_FloatValue(&task->seed) >= src->weight / src->sumWeight) {
 			// Failed resampling chance.
 			continue;
 		}
@@ -1381,10 +1381,10 @@ __kernel void SpatialReuse_ResampleNeighbor(
 				printf("Spatial resampling succeeded.\n");
 			}
 	#endif
-		// Using the simplest but biased reconnection shift mapping for now
+		// Using the simplest but biased rc shift mapping for now
 		// TODO: upgrade to hybrid shift mapping
 
-		// Do visibility check from base primary hit vertex to offset secondary hit vertex
+		// Do visibility check from dst primary hit vertex to src secondary hit vertex
 		// Initialize the trough a shadow transparency flag used by Scene_Intersect()
 		tasksDirectLight[gid].throughShadowTransparency = false;
 
@@ -1392,19 +1392,19 @@ __kernel void SpatialReuse_ResampleNeighbor(
 		// shadow ray
 		directLightVolInfos[gid] = eyePathInfos[gid].volume;
 
-		float3 toReconnectionPoint = reconnectionPoint - offsetPoint;
-		const float toReconnectionPointDistanceSquared = dot(toReconnectionPoint, toReconnectionPoint);
-		const float toReconnectionPointDistance = sqrt(toReconnectionPointDistanceSquared);
-		toReconnectionPoint /= toReconnectionPointDistance;
+		float3 toRcPoint = rcPoint - srcPoint;
+		const float toRcPointDistanceSquared = dot(toRcPoint, toRcPoint);
+		const float toRcPointDistance = sqrt(toRcPointDistanceSquared);
+		toRcPoint /= toRcPointDistance;
 
-		const float3 shadowRayOrigin = BSDF_GetRayOrigin(&offset->sample.prefixBsdf, toReconnectionPoint);
-		float3 shadowRayDir = reconnectionPoint + (BSDF_GetLandingGeometryN(&offset->sample.prefixBsdf) 
-				* MachineEpsilon_E_Float3(reconnectionPoint) * (base->sample.reconnection.bsdf.hitPoint.intoObject ? 1.f : -1.f) ) - 
+		const float3 shadowRayOrigin = BSDF_GetRayOrigin(&src->sample.prefixBsdf, toRcPoint);
+		float3 shadowRayDir = rcPoint + (BSDF_GetLandingGeometryN(&src->sample.prefixBsdf) 
+				* MachineEpsilon_E_Float3(rcPoint) * (dst->sample.rc.bsdf.hitPoint.intoObject ? 1.f : -1.f) ) - 
 				shadowRayOrigin;
 		const float shadowRayDirDistanceSquared = dot(shadowRayDir, shadowRayDir);
 		const float shadowRayDirDistance = sqrt(shadowRayDirDistanceSquared);
 		shadowRayDir /= shadowRayDirDistance;
-		Ray_Init4(&rays[gid], shadowRayOrigin, shadowRayDir, 0.f, shadowRayDirDistance, offset->sample.hitTime);
+		Ray_Init4(&rays[gid], shadowRayOrigin, shadowRayDir, 0.f, shadowRayDirDistance, src->sample.hitTime);
 		
 		taskState->state = SR_CHECK_VISIBILITY;
 		return;
@@ -1416,7 +1416,7 @@ __kernel void SpatialReuse_ResampleNeighbor(
 //------------------------------------------------------------------------------
 // SpatialReuse_CheckVisibility Kernel
 //
-// Checks if the shadow ray shot for reconnection is blocked or not.
+// Checks if the shadow ray shot for rc is blocked or not.
 // If visible, then update reservoir appropriately.
 //
 // TO: SpatialReuse_CheckVisibility (if ray is not finished tracing)
@@ -1489,15 +1489,15 @@ __kernel void SpatialReuse_CheckVisibility(
 			// Nothing was hit, the light source is visible
 
 			// VISIBLE: FINISH SUCCESSFUL RESAMPLING PROCESS
-			RespirReservoir* offset = &taskState->reservoir;
-			const RespirReservoir* base = &tasks[taskState->currentNeighborGid].tmpReservoir;
+			RespirReservoir* src = &taskState->reservoir;
+			const RespirReservoir* dst = &tasks[taskState->currentNeighborGid].tmpReservoir;
 			
 			Radiance_Copy(film, 
 				taskState->resamplingRadiance,
-				offset->sample.sampleResult.radiancePerPixelNormalized);
+				src->sample.sampleResult.radiancePerPixelNormalized);
 
-			// set offset reconnection vertex to base reconnection vertex
-			offset->sample.reconnection = base->sample.reconnection;
+			// set src rc vertex to dst rc vertex
+			src->sample.rc = dst->sample.rc;
 
 			taskDirectLight->directLightResult = ILLUMINATED;
 		} else {

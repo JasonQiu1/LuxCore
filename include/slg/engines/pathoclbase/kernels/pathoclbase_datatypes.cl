@@ -90,17 +90,17 @@ typedef struct {
 
 // Stores information about the reconnection vertex for a particular path in the ReSTIR algorithm.
 typedef struct {
-	Spectrum normPostfixRadiance[FILM_MAX_RADIANCE_GROUP_COUNT]; // the radiance of the path of the path at the reconnection vertex and after
-	BSDF bsdf; // contains info on the exact hit point on the reconnection vertex
-} ReconnectionVertex;
+	Spectrum normPostfixRadiance[FILM_MAX_RADIANCE_GROUP_COUNT]; // the radiance of the path of the path at the rc vertex and after
+	BSDF bsdf; // contains info on the exact hit point on the rc vertex
+} RcVertex;
 
 // Stores reuse information about a selected ReSPIR sample. (spatial reuse only)
 typedef struct {
-	ReconnectionVertex reconnection; // the chosen reconnection vertex for this path
-	Spectrum normPrefixRadiance[FILM_MAX_RADIANCE_GROUP_COUNT]; // the radiance of the path at the vertices before the reconnection vertex
+	RcVertex rc; // the chosen rc vertex for this path
+	Spectrum normPrefixRadiance[FILM_MAX_RADIANCE_GROUP_COUNT]; // the radiance of the path at the vertices before the rc vertex
 	SampleResult sampleResult; // the cached sampleresult data of the entire path
-	BSDF prefixBsdf; // the BSDF point where the vertex before the reconnection vertex was hit
-	float hitTime; // time the reconnection vertex was hit. we use this to shoot a visibility ray backwards to the connecting offset path vertex
+	BSDF prefixBsdf; // the BSDF point where the vertex before the rc vertex was hit
+	float hitTime; // time the rc vertex was hit. we use this to shoot a visibility ray backwards to the connecting offset path vertex
 } RespirSample;
 
 // A streaming random-sampling reservoir for spatial reuse.
@@ -128,7 +128,7 @@ typedef struct {
 	uint preSpatialReuseTime; // save time before spatial reuse to make sure rays after spatial reuse are using the correct time
 	// Reservoir data structure for initial path resampling using RIS
 	RespirReservoir reservoir;
-	int doReuse; // true if a reconnection vertex was found, false otherwise
+	int doReuse; // true if a rc vertex was found, false otherwise
 	
 	// Neighbor search info
 	int currentNeighborGid;
