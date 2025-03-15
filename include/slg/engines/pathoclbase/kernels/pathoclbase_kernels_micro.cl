@@ -1359,7 +1359,7 @@ __kernel void SpatialReuse_ResampleNeighbor(
 			taskState->resamplingRadiance);
 
 		// Calculate resampling weight
-		const float shiftedContribution = SampleResult_GetRadianceY(film, taskState->resamplingRadiance);
+		const float shiftedContribution = Radiance_Y(film, taskState->resamplingRadiance);
 		if (shiftedContribution != 0) {
 			// TODO: change 1/M to correct MIS weight factor
 			src->weight = (1.0f / numSpatialNeighbors) * shiftedContribution * dst->weight * jacobianDeterminant;
