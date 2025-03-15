@@ -1220,9 +1220,9 @@ __kernel void SpatialReuse_Init(
 
 	// PRIME LOOP
 	// Recalculate unbiased contribution weight
-	const float grayscaleContribution = Spectrum_Filter(SampleResult_GetUnscaledSpectrum(film, &reservoir->sample.sampleResult));
+	const float luminance = SampleResult_GetRadianceY(film, &reservoir->sample.sampleResult);
 	if (reservoir->weight != 0) {
-		reservoir->weight = reservoir->sumWeight / grayscaleContribution;
+		reservoir->weight = reservoir->sumWeight / luminance;
 	}
 	reservoir->sumWeight = reservoir->weight;
 
@@ -1241,7 +1241,7 @@ __kernel void SpatialReuse_Init(
 	// Resample current pixel
 	// TODO: replace with correct MIS weight
 	// identity shift, so jacobian identity is 1
-	reservoir->weight = (1.0f / numSpatialNeighbors) * grayscaleContribution * reservoir->weight;
+	reservoir->weight = (1.0f / numSpatialNeighbors) * luminance * reservoir->weight;
 	reservoir->sumWeight = reservoir->weight;
 	// Prime pathstate
 	taskState->state = SR_RESAMPLE_NEIGHBOR;
@@ -1360,7 +1360,7 @@ __kernel void SpatialReuse_ResampleNeighbor(
 
 		// Calculate resampling weight
 		const float shiftedContribution = 
-				Spectrum_Filter(Radiance_GetUnscaledSpectrum(film, taskState->resamplingRadiance));
+				SampleResult_GetRadianceY((film, taskState->resamplingRadiance));
 		if (shiftedContribution != 0) {
 			// TODO: change 1/M to correct MIS weight factor
 			offset->weight = (1.0f / numSpatialNeighbors) * shiftedContribution * base->weight * jacobianDeterminant;
@@ -1538,9 +1538,9 @@ __kernel void SpatialReuse_FinishIteration(
 
 	// PRIME LOOP
 	// Recalculate unbiased contribution weight
-	const float grayscaleContribution = Spectrum_Filter(SampleResult_GetUnscaledSpectrum(film, &reservoir->sample.sampleResult));
+	const float luminance = SampleResult_GetRadianceY(film, &reservoir->sample.sampleResult);
 	if (reservoir->weight != 0) {
-		reservoir->weight = reservoir->sumWeight / grayscaleContribution;
+		reservoir->weight = reservoir->sumWeight / luminance;
 	}
 	reservoir->sumWeight = reservoir->weight;
 
@@ -1559,7 +1559,7 @@ __kernel void SpatialReuse_FinishIteration(
 	// Resample current pixel
 	// TODO: replace with correct MIS weight
 	// identity shift, so jacobian identity is 1
-	reservoir->weight = (1.0f / numSpatialNeighbors) * grayscaleContribution * reservoir->weight;
+	reservoir->weight = (1.0f / numSpatialNeighbors) * luminance * reservoir->weight;
 	reservoir->sumWeight = reservoir->weight;
 	// Prime pathstate
 	taskState->state = SR_RESAMPLE_NEIGHBOR;

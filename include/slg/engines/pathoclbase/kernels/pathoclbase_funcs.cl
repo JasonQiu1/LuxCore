@@ -209,7 +209,7 @@ OPENCL_FORCE_INLINE void RespirReservoir_Update(RespirReservoir* restrict reserv
 			totalPathPdf.z = 1;
 		}
 
-		reservoir->weight = Spectrum_Filter(pathContribution / totalPathPdf);
+		reservoir->weight = Spectrum_Y(pathContribution / totalPathPdf);
 	}
 
 	reservoir->sumWeight += reservoir->weight;
