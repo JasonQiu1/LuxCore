@@ -168,14 +168,14 @@ OPENCL_FORCE_INLINE float3 SampleResult_GetUnscaledSpectrum(__constant const Fil
 	return c;
 }
 
-OPENCL_FORCE_INLINE float3 Radiance_Y(__constant const Film* restrict film,
+OPENCL_FORCE_INLINE float Radiance_Y(__constant const Film* restrict film,
 	const Spectrum *radianceGroups) {
-	float3 c = BLACK;
+	float y = 0.f;
 
 	for (uint i = 0; i < film->radianceGroupCount; ++i)
-		c += Spectrum_Y(VLOAD3F(radianceGroups[i].c));
+		y += Spectrum_Y(VLOAD3F(radianceGroups[i].c));
 
-	return c;
+	return y;
 }
 
 OPENCL_FORCE_INLINE float3 Radiance_GetUnscaledSpectrum(__constant const Film* restrict film,
