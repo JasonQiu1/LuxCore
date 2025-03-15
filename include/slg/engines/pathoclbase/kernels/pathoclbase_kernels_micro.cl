@@ -1580,7 +1580,7 @@ __kernel void SpatialReuse_FinishReuse(
 	SampleResult *sampleResult = &sampleResultsBuff[gid];
 
 	// Copy resampled sample from reservoir to sampleResultsBuff[gid] to be splatted like normal
-	Radiance_Copy(film,
+	Radiance_Copy(&taskConfig->film,
 		taskState->reservoir.sample.sampleResult.radiancePerPixelNormalized,
 		sampleResult->radiancePerPixelNormalized
 	);
