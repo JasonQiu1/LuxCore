@@ -23,6 +23,9 @@
 //  PARAM_RAY_EPSILON_MAX
 
 // #define DEBUG
+#ifndef DEBUG_GID
+#define DEBUG_GID 37107
+#endif
 
 /*void MangleMemory(__global unsigned char *ptr, const size_t size) {
 	Seed seed;
