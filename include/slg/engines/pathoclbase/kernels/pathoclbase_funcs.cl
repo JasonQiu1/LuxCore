@@ -281,6 +281,9 @@ OPENCL_FORCE_INLINE bool RespirReservoir_AddNEEVertex(
 		const int pathDepth, Seed* restrict seed, __constant const Film* restrict film,
 		const float worldRadius MATERIALS_PARAM_DECL)
 {
+	if (get_global_id(0) == 2500) {
+		printf("Initial path resampling: Resampling with rr pdf of: %f\n", rrProbProd);
+	}
 	bool wasSelected = RespirReservoir_Add(reservoir, integrand, rrProbProd, seed, film);
 	if (wasSelected) {
 		if (get_global_id(0) == 2500) {
