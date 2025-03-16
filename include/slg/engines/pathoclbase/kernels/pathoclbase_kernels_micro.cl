@@ -24,7 +24,7 @@
 
 // #define DEBUG_PRINTF_KERNEL_NAME 1
 #define DEBUG_PRINTF_SR_KERNEL_NAME 1
-#define DEBUG_GID 2500
+#define DEBUG_GID 37107
 
 //------------------------------------------------------------------------------
 // Evaluation of the Path finite state machine.
