@@ -237,6 +237,8 @@ OPENCL_FORCE_INLINE bool RespirReservoir_Add(RespirReservoir* restrict reservoir
 	}
 
 	reservoir->weight += weight;
+	printf("Initial path resampling: Resampling with weight %f against sum weight %f\n", weight, reservoir->weight);
+
 	if (Rnd_FloatValue(seed) * reservoir->weight <= weight) {
 		Radiance_Copy(film, pathRadiance, reservoir->sample.integrand);
 		return true;
@@ -282,7 +284,6 @@ OPENCL_FORCE_INLINE bool RespirReservoir_AddNEEVertex(
 		const int pathDepth, Seed* restrict seed, __constant const Film* restrict film,
 		const float worldRadius MATERIALS_PARAM_DECL)
 {
-	printf("Initial path resampling: Resampling with rr pdf of: %f\n", rrProbProd);
 	bool wasSelected = RespirReservoir_Add(reservoir, integrand, rrProbProd, seed, film);
 	if (wasSelected) {
 		if (get_global_id(0) == DEBUG_GID) {
