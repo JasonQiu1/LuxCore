@@ -23,7 +23,8 @@
 //------------------------------------------------------------------------------
 
 // #define DEBUG_PRINTF_KERNEL_NAME 1
-// #define DEBUG_GID 1
+#define DEBUG_PRINTF_SR_KERNEL_NAME 1
+#define DEBUG_GID 2500
 
 //------------------------------------------------------------------------------
 // Evaluation of the Path finite state machine.
@@ -1180,7 +1181,7 @@ __kernel void SpatialReuse_MK_INIT(
 	// Read the path state
 	__global GPUTask *task = &tasks[gid];
 	__global GPUTaskState *taskState = &tasksState[gid];
-#if defined(DEBUG_PRINTF_KERNEL_NAME)
+#if defined(DEBUG_PRINTF_SR_KERNEL_NAME)
 	if (gid == DEBUG_GID)
 		printf("Kernel: SpatialReuse_MK_INIT(state = %d)\n", taskState->state);
 #endif
@@ -1259,6 +1260,11 @@ __kernel void SpatialReuse_MK_NEXT_NEIGHBOR(
 	if (taskState->state != SR_MK_NEXT_NEIGHBOR)
 		return;
 
+#if defined(DEBUG_PRINTF_SR_KERNEL_NAME)
+	if (gid == DEBUG_GID)
+		printf("Kernel: SpatialReuse_MK_NEXT_NEIGHBOR(state = %d)\n", taskState->state);
+#endif
+
 	//--------------------------------------------------------------------------
 	// Start of variables setup
 	//--------------------------------------------------------------------------
@@ -1266,7 +1272,6 @@ __kernel void SpatialReuse_MK_NEXT_NEIGHBOR(
 	const SampleResult* restrict sampleResult = &sampleResultsBuff[gid];
 	const Film* restrict film = &taskConfig->film;
 	const Scene* restrict scene = &taskConfig->scene;
-	RespirReservoir* src = &taskState->reservoir; 
 
 	//--------------------------------------------------------------------------
 	// End of variables setup
@@ -1327,6 +1332,11 @@ __kernel void SpatialReuse_MK_SHIFT(
 	GPUTaskState *taskState = &tasksState[gid];
 	if (taskState->state != SR_MK_SHIFT)
 		return;
+
+#if defined(DEBUG_PRINTF_SR_KERNEL_NAME)
+	if (gid == DEBUG_GID)
+		printf("Kernel: SpatialReuse_MK_SHIFT(state = %d)\n", taskState->state);
+#endif
 
 	//--------------------------------------------------------------------------
 	// Start of variables setup
@@ -1501,6 +1511,11 @@ __kernel void SpatialReuse_MK_CHECK_VISIBILITY(
 	if (taskState->state != SR_MK_CHECK_VISIBILITY)
 		return;
 
+#if defined(DEBUG_PRINTF_SR_KERNEL_NAME)
+	if (gid == DEBUG_GID)
+		printf("Kernel: SpatialReuse_MK_CHECK_VISIBILITY(state = %d)\n", taskState->state);
+#endif
+
 	//--------------------------------------------------------------------------
 	// Start of variables setup
 	//--------------------------------------------------------------------------
@@ -1579,6 +1594,11 @@ __kernel void SpatialReuse_MK_RESAMPLE(
 	GPUTaskState *taskState = &tasksState[gid];
 	if (taskState->state != SR_MK_RESAMPLE)
 		return;
+
+#if defined(DEBUG_PRINTF_SR_KERNEL_NAME)
+	if (gid == DEBUG_GID)
+		printf("Kernel: SpatialReuse_MK_RESAMPLE(state = %d)\n", taskState->state);
+#endif
 		
 	//--------------------------------------------------------------------------
 	// Start of variables setup
@@ -1637,6 +1657,11 @@ __kernel void SpatialReuse_MK_FINISH_RESAMPLE(
 	GPUTaskState *taskState = &tasksState[gid];
 	if (taskState->state != SR_MK_FINISH_RESAMPLE)
 		return;
+
+#if defined(DEBUG_PRINTF_SR_KERNEL_NAME)
+	if (gid == DEBUG_GID)
+		printf("Kernel: SpatialReuse_MK_FINISH_RESAMPLE(state = %d)\n", taskState->state);
+#endif
 
 	//--------------------------------------------------------------------------
 	// Start of variables setup
@@ -1697,6 +1722,11 @@ __kernel void SpatialReuse_MK_FINISH_ITERATION(
 	if (taskState->reservoir.sample.rc.pathDepth == -1) {
 		return;
 	}
+
+#if defined(DEBUG_PRINTF_SR_KERNEL_NAME)
+	if (gid == DEBUG_GID)
+		printf("Kernel: SpatialReuse_MK_FINISH_ITERATION(state = %d)\n", taskState->state);
+#endif
 
 	//--------------------------------------------------------------------------
 	// Start of variables setup
