@@ -120,6 +120,7 @@ typedef struct {
 
 // The state used to keep track of the rendered path
 typedef struct {
+	// TODO: MOVE PATHSTATE INTO SEPARATE STRUCTURE IN THE FUTURE
 	PathState state;
 
 	Spectrum throughput;
@@ -139,12 +140,21 @@ typedef struct {
 	RespirReservoir reservoir;
 	
 	// Neighbor search info
-	int currentNeighborGid;
+	int neighborGid;
 	uint numNeighborsLeft;
-	// Resampling
-	Spectrum resamplingRadiance[FILM_MAX_RADIANCE_GROUP_COUNT];
+	uint numValidNeighbors;
+
+	// For each reuse
 	float canonicalMisWeight;
 	RespirReservoir spatialReuseReservoir;
+
+	// MK_SHIFT kernel inputs and outputs
+	// Shift from src reservoir to dst reservoir and store results in shiftReservoir
+	// Executes the kernel stored in afterShiftState afterwards.
+	// TODO: only need this for the ASYNC kernels, move out of TaskState
+	uint shiftSrcGid, shiftDstGid;
+	RespirReservoir shiftReservoir;
+	PathState afterShiftState;
 	
 	int albedoToDo, photonGICacheEnabledOnLastHit,
 			photonGICausticCacheUsed, photonGIShowIndirectPathMixUsed,

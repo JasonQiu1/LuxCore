@@ -1210,7 +1210,7 @@ __kernel void SpatialReuse_MK_INIT(
 
 	// Prime neighbor search
 	taskState->numNeighborsLeft = numSpatialNeighbors;
-	taskState->currentNeighborGid = -1;
+	taskState->neighborGid = -1;
 	PixelIndexMap_Set(pixelIndexMap, filmWidth, 
 			sampleResult->pixelX, sampleResult->pixelY, 
 			gid);
@@ -1231,11 +1231,12 @@ __kernel void SpatialReuse_MK_INIT(
 //------------------------------------------------------------------------------
 // SpatialReuse_MK_NEXT_NEIGHBOR Kernel
 //
-// Finds the next neighbor and stores it in TaskState.
+// Generates a candidate neighbor and if valid stores it in TaskState.
 // Shift from current domain to neighbor domain for canonical pairwise MIS calculation.
 //
 // FROM: SpatialReuse_MK_INIT (begin the pass)
 // FROM: SpatialReuse_MK_FINISH_RESAMPLE (loop through all neighbors)
+// TO: SpatialReuse_MK_NEXT_NEIGHBOR (invalid neighbor generated)
 // TO: SpatialReuse_MK_SHIFT (-> SpatialReuse_MK_FINISH_RESAMPLE)
 // TO: SYNC (no more neighbors)
 //------------------------------------------------------------------------------
@@ -1263,17 +1264,32 @@ __kernel void SpatialReuse_MK_NEXT_NEIGHBOR(
 	// End of variables setup
 	//--------------------------------------------------------------------------
 
-	// Get pixels around this point
-	if (!Respir_UpdateNextNeighborGid(
-		taskState, sampleResult, 
-		spatialRadius, pixelIndexMap, filmWidth, filmHeight, &task->seed
-	)) {
-		// No more neighbors, this iteration is finished
-		taskState->state = SYNC;
+	// Generate a valid neighbor
+	while (true) {
+		if (taskState->numNeighborsLeft == 0) {
+			// No more neighbors, this iteration is finished
+			taskState->state = SYNC;
+			return;
+		}
+
+		// Generate a candidate neighbor gid
+		if (Respir_UpdateNextNeighborGid(
+			taskState, sampleResult, 
+			spatialRadius, pixelIndexMap, filmWidth, filmHeight, &task->seed))
+		{
+			// Found valid neighbor
+			break;
+		}
 	}
 
-	// Set up CENTRAL (current pixel) -> NEIGHBOR shift for canonical pairwise MIS accumulation
-	// TODO
+	/*
+	/	Set up CENTRAL (current/canonical pixel) -> NEIGHBOR shift 
+	/ 	for canonical pairwise MIS accumulation
+	*/
+	// Set up inputs to MK_SHIFT
+	taskState->shiftSrcId = gid;
+	taskState->shiftDstId = taskState->neighborGid;
+	taskState->afterShiftState = SR_MK_RESAMPLE;
 
 	taskState->state = SR_MK_SHIFT;
 }
@@ -1306,7 +1322,7 @@ __kernel void SpatialReuse_MK_SHIFT(
 	//--------------------------------------------------------------------------
 	// Start of variables setup
 	//--------------------------------------------------------------------------
-	const RespirReservoir* dst = &tasks[taskState->currentNeighborGid].tmpReservoir;
+	const RespirReservoir* dst = &tasks[taskState->neighborGid].tmpReservoir;
 	
 	const float3 rcPoint = VLOAD3F(&dst->sample.rc.bsdf.hitPoint.p.x);
 	const float3 srcPoint = VLOAD3F(&src->sample.prefixBsdf.hitPoint.p.x);
@@ -1478,11 +1494,9 @@ __kernel void SpatialReuse_MK_CHECK_VISIBILITY(
 
 		// VISIBLE: FINISH SUCCESSFUL RESAMPLING PROCESS
 		RespirReservoir* src = &taskState->reservoir;
-		const RespirReservoir* dst = &tasks[taskState->currentNeighborGid].tmpReservoir;
+		const RespirReservoir* dst = &tasks[taskState->neighborGid].tmpReservoir;
 		
-		Radiance_Copy(film, 
-			taskState->resamplingRadiance,
-			src->sample.sampleResult.radiancePerPixelNormalized);
+		// TODO: Recalculate radiance of the sample
 
 		// set src rc vertex to dst rc vertex
 		src->sample.rc = dst->sample.rc;
@@ -1538,8 +1552,8 @@ __kernel void SpatialReuse_MK_FINISH_RESAMPLE(
 		return;
 
 	// TODO
-	// Calculate resampling weight
-	const float shiftedContribution = Radiance_Y(film, taskState->resamplingRadiance);
+	// TODO: Properly calculate resampling weight
+	const float shiftedContribution = -1.f;
 	if (shiftedContribution != 0) {
 		// TODO: change 1/M to correct MIS weight factor
 		src->weight = (1.0f / numSpatialNeighbors) * shiftedContribution * dst->weight * jacobianDeterminant;
@@ -1597,7 +1611,7 @@ __kernel void SpatialReuse_MK_FINISH_ITERATION(
 
 	// Prime neighbor search
 	taskState->numNeighborsLeft = numSpatialNeighbors;
-	taskState->currentNeighborGid = -1;
+	taskState->neighborGid = -1;
 	PixelIndexMap_Set(pixelIndexMap, filmWidth, 
 			sampleResult->pixelX, sampleResult->pixelY, 
 			gid);

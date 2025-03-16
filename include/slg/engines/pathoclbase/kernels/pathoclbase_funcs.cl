@@ -278,16 +278,14 @@ OPENCL_FORCE_INLINE bool RespirReservoir_AddNEEVertex(
 
 // Find the spatial neighbors around the pixel this work-item is handling for now
 // Spatial radius is the square grid distance, not circle distance
-// Advances taskState->currentNeighborGid to the next neighbor.
+// Advances taskState->neighborGid to the next neighbor.
 // Return true if a neighbor was found, otherwise false.
+// PRECONDITION: numNeighborsLeft > 0
 // TODO: upgrade to n-rooks sampling around pixel and customizable spatial radius and number of spatial neighbors
 OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(GPUTaskState* restrict taskState, 
 		const SampleResult* restrict sampleResult, const int spatialRadius,
 		const int* restrict pixelIndexMap, const uint filmWidth, const uint filmHeight, Seed* restrict seed) {
-	taskState->currentNeighborGid = -1;
-	if (taskState->numNeighborsLeft == 0) {
-		return false;
-	}
+	taskState->neighborGid = -1;
 
 	// randomly choose a pixel in the radius (inclusive) not including self
 	int searchX = sampleResult->pixelX + (int) copysign(floor(Rnd_FloatValue(seed) * spatialRadius) + 1.0f, Rnd_FloatValue(seed) - 0.5f);
@@ -297,9 +295,9 @@ OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(GPUTaskState* restrict tas
 	if (searchX >= 0 && searchX < filmWidth && searchY >= 0 && searchY < filmHeight // check in bounds
 		&& (searchX != sampleResult->pixelX || searchY != sampleResult->pixelY)) // check not the pixel itself
 	{ 
-		taskState->currentNeighborGid = PixelIndexMap_Get(pixelIndexMap, filmWidth, searchX, searchY);
+		taskState->neighborGid = PixelIndexMap_Get(pixelIndexMap, filmWidth, searchX, searchY);
 		// check that the neighbor is actually being worked on by a gputask
-		if (taskState->currentNeighborGid != -1) {
+		if (taskState->neighborGid != -1) {
 			// Successfully found valid neighbor
 			return true;
 		}
