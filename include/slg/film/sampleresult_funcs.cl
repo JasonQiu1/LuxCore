@@ -178,10 +178,10 @@ OPENCL_FORCE_INLINE float Radiance_Y(__constant const Film* restrict film,
 	return y;
 }
 
-OPENCL_FORCE_INLINE float3 Radiance_IsBlack(__constant const Film* restrict film,
+OPENCL_FORCE_INLINE bool Radiance_IsBlack(__constant const Film* restrict film,
 	const Spectrum *radianceGroups) {
 	for (uint i = 0; i < film->radianceGroupCount; ++i) {
-		if (!Spectrum_IsBlack(radianceGroups[i])) {
+		if (!Spectrum_IsBlack(VLOAD3F(radianceGroups[i].c))) {
 			return false;
 		}
 	}

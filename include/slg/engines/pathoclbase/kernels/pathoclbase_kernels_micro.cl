@@ -547,6 +547,7 @@ __kernel void AdvancePaths_MK_RT_DL(
 				}
 
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
+				const EyePathInfo* pathInfo = &eyePathInfos[gid];
 				// Add NEE-illuminated (with cheater BSDF) sample into the reservoir.
 				SampleResult postfix;
 				SampleResult_Init(&postfix);
@@ -557,12 +558,12 @@ __kernel void AdvancePaths_MK_RT_DL(
 					VLOAD3F(taskState->throughput.c), lightRadiance,
 					1.f);
 				RespirReservoir_AddNEEVertex(&taskState->reservoir, 
-						sampleResult->radiancePerPixelNormalized, &postfix,
-						taskState->lastDirectLightPdf, VLOAD3F(taskState->pathPdf.c), taskState->rrProdProd, 
+						sampleResult->radiancePerPixelNormalized, postfix->radiancePerPixelNormalized,
+						taskState->lastDirectLightPdf, VLOAD3F(taskState->pathPdf.c), taskState->rrProbProd, 
 						taskDirectLight->illumInfo.pickPdf,
-						bsdf, ray->time, pathInfo->depth.depth, 
-						&taskState->seedReservoirSampling, &taskConfig->film,
-						worldRadius, MATERIALS_PARAM);
+						pathInfo->lastBSDFPdfW, bsdf, rays[gid].time, pathInfo->depth.depth, 
+						&taskState->seedReservoirSampling, &taskConfig->film, worldRadius
+						MATERIALS_PARAM);
 #endif
 			}
 
@@ -853,9 +854,9 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 	// Store incident direction, pdf, and bsdf value
 	RcVertex* rc = &taskState->reservoir.sample.rc;
 	if (pathInfo->depth.depth == 1) {
-		VSTORE3F(sampleDir, &rc->incidentDir.x);
+		VSTORE3F(sampledDir, &rc->incidentDir.x);
 		rc->incidentPdf = bsdfPdfW;
-		VSTORE3F(bsdfSample, &rc->incidentBsdfValue.x);
+		VSTORE3F(bsdfSample, rc->incidentBsdfValue.c);
 	}
 #endif
 
@@ -1216,7 +1217,7 @@ __kernel void SpatialReuse_MK_INIT(
 
 	// PRIME LOOP
 	// Finalize initial path resampling RIS: calculate unbiased contribution weight of final sample
-	const float luminance = Radiance_Y(film, &reservoir->sample.integrand);
+	const float luminance = Radiance_Y(film, reservoir->sample.integrand);
 	if (reservoir->weight != 0) {
 		reservoir->weight = reservoir->weight / luminance;
 	}
@@ -1300,8 +1301,8 @@ __kernel void SpatialReuse_MK_NEXT_NEIGHBOR(
 	/ 	for canonical pairwise MIS accumulation
 	*/
 	// Set up inputs to MK_SHIFT
-	taskState->shiftSrcId = gid;
-	taskState->shiftDstId = taskState->neighborGid;
+	taskState->shiftSrcGid = gid;
+	taskState->shiftDstGid = taskState->neighborGid;
 	taskState->afterShiftState = SR_MK_RESAMPLE;
 
 	taskState->state = SR_MK_SHIFT;
@@ -1337,11 +1338,14 @@ __kernel void SpatialReuse_MK_SHIFT(
 	// Start of variables setup
 	//--------------------------------------------------------------------------
 
+	const Film* restrict film = &taskConfig->film;
+	const Scene* restrict scene = &taskConfig->scene;
+
 	// Initialize shift reservoir to use as output for shifted integrand and jacobian
-	RespirReservoir_Init(&taskState->shiftReservoir);
-	const RespirReservoir* out = &taskState->shiftReservoir;
-	const RespirReservoir* src = &tasksState[taskState->shiftSrcGid]->reservoir;
-	const RespirReservoir* dst = &tasksState[taskState->shiftDstGid]->reservoir;
+	RespirReservoir* out = &taskState->shiftReservoir;
+	RespirReservoir_Init(out);
+	const RespirReservoir* src = &tasksState[taskState->shiftSrcGid].reservoir;
+	const RespirReservoir* dst = &tasksState[taskState->shiftDstGid].reservoir;
 	const RcVertex* rc = &src->sample.rc;
 	
 	if (rc->pathDepth == -1) {
@@ -1377,11 +1381,10 @@ __kernel void SpatialReuse_MK_SHIFT(
 	out->sample.rc.jacobian = rc->jacobian * (dstCosW / dstDistanceSquared);
 
 	if (get_global_id(0) == filmWidth * filmHeight / 2 ) {
-		printf("Src prefix point: (%f, %f, %f)\n", srcPoint.x, srcPoint.y, srcPoint.z);
 		printf("Dst prefix point: (%f, %f, %f)\n", dstPoint.x, dstPoint.y, dstPoint.z);
-		printf("Rc vertex point: (%f, %f, %f)\n", rcPoint.x, rcPoint.y, rcPoint.z);
-		printf("Rc geometric normal: (%f, %f, %f)\n", rcGeometricN.x, rcGeometricN.y, rcGeometricN.z);
-		printf("Jacobian determinant: %f\n", out->sample.rc.jacobian);
+		printf("Src rc vertex point: (%f, %f, %f)\n", rcPoint.x, rcPoint.y, rcPoint.z);
+		printf("Src rc geometric normal: (%f, %f, %f)\n", rcGeometricN.x, rcGeometricN.y, rcGeometricN.z);
+		printf("Initial jacobian determinant: %f\n", out->sample.rc.jacobian);
 	}
 
 	// Check if shifted jacobian is valid
@@ -1415,7 +1418,7 @@ __kernel void SpatialReuse_MK_SHIFT(
 	// Correct jacobian for scattering pdf from prefix vertex towards reconnection
 	// Use cached BSDF info from src/base path
 	const float srcPdf = rc->prefixToRcPdf;
-	BSDF* dstBsdf = dst->sample.prefixBsdf;
+	BSDF* dstBsdf = &dst->sample.prefixBsdf;
 	float dstPdf = 1.0f;
 	BSDFEvent event;
 	const float3 dstBsdfValue = BSDF_Evaluate(dstBsdf,
@@ -1430,7 +1433,7 @@ __kernel void SpatialReuse_MK_SHIFT(
 	// Correct jacobian for bsdf scattering value from prefix vertex to reconnection to incident dir
 	// Use cached BSDF info from src/base path
 	const float srcRcIncidentPdf = rc->incidentPdf;
-	BSDF* rcBsdf = rc->bsdf;
+	BSDF* rcBsdf = &rc->bsdf;
 	float dstRcIncidentPdf = 1.0f;
 	const float3 dstRcIncidentBsdfValue = BSDF_EvaluateWithEyeDir(rcBsdf,
 		-dstToRc, VLOAD3F(&rc->incidentDir.x), 
@@ -1446,12 +1449,12 @@ __kernel void SpatialReuse_MK_SHIFT(
 	// TODO: if rcVertex is the last vertex and was sampled via NEE, then dstPdf2 = src->sample.lightPdf
 
 	// Store shifted integrand
-	Radiance_ScaleGroup(rc->irradiance,
+	Radiance_ScaleGroup(film, rc->irradiance,
 		(dstBsdfValue / dstPdf) * (dstRcIncidentBsdfValue / dstPdf2),
 		out->sample.integrand
 	);
 
-	if (Radiance_IsBlack(out->sample.integrand)) {
+	if (Radiance_IsBlack(film, out->sample.integrand)) {
 		Respir_HandleInvalidShift(taskState, out);
 		return;
 	}
@@ -1477,7 +1480,7 @@ __kernel void SpatialReuse_MK_SHIFT(
 	shadowRayDir /= shadowRayDirDistance;
 	Ray_Init4(&rays[gid], shadowRayOrigin, shadowRayDir, 0.f, shadowRayDirDistance, dst->sample.hitTime);
 	
-	taskState->state = SR_CHECK_VISIBILITY;
+	taskState->state = SR_MK_CHECK_VISIBILITY;
 	return;
 }
 
@@ -1611,20 +1614,9 @@ __kernel void SpatialReuse_MK_FINISH_RESAMPLE(
 
 	// TODO
 	// TODO: Properly calculate resampling weight
-	const float shiftedContribution = -1.f;
-	if (shiftedContribution != 0) {
-		// TODO: change 1/M to correct MIS weight factor
-		src->weight = (1.0f / numSpatialNeighbors) * shiftedContribution * dst->weight * jacobianDeterminant;
-	} else {
-		src->weight = 0;
-	}
 
 	// Resample the dst reservoir into the src reservoir
-	src->weight += dst->weight;
-	if (Rnd_FloatValue(&task->seed) >= src->weight / src->weight) {
-		// Failed resampling chance.
-		continue;
-	}
+	// TODO
 
 	taskState->state = SR_MK_NEXT_NEIGHBOR;
 }
@@ -1664,10 +1656,7 @@ __kernel void SpatialReuse_MK_FINISH_ITERATION(
 	// PRIME LOOP
 	// TODO: correct this equation for GRIS reservoir merging
 	// Recalculate unbiased contribution weight
-	const float luminance = SampleResult_GetRadianceY(film, &reservoir->sample.sampleResult);
-	if (reservoir->weight != 0) {
-		reservoir->weight = reservoir->weight / luminance;
-	}
+	// TODO
 
 	// Prime neighbor search
 	taskState->numNeighborsLeft = numSpatialNeighbors;
@@ -1675,10 +1664,6 @@ __kernel void SpatialReuse_MK_FINISH_ITERATION(
 	PixelIndexMap_Set(pixelIndexMap, filmWidth, 
 			sampleResult->pixelX, sampleResult->pixelY, 
 			gid);
-	if (gid == 1) {
-		printf("[SR_INIT] Spatial radius: %d\n", spatialRadius);
-		printf("[SR_INIT] Number of neighbors: %d\n", numSpatialNeighbors);
-	}
 	// Prime previous reservoir with final initial path sample
 	task->tmpReservoir = *reservoir;
 	// Resample current pixel

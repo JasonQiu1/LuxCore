@@ -95,7 +95,7 @@ OPENCL_FORCE_INLINE void RespirReservoir_Init(RespirReservoir* restrict reservoi
 	Radiance_Clear(reservoir->sample.rc.irradiance);
 	VSTORE3F(BLACK, &reservoir->sample.rc.bsdf.hitPoint.p.x);
 	VSTORE3F(BLACK, &reservoir->sample.rc.incidentDir.x);
-	VSTORE3F(BLACK, &reservoir->sample.rc.incidentBsdfValue.x);
+	VSTORE3F(BLACK, reservoir->sample.rc.incidentBsdfValue.c);
 	reservoir->sample.rc.incidentPdf = 0.0f;
 	reservoir->sample.rc.prefixToRcPdf = 0.0f;
 	reservoir->sample.rc.jacobian = 0.0f;
@@ -177,7 +177,7 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 	taskState->seedPassThroughEvent = initSeed;
 
 #if defined(RENDER_ENGINE_RESPIRPATHOCL)
-	RespirReservoir_Init(&taskState->reservoir)
+	RespirReservoir_Init(&taskState->reservoir);
 
 	VSTORE3F(WHITE, taskState->pathPdf.c);
 	taskState->rrProbProd = 1.0f;
@@ -201,7 +201,7 @@ OPENCL_FORCE_INLINE void PixelIndexMap_Set(__global int* pixelIndexMap, const ui
 // Add a sample to the streaming reservoir.
 // Simply replace based on the new sample's weight and the reservoir's current sum weight.
 OPENCL_FORCE_INLINE bool RespirReservoir_Add(RespirReservoir* restrict reservoir, 
-	const Radiance* restrict pathRadiance, float3 pdf, 
+	const Spectrum* restrict pathRadiance, float pdf, 
 	Seed* restrict seed, __constant const Film* restrict film) 
 {
 	// increase sample count
@@ -210,32 +210,16 @@ OPENCL_FORCE_INLINE bool RespirReservoir_Add(RespirReservoir* restrict reservoir
 	float3 integrand = SampleResult_GetUnscaledSpectrum(film, pathRadiance);
 
 	// correct zero components in pdf if not a null (black) sample
-	float weight = 0.f;
-	if (!Spectrum_IsBlack(integrand)) {
-		if (pdf.x == 0) {
-			integrand.x = 0;
-			pdf.x = 1;
-		}
-		if (pdf.y == 0) {
-			integrand.y = 0;
-			pdf.y = 1;
-		}
-		if (pdf.z == 0) {
-			integrand.z = 0;
-			pdf.z = 1;
-		}
-
-		weight = Spectrum_Y(integrand / pdf);
-	}
+	float weight = Spectrum_Y(integrand) / pdf;
 
 	// return if no chance of selection
-	if (isnan(weight) || weight == 0.f) {
+	if (isinf(weight) || isnan(weight) || weight == 0.f) {
 		return false;
 	}
 
 	reservoir->weight += weight;
 	if (Rnd_FloatValue(seed) * reservoir->weight <= weight) {
-		Radiance_Copy(reservoir->sample.integrand, integrand);
+		Radiance_Copy(film, integrand, reservoir->sample.integrand);
 		return true;
 	}
 	return false;
@@ -245,13 +229,13 @@ OPENCL_FORCE_INLINE bool RespirReservoir_AddNEEVertex(
 		RespirReservoir* restrict reservoir, 
 		// integrand is the path contribution up to and including this vertex
 		// postfixRadiance is the radiance emitted from the vertex
-		const Radiance* restrict integrand, const Radiance* restrict postfixRadiance,
+		const Spectrum* restrict integrand, const Spectrum* restrict postfixRadiance,
 		// misWeight is the mis of the vertex's bsdfPdfW and lightPdf
 		// lightPdf is the NEE light pick prob
 		// pathPdf is cumulative product of all bsdfPdfW and connectionThroughput
 		// rrProbProd is the cumulative product of the russian roulette probability so far
 		const float misWeight, const float3 pathPdf, const float rrProbProd, const float lightPdf, 
-		const BSDF* restrict bsdf, const float time,
+		const float lastBsdfPdfW, const BSDF* restrict bsdf, const float time,
 		const int pathDepth, Seed* restrict seed, __constant const Film* restrict film,
 		const float worldRadius MATERIALS_PARAM_DECL)
 {
@@ -261,13 +245,13 @@ OPENCL_FORCE_INLINE bool RespirReservoir_AddNEEVertex(
 		// reconnection shift always chooses primary vertex as prefix vertex
 		if (pathDepth == 0) { 
 			reservoir->sample.prefixBsdf = *bsdf;
-			taskState->reservoir.sample.hitTime = time;
+			reservoir->sample.hitTime = time;
 		}
 		// reconnection shift always chooses secondary vertex as rc vertex
 		if (pathDepth == 1) {
-			const float3 toRc = VLOAD3F(bsdf->hitPoint.p.x) - VLOAD3F(reservoir->sample.prefixBsdf.p.x);
+			const float3 toRc = VLOAD3F(&bsdf->hitPoint.p.x) - VLOAD3F(&reservoir->sample.prefixBsdf.hitPoint.p.x);
 			const float distanceSquared = dot(toRc, toRc);
-			const float cosAngle = dot(bsdf->hitPoint.fixedDir, BSDF_GetLandingGeometryN(bsdf));
+			const float cosAngle = dot(VLOAD3F(&bsdf->hitPoint.fixedDir.x), BSDF_GetLandingGeometryN(bsdf));
 			// check roughness and distance connectability requirements
 			// assume glossiness range is [0.f,1.f], and 1-glossiness is the roughness
 			// distance threshold of 2-5% world size recommended by GRIS paper
@@ -282,9 +266,9 @@ OPENCL_FORCE_INLINE bool RespirReservoir_AddNEEVertex(
 					reservoir->sample.rc.pathDepth = pathDepth;
 					reservoir->sample.rc.bsdf = *bsdf;
 					// remove the weighting from the irradiance.
-					Radiance_Copy(postfixRadiance, reservoir->sample.rc.irradiance);
-					Radiance_Scale(&reservoir->sample.rc.irradiance, lightPdf / misWeight,
-						&reservoir->sample.rc.irradiance);
+					Radiance_Copy(film, postfixRadiance, reservoir->sample.rc.irradiance);
+					Radiance_Scale(film, reservoir->sample.rc.irradiance, lightPdf / misWeight,
+						reservoir->sample.rc.irradiance);
 				}
 			
 			
@@ -449,13 +433,14 @@ OPENCL_FORCE_INLINE void DirectHitFiniteLight(__constant const Film* restrict fi
 		// Add BSDF-illuminated (with cheater NEE) sample into the reservoir.
 		SampleResult postfix;
 		SampleResult_Init(&postfix);
-		SampleResult_AddEmission(film, &postfix, light->lightID, throughput, weight * envRadiance);
-		RespirReservoir_AddNEEVertex(&taskState->reservoir, 
-				sampleResult->radiancePerPixelNormalized, &postfix,
-				weight, VLOAD3F(taskState->throughput.c), taskState->rrProdProd, lightPickProb,
-				bsdf, ray->time, pathInfo->depth.depth, 
-				&taskState->seedReservoirSampling, film,
-				worldRadius MATERIALS_PARAM);
+		SampleResult_AddEmission(film, &postfix, BSDF_GetLightID(bsdf
+				MATERIALS_PARAM), VLOAD3F(taskState->throughput.c), weight * emittedRadiance);
+		RespirReservoir_AddNEEVertex(&taskState->reservoir,
+				sampleResult->radiancePerPixelNormalized, postfix->radiancePerPixelNormalized,
+				weight, VLOAD3F(taskState->throughput.c), taskState->rrProbProd, lightPickProb,
+				pathInfo->lastBSDFPdfW, bsdf, ray->time, pathInfo->depth.depth, 
+				&taskState->seedReservoirSampling, film, worldRadius
+				MATERIALS_PARAM);
 #endif
 	}
 }

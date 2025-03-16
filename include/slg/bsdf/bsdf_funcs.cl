@@ -243,11 +243,10 @@ OPENCL_FORCE_INLINE float3 BSDF_EvaluateWithEyeDir(__global const BSDF *bsdf,
 OPENCL_FORCE_INLINE float3 BSDF_Evaluate(__global const BSDF *bsdf,
 		const float3 generatedDir, BSDFEvent *event, float *directPdfW
 		MATERIALS_PARAM_DECL) {
-	BSDF_EvaluateWithEyeDir(bsdf, 
+	return BSDF_EvaluateWithEyeDir(bsdf, 
 			VLOAD3F(&bsdf->hitPoint.fixedDir.x), generatedDir, 
 			event, directPdfW
-			MATERIALS_PARAM)
-)
+			MATERIALS_PARAM);
 }
 
 OPENCL_FORCE_INLINE float3 BSDF_Sample(__global const BSDF *bsdf, const float u0, const float u1,
