@@ -48,8 +48,11 @@ RespirPathOCLRenderThread::RespirPathOCLRenderThread(const u_int index, luxrays:
 	pixelIndexMapBuff = nullptr;
 
     spatialReuseKernel_MK_INIT = nullptr;
-	spatialReuseKernel_MK_RESAMPLE_NEIGHBOR = nullptr;
+	spatialReuseKernel_MK_NEXT_NEIGHBOR = nullptr;
+	spatialReuseKernel_MK_SHIFT = nullptr;
 	spatialReuseKernel_MK_CHECK_VISIBILITY = nullptr;
+	spatialReuseKernel_MK_RESAMPLE = nullptr;
+	spatialReuseKernel_MK_FINISH_RESAMPLE = nullptr;
 	spatialReuseKernel_MK_FINISH_ITERATION = nullptr;
 	spatialReuseKernel_MK_FINISH_REUSE = nullptr;
 	spatialReuseKernel_MK_SET_SPLAT = nullptr;
@@ -57,8 +60,11 @@ RespirPathOCLRenderThread::RespirPathOCLRenderThread(const u_int index, luxrays:
 
 RespirPathOCLRenderThread::~RespirPathOCLRenderThread() {
     delete spatialReuseKernel_MK_INIT;
-	delete spatialReuseKernel_MK_RESAMPLE_NEIGHBOR;
+	delete spatialReuseKernel_MK_NEXT_NEIGHBOR;
+	delete spatialReuseKernel_MK_SHIFT;
 	delete spatialReuseKernel_MK_CHECK_VISIBILITY;
+	delete spatialReuseKernel_MK_RESAMPLE;
+	delete spatialReuseKernel_MK_FINISH_RESAMPLE;
 	delete spatialReuseKernel_MK_FINISH_ITERATION;
 	delete spatialReuseKernel_MK_FINISH_REUSE;
 	delete spatialReuseKernel_MK_SET_SPLAT;
@@ -314,14 +320,14 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 					for (int i = 0; i < totalIterationsThisFrame; i++) {
 						// Resample next neighboring pixel
 						intersectionDevice->EnqueueKernel(spatialReuseKernel_MK_RESAMPLE_NEIGHBOR,
-							HardwareDeviceRange(taskCount), HardwareDeviceRange(spatialReuseResamplingVisibilityWorkGroupSize));
+							HardwareDeviceRange(taskCount), HardwareDeviceRange(spatialReuseAsyncWorkGroupSize));
 
 						// Trace shadow rays to reconnection vertices
 						intersectionDevice->EnqueueTraceRayBuffer(raysBuff, hitsBuff, taskCount);
 
 						// Check visibility and update reservoirs if successful
 						intersectionDevice->EnqueueKernel(spatialReuseKernel_MK_CHECK_VISIBILITY,
-							HardwareDeviceRange(taskCount), HardwareDeviceRange(spatialReuseResamplingVisibilityWorkGroupSize));
+							HardwareDeviceRange(taskCount), HardwareDeviceRange(spatialReuseAsyncWorkGroupSize));
 					}
 					// This is blocking and waits for queue to finish
 					intersectionDevice->FinishQueue();

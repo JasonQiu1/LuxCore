@@ -66,13 +66,16 @@ protected:
 	luxrays::HardwareDeviceBuffer* pixelIndexMapBuff;
 
 	luxrays::HardwareDeviceKernel* spatialReuseKernel_MK_INIT;
-	luxrays::HardwareDeviceKernel* spatialReuseKernel_MK_RESAMPLE_NEIGHBOR;
+	luxrays::HardwareDeviceKernel* spatialReuseKernel_MK_NEXT_NEIGHBOR;
+	luxrays::HardwareDeviceKernel* spatialReuseKernel_MK_SHIFT;
 	luxrays::HardwareDeviceKernel* spatialReuseKernel_MK_CHECK_VISIBILITY;
+	luxrays::HardwareDeviceKernel* spatialReuseKernel_MK_RESAMPLE;
+	luxrays::HardwareDeviceKernel* spatialReuseKernel_MK_FINISH_RESAMPLE;
 	luxrays::HardwareDeviceKernel* spatialReuseKernel_MK_FINISH_ITERATION;
 	luxrays::HardwareDeviceKernel* spatialReuseKernel_MK_FINISH_REUSE;
 	luxrays::HardwareDeviceKernel* spatialReuseKernel_MK_SET_SPLAT;
 
-	size_t spatialReuseResamplingVisibilityWorkGroupSize;
+	size_t spatialReuseAsyncWorkGroupSize;
 	size_t spatialReuseWorkGroupSize;
 	const u_int spatialRadius;
 	const u_int numSpatialNeighbors;

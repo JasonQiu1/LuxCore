@@ -169,23 +169,32 @@ void RespirPathOCLRenderThread::InitKernels() {
 	const double tSpatialReuseStart = WallClockTime();
 	SLG_LOG("[RespirPathOCLThread::" << threadIndex << "] Compiling kernels ");
 
-	CompileKernel(intersectionDevice, program, &spatialReuseKernel_MK_RESAMPLE_NEIGHBOR, &spatialReuseResamplingVisibilityWorkGroupSize,
-			"SpatialReuse_ResampleNeighbor");
+	CompileKernel(intersectionDevice, program, &spatialReuseKernel_MK_NEXT_NEIGHBOR, &spatialReuseAsyncWorkGroupSize,
+			"SpatialReuse_MK_NEXT_NEIGHBOR");
+	CompileKernel(intersectionDevice, program, &spatialReuseKernel_MK_SHIFT, &workGroupSize,
+			"SpatialReuse_MK_SHIFT");
+	spatialReuseAsyncWorkGroupSize = Min(spatialReuseAsyncWorkGroupSize, workGroupSize);
 	CompileKernel(intersectionDevice, program, &spatialReuseKernel_MK_CHECK_VISIBILITY, &workGroupSize,
-		"SpatialReuse_CheckVisibility");
-	spatialReuseResamplingVisibilityWorkGroupSize = Min(spatialReuseResamplingVisibilityWorkGroupSize, workGroupSize);
-	SLG_LOG("[PathOCLBaseRenderThread::" << threadIndex << "] Spatial Reuse resampling and visibility kernels workgroup size: " << spatialReuseResamplingVisibilityWorkGroupSize);
+			"SpatialReuse_MK_CHECK_VISIBILITY");
+	spatialReuseAsyncWorkGroupSize = Min(spatialReuseAsyncWorkGroupSize, workGroupSize);
+	CompileKernel(intersectionDevice, program, &spatialReuseKernel_MK_RESAMPLE, &workGroupSize,
+			"SpatialReuse_MK_RESAMPLE");
+	spatialReuseAsyncWorkGroupSize = Min(spatialReuseAsyncWorkGroupSize, workGroupSize);
+	CompileKernel(intersectionDevice, program, &spatialReuseKernel_MK_FINISH_RESAMPLE, &workGroupSize,
+			"SpatialReuse_MK_FINISH_RESAMPLE");
+	spatialReuseAsyncWorkGroupSize = Min(spatialReuseAsyncWorkGroupSize, workGroupSize);
+	SLG_LOG("[PathOCLBaseRenderThread::" << threadIndex << "] Spatial Reuse async workgroup size: " << spatialReuseAsyncWorkGroupSize);
 
 	CompileKernel(intersectionDevice, program, &spatialReuseKernel_MK_INIT, &spatialReuseWorkGroupSize,
-		"SpatialReuse_Init");
+		"SpatialReuse_MK_INIT");
 	CompileKernel(intersectionDevice, program, &spatialReuseKernel_MK_FINISH_ITERATION, &workGroupSize,
-			"SpatialReuse_FinishIteration");
+			"SpatialReuse_MK_FINISH_ITERATION");
 	spatialReuseWorkGroupSize = Min(spatialReuseWorkGroupSize, workGroupSize);
 	CompileKernel(intersectionDevice, program, &spatialReuseKernel_MK_FINISH_REUSE, &workGroupSize,
-			"SpatialReuse_FinishReuse");
+			"SpatialReuse_MK_FINISH_REUSE");
 	spatialReuseWorkGroupSize = Min(spatialReuseWorkGroupSize, workGroupSize);
 	CompileKernel(intersectionDevice, program, &spatialReuseKernel_MK_SET_SPLAT, &workGroupSize,
-			"SpatialReuse_SetSplat");
+			"SpatialReuse_MK_SET_SPLAT");
 	spatialReuseWorkGroupSize = Min(spatialReuseWorkGroupSize, workGroupSize);
 	SLG_LOG("[PathOCLBaseRenderThread::" << threadIndex << "] Spatial Reuse general kernels workgroup size: " << spatialReuseWorkGroupSize);
 	const double tSpatialReuseEnd = WallClockTime();
@@ -335,10 +344,16 @@ void RespirPathOCLRenderThread::SetAllSpatialReuseKernelArgs(const u_int filmInd
 	// TODO: optimize performance by setting smaller kernel args for spatial reuse kernels
 	if (spatialReuseKernel_MK_INIT)
 		SetSpatialReuseKernelArgs(spatialReuseKernel_MK_INIT, filmIndex);
-	if (spatialReuseKernel_MK_RESAMPLE_NEIGHBOR)
-		SetSpatialReuseKernelArgs(spatialReuseKernel_MK_RESAMPLE_NEIGHBOR, filmIndex);
+	if (spatialReuseKernel_MK_NEXT_NEIGHBOR)
+		SetSpatialReuseKernelArgs(spatialReuseKernel_MK_NEXT_NEIGHBOR, filmIndex);
+	if (spatialReuseKernel_MK_SHIFT)
+		SetSpatialReuseKernelArgs(spatialReuseKernel_MK_SHIFT, filmIndex);
 	if (spatialReuseKernel_MK_CHECK_VISIBILITY)
 		SetSpatialReuseKernelArgs(spatialReuseKernel_MK_CHECK_VISIBILITY, filmIndex);
+	if (spatialReuseKernel_MK_RESAMPLE)
+		SetSpatialReuseKernelArgs(spatialReuseKernel_MK_RESAMPLE, filmIndex);
+	if (spatialReuseKernel_MK_FINISH_RESAMPLE)
+		SetSpatialReuseKernelArgs(spatialReuseKernel_MK_FINISH_RESAMPLE, filmIndex);
 	if (spatialReuseKernel_MK_FINISH_ITERATION)
 		SetSpatialReuseKernelArgs(spatialReuseKernel_MK_FINISH_ITERATION, filmIndex);
 	if (spatialReuseKernel_MK_FINISH_REUSE)
