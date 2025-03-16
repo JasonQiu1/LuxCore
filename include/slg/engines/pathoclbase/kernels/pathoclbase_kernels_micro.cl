@@ -1193,11 +1193,6 @@ __kernel void SpatialReuse_MK_INIT(
 	RespirReservoir* reservoir = &taskState->reservoir;
 	const Ray* ray = &rays[gid];
 
-	// Read the seed
-	Seed seedValue = task->seed;
-	// This trick is required by SAMPLER_PARAM macro
-	Seed *seed = &seedValue;
-
 	//--------------------------------------------------------------------------
 	// End of variables setup
 	//--------------------------------------------------------------------------
@@ -1235,11 +1230,6 @@ __kernel void SpatialReuse_MK_INIT(
 	
 	// Prime pathstate
 	taskState->state = SR_MK_NEXT_NEIGHBOR;
-
-	//--------------------------------------------------------------------------
-
-	// Save the seed
-	task->seed = seedValue;
 }
 
 //------------------------------------------------------------------------------
@@ -1708,21 +1698,39 @@ __kernel void SpatialReuse_MK_FINISH_ITERATION(
 	//--------------------------------------------------------------------------
 	// Start of variables setup
 	//--------------------------------------------------------------------------
-	
-	const Film* film = &taskConfig->film;
-	RespirReservoir* reservoir = &taskState->reservoir;
-	SampleResult *sampleResult = &sampleResultsBuff[gid];
+	__constant const Film* restrict film = &taskConfig->film;
 
+	const RespirReservoir* restrict shifted = &taskState->shiftReservoir;
+	const RespirReservoir* restrict central = &tasksState[gid].reservoir;
+	const RespirReservoir* restrict srReservoir = &taskState->spatialReuseReservoir
 	//--------------------------------------------------------------------------
 	// End of variables setup
 	//--------------------------------------------------------------------------
 
-	// TODO: Resample canonical (central) sample using canonical mis weight
+	/*
+	//	Resample the canonical reservoir into the spatial reuse reservoir.
+	*/
+	RespirReservoir_Merge(srReservoir, 
+		central->sample.integrand, 1.0f, central,
+		taskState->canonicalMisWeight, &taskConfig->seed, film);
 
-	// PRIME LOOP
-	// TODO: correct this equation for GRIS reservoir merging
-	// Recalculate unbiased contribution weight
-	// TODO
+	/*
+	// 	Finalize GRIS by calculating unbiased contribution weight.
+	*/
+	const float srIntegrand = Radiance_Y(film, srReservoir->sample.integrand);
+	if (srIntegrand <= 0. || isnan(srIntegrand) || isinf(srIntegrand)) {
+		srIntegrand = 0.0f;
+		srReservoir->weight = 0.0f;
+	} else {
+		srReservoir->weight /= srIntegrand / (taskState->numValidNeighbors + 1);
+	}
+
+	/*
+	// Set up for next spatial reuse iteration.
+	*/
+
+	// Copy spatial reuse reservoir to central reservoir.
+	RespirReservoir_DeepCopy(film, srReservoir, central);
 
 	// Prime neighbor search
 	taskState->numNeighborsLeft = numSpatialNeighbors;
@@ -1730,11 +1738,11 @@ __kernel void SpatialReuse_MK_FINISH_ITERATION(
 	PixelIndexMap_Set(pixelIndexMap, filmWidth, 
 			sampleResult->pixelX, sampleResult->pixelY, 
 			gid);
-	// Resample current pixel
-	// TODO: replace with correct MIS weight
-	// identity shift, so jacobian identity is 1
-	// reservoir->weight = (1.0f / numSpatialNeighbors) * luminance * reservoir->weight;
-	// Prime pathstate
+	
+	// Init resampling reservoir and canonical MIS weight
+	RespirReservoir_Init(srReservoir);
+	taskState->canonicalMisWeight = 1.f;
+	
 	taskState->state = SR_MK_NEXT_NEIGHBOR;
 }
 
@@ -1749,10 +1757,16 @@ __kernel void SpatialReuse_MK_FINISH_REUSE(
 		) {
 	const size_t gid = get_global_id(0);
 
+	//--------------------------------------------------------------------------
+	// Start of variables setup
+	//--------------------------------------------------------------------------
 	GPUTaskState *taskState = &tasksState[gid];
 	Ray *ray = &rays[gid];
 	SampleResult *sampleResult = &sampleResultsBuff[gid];
 	const Film* restrict film = &taskConfig->film;
+	//--------------------------------------------------------------------------
+	// End of variables setup
+	//--------------------------------------------------------------------------
 
 	// Copy final sample's radiance from reservoir to sampleResultsBuff[gid] to be splatted like normal
 	Radiance_Scale(film,

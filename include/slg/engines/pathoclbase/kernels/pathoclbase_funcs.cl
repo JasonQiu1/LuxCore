@@ -198,6 +198,28 @@ OPENCL_FORCE_INLINE void PixelIndexMap_Set(__global int* pixelIndexMap, const ui
 	pixelIndexMap[y * mapWidth + x] = value;
 }
 
+OPENCL_FORCE_INLINE void RespirSample_DeepCopy(__constant const Film* restrict film, const RespirSample* in, RespirSample* out) {
+	Radiance_Copy(film, pathRadiance, out->integrand);
+	Radiance_Copy(film, in->rc.irradiance, out->rc.irradiance);
+	out->prefixBsdf = in->prefixBsdf;
+	out->hitTime = in->hitTime;
+	out->lightPdf = in->lightPdf;
+	out->rc.bsdf = in->rc.bsdf;
+	out->rc.incidentDir = in->rc.incidentDir;
+	out->rc.incidentPdf = in->rc.incidentPdf;
+	out->rc.incidentBsdfValue = in->rc.incidentBsdfValue;
+	out->rc.prefixToRcPdf = in->rc.prefixToRcPdf;
+	out->rc.jacobian = in->rc.jacobian;
+	out->rc.pathDepth = in->rc.pathDepth;
+}
+
+OPENCL_FORCE_INLINE void RespirReservoir_DeepCopy(__constant const Film* restrict film, const RespirReservoir* inReservoir,
+		RespirReservoir* out) {
+	RespirSample_DeepCopy(film, &in->sample, &out->sample);
+	out->M = in->M;
+	out->weight = in->weight;
+}
+
 // Add a sample to the streaming reservoir.
 // Simply replace based on the new sample's weight and the reservoir's current sum weight.
 OPENCL_FORCE_INLINE bool RespirReservoir_Add(RespirReservoir* restrict reservoir, 
@@ -224,7 +246,7 @@ OPENCL_FORCE_INLINE bool RespirReservoir_Add(RespirReservoir* restrict reservoir
 
 // Merge inReservoir into outReservoir.
 OPENCL_FORCE_INLINE bool RespirReservoir_Merge(RespirReservoir* restrict outReservoir, 
-	const Spectrum* restrict inRadiance, const float inJacobian, RespirReservoir* inReservoir,
+	const Spectrum* restrict inRadiance, const float inJacobian, const RespirReservoir* inReservoir,
 	const float misWeight, Seed* restrict seed, __constant const Film* restrict film) 
 {
 	float weight = Radiance_Y(film, inRadiance) * inJacobian * inReservoir->weight * misWeight;
@@ -239,18 +261,7 @@ OPENCL_FORCE_INLINE bool RespirReservoir_Merge(RespirReservoir* restrict outRese
 
 	outReservoir->weight += weight;
 	if (Rnd_FloatValue(seed) * outReservoir->weight <= weight) {
-		Radiance_Copy(film, pathRadiance, outReservoir->sample.integrand);
-		Radiance_Copy(film, inReservoir->sample.rc.irradiance, outReservoir->sample.rc.irradiance);
-		outReservoir->sample.prefixBsdf = inReservoir->sample.prefixBsdf;
-		outReservoir->sample.hitTime = inReservoir->sample.hitTime;
-		outReservoir->sample.lightPdf = inReservoir->sample.lightPdf;
-		outReservoir->sample.rc.bsdf = inReservoir->sample.rc.bsdf;
-		outReservoir->sample.rc.incidentDir = inReservoir->sample.rc.incidentDir;
-		outReservoir->sample.rc.incidentPdf = inReservoir->sample.rc.incidentPdf;
-		outReservoir->sample.rc.incidentBsdfValue = inReservoir->sample.rc.incidentBsdfValue;
-		outReservoir->sample.rc.prefixToRcPdf = inReservoir->sample.rc.prefixToRcPdf;
-		outReservoir->sample.rc.jacobian = inReservoir->sample.rc.jacobian;
-		outReservoir->sample.rc.pathDepth = inReservoir->sample.rc.pathDepth;
+		RespirSample_Copy(film, &inReservoir->sample, &outReservoir->sample);
 		return true;
 	}
 	return false;
