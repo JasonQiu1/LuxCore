@@ -95,6 +95,7 @@ OPENCL_FORCE_INLINE void RespirReservoir_Init(RespirReservoir* restrict reservoi
 	VSTORE3F(BLACK, &reservoir->sample.prefixBsdf.hitPoint.p.x);
 	reservoir->sample.lightPdf = 0.0f;
 	reservoir->sample.hitTime = 0.0f;
+	reservoir->sample.pathDepth = -1;
 	Radiance_Clear(reservoir->sample.rc.irradiance);
 	VSTORE3F(BLACK, &reservoir->sample.rc.bsdf.hitPoint.p.x);
 	VSTORE3F(BLACK, &reservoir->sample.rc.incidentDir.x);
@@ -207,6 +208,7 @@ OPENCL_FORCE_INLINE void RespirSample_DeepCopy(__constant const Film* restrict f
 	out->prefixBsdf = in->prefixBsdf;
 	out->hitTime = in->hitTime;
 	out->lightPdf = in->lightPdf;
+	out->pathDepth = in->pathDepth;
 	out->rc.bsdf = in->rc.bsdf;
 	out->rc.incidentDir = in->rc.incidentDir;
 	out->rc.incidentPdf = in->rc.incidentPdf;
@@ -292,49 +294,50 @@ OPENCL_FORCE_INLINE bool RespirReservoir_AddNEEVertex(
 	if (get_global_id(0) == DEBUG_GID) {
 		printf("Initial path resampling: Resampling with rr prob %f at depth %d\n", rrProbProd, pathDepth);
 	}
+	reservoir->sample.lightPdf = lightPdf;
+	// reconnection shift always chooses primary vertex as prefix vertex
+	if (pathDepth == 0) { 
+		if (get_global_id(0) == DEBUG_GID) {
+			printf("Initial path resampling: Cached prefix vertex info.\n");
+		}
+		reservoir->sample.prefixBsdf = *bsdf;
+		reservoir->sample.hitTime = time;
+	}
+	// reconnection shift always chooses secondary vertex as rc vertex
+	if (pathDepth == 1) {
+		if (get_global_id(0) == DEBUG_GID) {
+			printf("Initial path resampling: Cached reconnection vertex info.\n");
+		}
+		const float3 toRc = VLOAD3F(&bsdf->hitPoint.p.x) - VLOAD3F(&reservoir->sample.prefixBsdf.hitPoint.p.x);
+		const float distanceSquared = dot(toRc, toRc);
+		const float cosAngle = dot(VLOAD3F(&bsdf->hitPoint.fixedDir.x), BSDF_GetLandingGeometryN(bsdf));
+		// check roughness and distance connectability requirements
+		// assume glossiness range is [0.f,1.f], and 1-glossiness is the roughness
+		// distance threshold of 2-5% world size recommended by GRIS paper
+		const float maxGlossiness = 0.2;
+		const float minDistance = worldRadius * 2.0f * 0.025f;
+		if (sqrt(distanceSquared) >= minDistance
+			&& BSDF_GetGlossiness(&reservoir->sample.prefixBsdf MATERIALS_PARAM) <= maxGlossiness
+			&& BSDF_GetGlossiness(bsdf MATERIALS_PARAM) <= maxGlossiness) {
+				// cache partial jacobian here (squared distance / cos angle from rc norm)
+				reservoir->sample.rc.jacobian = distanceSquared / cosAngle;
+				reservoir->sample.rc.prefixToRcPdf = lastBsdfPdfW;
+				reservoir->sample.rc.pathDepth = pathDepth;
+				reservoir->sample.rc.bsdf = *bsdf;
+				// remove the weighting from the irradiance.
+				Radiance_Copy(film, postfixRadiance, reservoir->sample.rc.irradiance);
+				Radiance_Scale(film, reservoir->sample.rc.irradiance, lightPdf / misWeight,
+					reservoir->sample.rc.irradiance);
+		} else {
+			if (get_global_id(0) == DEBUG_GID) {
+			printf("Initial path resampling: Rejected reconnection vertex based on glossiness or distance.\n");
+			}
+		}	
+	}
+	// Resample for path integrand
 	if (RespirReservoir_Add(reservoir, integrand, rrProbProd, seed, film)) {
 		if (get_global_id(0) == DEBUG_GID) {
 			printf("Initial path resampling: Selected new vertex at depth: %d\n", pathDepth);
-		}
-		reservoir->sample.lightPdf = lightPdf;
-		// reconnection shift always chooses primary vertex as prefix vertex
-		if (pathDepth == 0) { 
-			if (get_global_id(0) == DEBUG_GID) {
-				printf("Initial path resampling: Cached prefix vertex info.\n");
-			}
-			reservoir->sample.prefixBsdf = *bsdf;
-			reservoir->sample.hitTime = time;
-		}
-		// reconnection shift always chooses secondary vertex as rc vertex
-		if (pathDepth == 1) {
-			if (get_global_id(0) == DEBUG_GID) {
-				printf("Initial path resampling: Cached reconnection vertex info.\n");
-			}
-			const float3 toRc = VLOAD3F(&bsdf->hitPoint.p.x) - VLOAD3F(&reservoir->sample.prefixBsdf.hitPoint.p.x);
-			const float distanceSquared = dot(toRc, toRc);
-			const float cosAngle = dot(VLOAD3F(&bsdf->hitPoint.fixedDir.x), BSDF_GetLandingGeometryN(bsdf));
-			// check roughness and distance connectability requirements
-			// assume glossiness range is [0.f,1.f], and 1-glossiness is the roughness
-			// distance threshold of 2-5% world size recommended by GRIS paper
-			const float maxGlossiness = 0.2;
-			const float minDistance = worldRadius * 2.0f * 0.025f;
-			if (sqrt(distanceSquared) >= minDistance
-				&& BSDF_GetGlossiness(&reservoir->sample.prefixBsdf MATERIALS_PARAM) <= maxGlossiness
-				&& BSDF_GetGlossiness(bsdf MATERIALS_PARAM) <= maxGlossiness) {
-					// cache partial jacobian here (squared distance / cos angle from rc norm)
-					reservoir->sample.rc.jacobian = distanceSquared / cosAngle;
-					reservoir->sample.rc.prefixToRcPdf = lastBsdfPdfW;
-					reservoir->sample.rc.pathDepth = pathDepth;
-					reservoir->sample.rc.bsdf = *bsdf;
-					// remove the weighting from the irradiance.
-					Radiance_Copy(film, postfixRadiance, reservoir->sample.rc.irradiance);
-					Radiance_Scale(film, reservoir->sample.rc.irradiance, lightPdf / misWeight,
-						reservoir->sample.rc.irradiance);
-			} else {
-				if (get_global_id(0) == DEBUG_GID) {
-				printf("Initial path resampling: Rejected reconnection vertex based on glossiness or distance.\n");
-				}
-			}	
 		}
 		return true;
 	}

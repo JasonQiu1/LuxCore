@@ -111,6 +111,7 @@ typedef struct {
 	RcVertex rc; // the chosen rc vertex for this path
 	float lightPdf; // the NEE light pick probability of the sample
 	float hitTime; // time the prefix vertex was hit. we use this to shoot a visibility ray to the rc vertex
+	int pathDepth;
 } RespirSample;
 
 // A streaming random-sampling reservoir for spatial reuse.
