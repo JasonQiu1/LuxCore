@@ -23,7 +23,7 @@
 //  PARAM_RAY_EPSILON_MAX
 
 // #define DEBUG
-#define DEBUG_GID 1000
+#define DEBUG_GID 0
 
 /*void MangleMemory(__global unsigned char *ptr, const size_t size) {
 	Seed seed;
@@ -238,6 +238,7 @@ OPENCL_FORCE_INLINE bool RespirReservoir_Add(RespirReservoir* restrict reservoir
 
 	reservoir->weight += weight;
 
+	printf("GID: %d\n", get_global_id(0));
 	if (get_global_id(0) == DEBUG_GID) {
 		printf("Initial path resampling: Resampling with weight %f against sum weight %f\n", weight, reservoir->weight);
 	}
