@@ -1584,6 +1584,9 @@ __kernel void SpatialReuse_MK_RESAMPLE(
 		return;
 
 	// TODO
+
+	// DEBUG
+	taskState->state = SYNC;
 }
 
 //------------------------------------------------------------------------------
@@ -1621,7 +1624,9 @@ __kernel void SpatialReuse_MK_FINISH_RESAMPLE(
 	if (Rnd_FloatValue(&task->seed) >= src->weight / src->weight) {
 		// Failed resampling chance.
 		continue;
-	}	
+	}
+
+	taskState->state = SR_MK_NEXT_NEIGHBOR;
 }
 
 //------------------------------------------------------------------------------
