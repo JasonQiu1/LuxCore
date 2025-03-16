@@ -1542,9 +1542,6 @@ __kernel void SpatialReuse_MK_CHECK_VISIBILITY(
 			true
 			MATERIALS_PARAM
 			);
-	taskDirectLight->throughShadowTransparency = throughShadowTransparency;
-	VSTORE3F(connectionThroughput * VLOAD3F(taskDirectLight->illumInfo.lightRadiance.c), taskDirectLight->illumInfo.lightRadiance.c);
-	VSTORE3F(connectionThroughput * VLOAD3F(taskDirectLight->illumInfo.lightIrradiance.c), taskDirectLight->illumInfo.lightIrradiance.c);
 
 	const bool rayMiss = (rayHits[gid].meshIndex == NULL_INDEX);
 
@@ -1553,25 +1550,17 @@ __kernel void SpatialReuse_MK_CHECK_VISIBILITY(
 		return;
 	}
 
-	if (rayMiss) {
-		// Nothing was hit, the light source is visible
-
-		// VISIBLE: FINISH SUCCESSFUL RESAMPLING PROCESS
-		RespirReservoir* src = &taskState->reservoir;
-		const RespirReservoir* dst = &tasks[taskState->neighborGid].tmpReservoir;
-		
-		// TODO: Recalculate radiance of the sample
-
-		// TODO: BE CAREFUL ABOUT THIS, THIS IS A SHALLOW COPY
-		// probably don't need a deep copy though
-		src->sample.rc = dst->sample.rc;
-
-		taskDirectLight->directLightResult = ILLUMINATED;
-	} else {
-
-
+	if (!rayMiss) {
+		// Hit something, meaning reconnection vertex is not visible
+		// Shift fails due to occlusion
 		taskDirectLight->directLightResult = SHADOWED;
+		Respir_HandleInvalidShift(taskState, &taskState->shiftReservoir);
+		return;
 	}
+
+	// Shift is successful, keep shifted integranad and jacobian in shiftReservoir 
+	taskDirectLight->directLightResult = ILLUMINATED;
+	taskState->state = taskState->afterShiftState;
 }
 
 //------------------------------------------------------------------------------
