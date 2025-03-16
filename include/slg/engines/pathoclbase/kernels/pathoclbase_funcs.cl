@@ -207,7 +207,6 @@ OPENCL_FORCE_INLINE bool RespirReservoir_Add(RespirReservoir* restrict reservoir
 	// increase sample count
 	reservoir->M++;
 
-	// correct zero components in pdf if not a null (black) sample
 	float weight = Radiance_Y(film, pathRadiance) / pdf;
 
 	// return if no chance of selection
@@ -218,6 +217,40 @@ OPENCL_FORCE_INLINE bool RespirReservoir_Add(RespirReservoir* restrict reservoir
 	reservoir->weight += weight;
 	if (Rnd_FloatValue(seed) * reservoir->weight <= weight) {
 		Radiance_Copy(film, pathRadiance, reservoir->sample.integrand);
+		return true;
+	}
+	return false;
+}
+
+// Merge inReservoir into outReservoir.
+OPENCL_FORCE_INLINE bool RespirReservoir_Merge(RespirReservoir* restrict outReservoir, 
+	const Spectrum* restrict inRadiance, const float inJacobian, RespirReservoir* inReservoir,
+	const float misWeight, Seed* restrict seed, __constant const Film* restrict film) 
+{
+	float weight = Radiance_Y(film, inRadiance) * inJacobian * inReservoir->weight * misWeight;
+
+	// Add sample counts
+	outReservoir->M += inReservoir->M;
+
+	// return if no chance of selection
+	if (isinf(weight) || isnan(weight) || weight == 0.f) {
+		return false;
+	}
+
+	outReservoir->weight += weight;
+	if (Rnd_FloatValue(seed) * outReservoir->weight <= weight) {
+		Radiance_Copy(film, pathRadiance, outReservoir->sample.integrand);
+		Radiance_Copy(film, inReservoir->sample.rc.irradiance, outReservoir->sample.rc.irradiance);
+		outReservoir->sample.prefixBsdf = inReservoir->sample.prefixBsdf;
+		outReservoir->sample.hitTime = inReservoir->sample.hitTime;
+		outReservoir->sample.lightPdf = inReservoir->sample.lightPdf;
+		outReservoir->sample.rc.bsdf = inReservoir->sample.rc.bsdf;
+		outReservoir->sample.rc.incidentDir = inReservoir->sample.rc.incidentDir;
+		outReservoir->sample.rc.incidentPdf = inReservoir->sample.rc.incidentPdf;
+		outReservoir->sample.rc.incidentBsdfValue = inReservoir->sample.rc.incidentBsdfValue;
+		outReservoir->sample.rc.prefixToRcPdf = inReservoir->sample.rc.prefixToRcPdf;
+		outReservoir->sample.rc.jacobian = inReservoir->sample.rc.jacobian;
+		outReservoir->sample.rc.pathDepth = inReservoir->sample.rc.pathDepth;
 		return true;
 	}
 	return false;

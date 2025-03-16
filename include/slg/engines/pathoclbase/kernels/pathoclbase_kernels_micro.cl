@@ -1644,11 +1644,45 @@ __kernel void SpatialReuse_MK_FINISH_RESAMPLE(
 	if (taskState->state != SR_MK_FINISH_RESAMPLE)
 		return;
 
-	// TODO
-	// TODO: Properly calculate resampling weight
+	//--------------------------------------------------------------------------
+	// Start of variables setup
+	//--------------------------------------------------------------------------
+	__constant const Film* restrict film = &taskConfig->film;
 
-	// Resample the dst reservoir into the src reservoir
-	// TODO
+	const RespirReservoir* restrict shifted = &taskState->shiftReservoir;
+	const RespirReservoir* neighbor = &tasksState[taskState->shiftSrcGid].reservoir;
+	const RespirReservoir* central = &tasksState[taskState->shiftDstGid].reservoir;
+	//--------------------------------------------------------------------------
+	// End of variables setup
+	//--------------------------------------------------------------------------
+
+
+	/*
+	// Calculate pairwise resampling weight for the neighbor sample.
+	*/
+	float neighborWeight = 0.0f;
+
+	shifted->M = central->M;
+	shifted->weight = central->weight;
+	const float weight = shifted->M * Radiance_Y(film, shifted->sample.integrand) 
+			* shifted->sample.rc.jacobian * shifted->weight;
+	if (weight <= 0.0f || isnan(weight) || isinf(weight)) {
+		Radiance_Clear(shifted->sample.integrand);
+	} else {
+		const float neighborIntegrandM = neighbor->M * Radiance_Y(film, neighbor->sample.integrand) / shifted->sample.rc.jacobian;
+		const float shiftedIntegrandM = central->M * Radiance_Y(film, shifted->sample.integrand);
+		neighborWeight = neighborIntegrandM / (neighborIntegrandM + shiftedIntegrandM / numSpatialNeighbors);
+		if (isnan(neighborWeight) || isinf(neighborWeight)) {
+			neighborWeight = 0.0f;
+		}
+	}
+
+	/*
+	//	Resample the shifted reservoir into the spatial reuse reservoir.
+	*/
+	RespirReservoir_Merge(&taskState->spatialReuseReservoir, 
+		shifted->sample.integrand, shifted->sample.rc.jacobian, neighbor,
+		neighborWeight, &taskConfig->seed, film);
 
 	taskState->state = SR_MK_NEXT_NEIGHBOR;
 }
