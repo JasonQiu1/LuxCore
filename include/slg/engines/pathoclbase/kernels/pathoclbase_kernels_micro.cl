@@ -558,7 +558,7 @@ __kernel void AdvancePaths_MK_RT_DL(
 					VLOAD3F(taskState->throughput.c), lightRadiance,
 					1.f);
 				RespirReservoir_AddNEEVertex(&taskState->reservoir, 
-						sampleResult->radiancePerPixelNormalized, postfix->radiancePerPixelNormalized,
+						sampleResult->radiancePerPixelNormalized, postfix.radiancePerPixelNormalized,
 						taskState->lastDirectLightPdf, VLOAD3F(taskState->pathPdf.c), taskState->rrProbProd, 
 						taskDirectLight->illumInfo.pickPdf,
 						pathInfo->lastBSDFPdfW, bsdf, rays[gid].time, pathInfo->depth.depth, 
@@ -885,7 +885,7 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 
 		VSTORE3F(throughputFactor * VLOAD3F(taskState->throughput.c), taskState->throughput.c);
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-		VSTORE3F(bsdfSample * VLOAD3F(&taskState->pathPdf.c), &taskState->pathPdf.c);
+		VSTORE3F(bsdfSample * VLOAD3F(taskState->pathPdf.c), taskState->pathPdf.c);
 		taskState->rrProbProd *= 1.0f - rrProb;
 #endif
 		// This is valid for irradiance AOV only if it is not a SPECULAR material and
@@ -1418,7 +1418,7 @@ __kernel void SpatialReuse_MK_SHIFT(
 	// Correct jacobian for scattering pdf from prefix vertex towards reconnection
 	// Use cached BSDF info from src/base path
 	const float srcPdf = rc->prefixToRcPdf;
-	BSDF* dstBsdf = &dst->sample.prefixBsdf;
+	const BSDF* dstBsdf = &dst->sample.prefixBsdf;
 	float dstPdf = 1.0f;
 	BSDFEvent event;
 	const float3 dstBsdfValue = BSDF_Evaluate(dstBsdf,
@@ -1433,7 +1433,7 @@ __kernel void SpatialReuse_MK_SHIFT(
 	// Correct jacobian for bsdf scattering value from prefix vertex to reconnection to incident dir
 	// Use cached BSDF info from src/base path
 	const float srcRcIncidentPdf = rc->incidentPdf;
-	BSDF* rcBsdf = &rc->bsdf;
+	const BSDF* rcBsdf = &rc->bsdf;
 	float dstRcIncidentPdf = 1.0f;
 	const float3 dstRcIncidentBsdfValue = BSDF_EvaluateWithEyeDir(rcBsdf,
 		-dstToRc, VLOAD3F(&rc->incidentDir.x), 
@@ -1472,7 +1472,7 @@ __kernel void SpatialReuse_MK_SHIFT(
 	directLightVolInfos[gid] = eyePathInfos[gid].volume;
 
 	const float3 shadowRayOrigin = BSDF_GetRayOrigin(&dst->sample.prefixBsdf, dstToRc);
-	float3 shadowRayDir = dstToRc + (BSDF_GetLandingGeometryN(&dst->sample.prefixBsdf) 
+	float3 shadowRayDir = rcPoint + (BSDF_GetLandingGeometryN(&dst->sample.prefixBsdf) 
 			* MachineEpsilon_E_Float3(rcPoint) * (rcBsdf.hitPoint.intoObject ? 1.f : -1.f)) - 
 			shadowRayOrigin;
 	const float shadowRayDirDistanceSquared = dot(shadowRayDir, shadowRayDir);
@@ -1664,12 +1664,10 @@ __kernel void SpatialReuse_MK_FINISH_ITERATION(
 	PixelIndexMap_Set(pixelIndexMap, filmWidth, 
 			sampleResult->pixelX, sampleResult->pixelY, 
 			gid);
-	// Prime previous reservoir with final initial path sample
-	task->tmpReservoir = *reservoir;
 	// Resample current pixel
 	// TODO: replace with correct MIS weight
 	// identity shift, so jacobian identity is 1
-	reservoir->weight = (1.0f / numSpatialNeighbors) * luminance * reservoir->weight;
+	// reservoir->weight = (1.0f / numSpatialNeighbors) * luminance * reservoir->weight;
 	// Prime pathstate
 	taskState->state = SR_MK_NEXT_NEIGHBOR;
 }
@@ -1688,15 +1686,16 @@ __kernel void SpatialReuse_MK_FINISH_REUSE(
 	GPUTaskState *taskState = &tasksState[gid];
 	Ray *ray = &rays[gid];
 	SampleResult *sampleResult = &sampleResultsBuff[gid];
+	const Film* restrict film = taskConfig->film;
 
 	// Copy final sample's radiance from reservoir to sampleResultsBuff[gid] to be splatted like normal
-	Radiance_Scale(&taskState->reservoir.sample.integrand,
-			&taskState->reservoir.weight,
-			&taskState->reservoir.sample.integrand)
-	Radiance_Copy(&taskConfig->film,
-		taskState->reservoir.sample.sampleResult.radiancePerPixelNormalized,
-		sampleResult->radiancePerPixelNormalized
-	);
+	Radiance_Scale(film,
+			taskState->reservoir.sample.integrand,
+			taskState->reservoir.weight,
+			taskState->reservoir.sample.integrand);
+	Radiance_Copy(film,
+			taskState->reservoir.sample.sampleResult.radiancePerPixelNormalized,
+			sampleResult->radiancePerPixelNormalized);
 	
 	if (taskState->reservoir.sample.rc.pathDepth == -1) {
 		return;

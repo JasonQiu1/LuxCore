@@ -207,10 +207,8 @@ OPENCL_FORCE_INLINE bool RespirReservoir_Add(RespirReservoir* restrict reservoir
 	// increase sample count
 	reservoir->M++;
 
-	float3 integrand = SampleResult_GetUnscaledSpectrum(film, pathRadiance);
-
 	// correct zero components in pdf if not a null (black) sample
-	float weight = Spectrum_Y(integrand) / pdf;
+	float weight = Radiance_Y(film, pathRadiance) / pdf;
 
 	// return if no chance of selection
 	if (isinf(weight) || isnan(weight) || weight == 0.f) {
@@ -219,7 +217,7 @@ OPENCL_FORCE_INLINE bool RespirReservoir_Add(RespirReservoir* restrict reservoir
 
 	reservoir->weight += weight;
 	if (Rnd_FloatValue(seed) * reservoir->weight <= weight) {
-		Radiance_Copy(film, integrand, reservoir->sample.integrand);
+		Radiance_Copy(film, pathRadiance, reservoir->sample.integrand);
 		return true;
 	}
 	return false;
@@ -262,7 +260,7 @@ OPENCL_FORCE_INLINE bool RespirReservoir_AddNEEVertex(
 				&& BSDF_GetGlossiness(bsdf MATERIALS_PARAM) <= maxGlossiness) {
 					// cache partial jacobian here (squared distance / cos angle from rc norm)
 					reservoir->sample.rc.jacobian = distanceSquared / cosAngle;
-					reservoir->sample.rc.prefixToRcPdf = pathInfo->lastBSDFPdfW;
+					reservoir->sample.rc.prefixToRcPdf = lastBSDFPdfW;
 					reservoir->sample.rc.pathDepth = pathDepth;
 					reservoir->sample.rc.bsdf = *bsdf;
 					// remove the weighting from the irradiance.
@@ -281,7 +279,7 @@ OPENCL_FORCE_INLINE void Respir_HandleInvalidShift(GPUTaskState* restrict taskSt
 		RespirReservoir* out) 
 {
 	out->sample.rc.jacobian = 0.0f;
-	Radiance_Clear(&out->sample.integrand);
+	Radiance_Clear(out->sample.integrand);
 	taskState->state = taskState->afterShiftState;
 	return;
 }
@@ -436,7 +434,7 @@ OPENCL_FORCE_INLINE void DirectHitFiniteLight(__constant const Film* restrict fi
 		SampleResult_AddEmission(film, &postfix, BSDF_GetLightID(bsdf
 				MATERIALS_PARAM), VLOAD3F(taskState->throughput.c), weight * emittedRadiance);
 		RespirReservoir_AddNEEVertex(&taskState->reservoir,
-				sampleResult->radiancePerPixelNormalized, postfix->radiancePerPixelNormalized,
+				sampleResult->radiancePerPixelNormalized, postfix.radiancePerPixelNormalized,
 				weight, VLOAD3F(taskState->throughput.c), taskState->rrProbProd, lightPickProb,
 				pathInfo->lastBSDFPdfW, bsdf, ray->time, pathInfo->depth.depth, 
 				&taskState->seedReservoirSampling, film, worldRadius
