@@ -306,7 +306,8 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 				&rays[gid],
 				rayHits[gid].t,
 				bsdf,
-				sampleResult
+				sampleResult,
+				worldRadius
 				LIGHTS_PARAM);
 	}
 
@@ -560,7 +561,8 @@ __kernel void AdvancePaths_MK_RT_DL(
 						taskState->lastDirectLightPdf, VLOAD3F(taskState->pathPdf.c), taskState->rrProdProd, 
 						taskDirectLight->illumInfo.pickPdf,
 						bsdf, ray->time, pathInfo->depth.depth, 
-						&taskState->seedReservoirSampling, &taskConfig->film);
+						&taskState->seedReservoirSampling, &taskConfig->film,
+						worldRadius, MATERIALS_PARAM);
 #endif
 			}
 
@@ -1379,8 +1381,6 @@ __kernel void SpatialReuse_MK_SHIFT(
 		printf("Dst prefix point: (%f, %f, %f)\n", dstPoint.x, dstPoint.y, dstPoint.z);
 		printf("Rc vertex point: (%f, %f, %f)\n", rcPoint.x, rcPoint.y, rcPoint.z);
 		printf("Rc geometric normal: (%f, %f, %f)\n", rcGeometricN.x, rcGeometricN.y, rcGeometricN.z);
-		printf("srcDistance (%f), dstDistance(%f)\n", srcDistance, dstDistance);
-		printf("SrcCosW (%f), DstCosW(%f)\n", srcCosW, dstCosW);
 		printf("Jacobian determinant: %f\n", out->sample.rc.jacobian);
 	}
 
@@ -1393,32 +1393,16 @@ __kernel void SpatialReuse_MK_SHIFT(
 	}
 
 	/*
-	/	Verify connectability conditions.
+	/	Verify distance connectability condition.
 	*/
 
 	// distance threshold of 2-5% world size recommended by GRIS paper
 	// TODO: make distance threshold configurable as percent world size
-	const float3 srcPoint = VLOAD3F(&src->sample.prefixBsdf.hitPoint.p.x);
-	const float3 srcToSrcRc = srcPoint - VLOAD3F(&src->sample.rc.bsdf.hitPoint.p.x);
-	const float srcToSrcRcDistance = sqrt(dot(srcToSrcRc, srcToSrcRc));
-	const float distanceThreshold = worldRadius * 2 * 0.025; 
-	if (srcDistance <= distanceThreshold 
-		|| dstDistance <= distanceThreshold
-		|| srcToSrcRcDistance <= distanceThreshold) 
-	{
-		// Shift failed or noninvertible
-		Respir_HandleInvalidShift(taskState, out);
-		return;
-	}
-
-	// assume glossiness range is [0.f,1.f], and 1-glossiness is the roughness
-	// roughness threshold of at least 0.2 is recommended from GRIS paper, so we want glossiness to be <= 0.2
-	// TODO: make glossinessThreshold configurable
-	const float glossinessThreshold = 0.2;
-	if (BSDF_GetGlossiness(&src->sample.rc.bsdf MATERIALS_PARAM) > glossinessThreshold
-			|| BSDF_GetGlossiness(&dst->sample.rc.bsdf MATERIALS_PARAM) > glossinessThreshold 
-			|| BSDF_GetGlossiness(&src->sample.prefixBsdf MATERIALS_PARAM) > glossinessThreshold
-			|| BSDF_GetGlossiness(&dst->sample.prefixBsdf MATERIALS_PARAM) > glossinessThreshold) {
+	const float3 srcToDstRc = VLOAD3F(&dst->sample.rc.bsdf.hitPoint.p.x) 
+			- VLOAD3F(&src->sample.prefixBsdf.hitPoint.p.x);
+	const float srcToDstRcDistance = sqrt(dot(srcToDstRc, srcToDstRc));
+	const float minDistance = worldRadius * 2 * 0.025; 
+	if (srcToDstRcDistance < minDistance || dstDistance < minDistance) {
 		// Shift failed or noninvertible
 		Respir_HandleInvalidShift(taskState, out);
 		return;
@@ -1578,14 +1562,16 @@ __kernel void SpatialReuse_MK_CHECK_VISIBILITY(
 		
 		// TODO: Recalculate radiance of the sample
 
-		// set src rc vertex to dst rc vertex
+		// TODO: BE CAREFUL ABOUT THIS, THIS IS A SHALLOW COPY
+		// probably don't need a deep copy though
 		src->sample.rc = dst->sample.rc;
 
 		taskDirectLight->directLightResult = ILLUMINATED;
 	} else {
+
+
 		taskDirectLight->directLightResult = SHADOWED;
 	}
-	taskState->state = SR_MK_NEXT_NEIGHBOR;
 }
 
 //------------------------------------------------------------------------------

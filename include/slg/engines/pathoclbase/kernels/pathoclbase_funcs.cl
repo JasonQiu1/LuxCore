@@ -252,7 +252,8 @@ OPENCL_FORCE_INLINE bool RespirReservoir_AddNEEVertex(
 		// rrProbProd is the cumulative product of the russian roulette probability so far
 		const float misWeight, const float3 pathPdf, const float rrProbProd, const float lightPdf, 
 		const BSDF* restrict bsdf, const float time,
-		const int pathDepth, Seed* restrict seed, __constant const Film* restrict film)
+		const int pathDepth, Seed* restrict seed, __constant const Film* restrict film,
+		const float worldRadius MATERIALS_PARAM_DECL)
 {
 	bool wasSelected = RespirReservoir_Add(reservoir, integrand, rrProbProd, seed, film);
 	if (wasSelected) {
@@ -264,18 +265,29 @@ OPENCL_FORCE_INLINE bool RespirReservoir_AddNEEVertex(
 		}
 		// reconnection shift always chooses secondary vertex as rc vertex
 		if (pathDepth == 1) {
-			reservoir->sample.rc.pathDepth = pathDepth;
-			reservoir->sample.rc.bsdf = *bsdf;
-			// remove the weighting from the irradiance.
-			Radiance_Copy(postfixRadiance, reservoir->sample.rc.irradiance);
-			Radiance_Scale(&reservoir->sample.rc.irradiance, lightPdf / misWeight,
-				&reservoir->sample.rc.irradiance);
-			// precalculate partial jacobian here (squared distance / cos angle from rc norm)
 			const float3 toRc = VLOAD3F(bsdf->hitPoint.p.x) - VLOAD3F(reservoir->sample.prefixBsdf.p.x);
 			const float distanceSquared = dot(toRc, toRc);
 			const float cosAngle = dot(bsdf->hitPoint.fixedDir, BSDF_GetLandingGeometryN(bsdf));
-			reservoir->sample.rc.jacobian = distanceSquared / cosAngle;
-			reservoir->sample.rc.prefixToRcPdf = pathInfo->lastBSDFPdfW;
+			// check roughness and distance connectability requirements
+			// assume glossiness range is [0.f,1.f], and 1-glossiness is the roughness
+			// distance threshold of 2-5% world size recommended by GRIS paper
+			const float maxGlossiness = 0.2;
+			const float minDistance = worldRadius * 2.0f * 0.025f;
+			if (sqrt(distanceSquared) >= minDistance
+				&& BSDF_GetGlossiness(&reservoir->sample.prefixBsdf MATERIALS_PARAM) <= maxGlossiness
+				&& BSDF_GetGlossiness(bsdf MATERIALS_PARAM) <= maxGlossiness) {
+					// cache partial jacobian here (squared distance / cos angle from rc norm)
+					reservoir->sample.rc.jacobian = distanceSquared / cosAngle;
+					reservoir->sample.rc.prefixToRcPdf = pathInfo->lastBSDFPdfW;
+					reservoir->sample.rc.pathDepth = pathDepth;
+					reservoir->sample.rc.bsdf = *bsdf;
+					// remove the weighting from the irradiance.
+					Radiance_Copy(postfixRadiance, reservoir->sample.rc.irradiance);
+					Radiance_Scale(&reservoir->sample.rc.irradiance, lightPdf / misWeight,
+						&reservoir->sample.rc.irradiance);
+				}
+			
+			
 		}
 	}
 	return wasSelected;
@@ -389,7 +401,7 @@ OPENCL_FORCE_INLINE void DirectHitInfiniteLight(__constant const Film* restrict 
 OPENCL_FORCE_INLINE void DirectHitFiniteLight(__constant const Film* restrict film,
 		__global EyePathInfo *pathInfo, __global GPUTaskState* restrict taskState,
 		const __global Ray *ray, const float distance, __global const BSDF *bsdf,
-		__global SampleResult *sampleResult
+		__global SampleResult *sampleResult, const float worldRadius
 		LIGHTS_PARAM_DECL) {
 	__global const LightSource* restrict light = &lights[bsdf->triangleLightSourceIndex];
 
@@ -442,7 +454,8 @@ OPENCL_FORCE_INLINE void DirectHitFiniteLight(__constant const Film* restrict fi
 				sampleResult->radiancePerPixelNormalized, &postfix,
 				weight, VLOAD3F(taskState->throughput.c), taskState->rrProdProd, lightPickProb,
 				bsdf, ray->time, pathInfo->depth.depth, 
-				&taskState->seedReservoirSampling, film);
+				&taskState->seedReservoirSampling, film,
+				worldRadius MATERIALS_PARAM);
 #endif
 	}
 }
