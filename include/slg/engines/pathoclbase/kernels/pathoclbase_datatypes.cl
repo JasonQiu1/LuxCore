@@ -133,7 +133,7 @@ typedef struct {
 	Seed seedReservoirSampling;
 
 	// keep track of cumulative products
-	float3 pathPdf; // bsdfProduct and connectionThroughput
+	Spectrum pathPdf; // bsdfProduct and connectionThroughput
 	float rrProbProd;
 	float lastDirectLightPdf; // for direct light illumination sampled from NEE (+ cheater BSDF)
 
