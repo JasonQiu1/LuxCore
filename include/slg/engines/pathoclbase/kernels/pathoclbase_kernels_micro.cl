@@ -1473,7 +1473,7 @@ __kernel void SpatialReuse_MK_SHIFT(
 
 	const float3 shadowRayOrigin = BSDF_GetRayOrigin(&dst->sample.prefixBsdf, dstToRc);
 	float3 shadowRayDir = rcPoint + (BSDF_GetLandingGeometryN(&dst->sample.prefixBsdf) 
-			* MachineEpsilon_E_Float3(rcPoint) * (rcBsdf.hitPoint.intoObject ? 1.f : -1.f)) - 
+			* MachineEpsilon_E_Float3(rcPoint) * (rcBsdf->hitPoint.intoObject ? 1.f : -1.f)) - 
 			shadowRayOrigin;
 	const float shadowRayDirDistanceSquared = dot(shadowRayDir, shadowRayDir);
 	const float shadowRayDirDistance = sqrt(shadowRayDirDistanceSquared);
@@ -1686,7 +1686,7 @@ __kernel void SpatialReuse_MK_FINISH_REUSE(
 	GPUTaskState *taskState = &tasksState[gid];
 	Ray *ray = &rays[gid];
 	SampleResult *sampleResult = &sampleResultsBuff[gid];
-	const Film* restrict film = taskConfig->film;
+	const Film* restrict film = &taskConfig->film;
 
 	// Copy final sample's radiance from reservoir to sampleResultsBuff[gid] to be splatted like normal
 	Radiance_Scale(film,
@@ -1694,7 +1694,7 @@ __kernel void SpatialReuse_MK_FINISH_REUSE(
 			taskState->reservoir.weight,
 			taskState->reservoir.sample.integrand);
 	Radiance_Copy(film,
-			taskState->reservoir.sample.sampleResult.radiancePerPixelNormalized,
+			taskState->reservoir.sample.integrand,
 			sampleResult->radiancePerPixelNormalized);
 	
 	if (taskState->reservoir.sample.rc.pathDepth == -1) {

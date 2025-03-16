@@ -260,7 +260,7 @@ OPENCL_FORCE_INLINE bool RespirReservoir_AddNEEVertex(
 				&& BSDF_GetGlossiness(bsdf MATERIALS_PARAM) <= maxGlossiness) {
 					// cache partial jacobian here (squared distance / cos angle from rc norm)
 					reservoir->sample.rc.jacobian = distanceSquared / cosAngle;
-					reservoir->sample.rc.prefixToRcPdf = lastBSDFPdfW;
+					reservoir->sample.rc.prefixToRcPdf = lastBsdfPdfW;
 					reservoir->sample.rc.pathDepth = pathDepth;
 					reservoir->sample.rc.bsdf = *bsdf;
 					// remove the weighting from the irradiance.
