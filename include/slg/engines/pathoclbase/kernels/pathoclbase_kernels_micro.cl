@@ -1592,7 +1592,7 @@ __kernel void SpatialReuse_MK_RESAMPLE(
 
 	const Film* restrict film = &taskConfig->film;
 
-	const RespirReservoir* restrict shifted = &taskConfig->shiftReservoir;
+	const RespirReservoir* restrict shifted = &taskState->shiftReservoir;
 	const RespirReservoir* central = &tasksState[taskState->shiftSrcGid].reservoir;
 	const RespirReservoir* neighbor = &tasksState[taskState->shiftDstGid].reservoir;
 	
@@ -1604,9 +1604,9 @@ __kernel void SpatialReuse_MK_RESAMPLE(
 	// 	Update canonical pairwise MIS weight with shifted integrand and jacobian.
 	*/
 	taskState->canonicalMisWeight += 1.0f;
-	const prefixApproximateIntegrandM = neighbor->M * Radiance_Y(film, shifted->sample.integrand) * shifted->sample.rc.jacobian;
-	const centralIntegrandM = central->M * Radiance_Y(film, central->sample.integrand);
-	if (prefixApproximatePdf >= 0.0f) {
+	const float prefixApproximateIntegrandM = neighbor->M * Radiance_Y(film, shifted->sample.integrand) * shifted->sample.rc.jacobian;
+	const float centralIntegrandM = central->M * Radiance_Y(film, central->sample.integrand);
+	if (prefixApproximateIntegrandM >= 0.0f) {
 		taskState->canonicalMisWeight -= prefixApproximateIntegrandM
 				/ (prefixApproximateIntegrandM + centralIntegrandM / numSpatialNeighbors);
 	} 
