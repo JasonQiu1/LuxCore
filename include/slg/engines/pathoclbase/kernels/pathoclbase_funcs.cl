@@ -199,7 +199,7 @@ OPENCL_FORCE_INLINE void PixelIndexMap_Set(__global int* pixelIndexMap, const ui
 }
 
 OPENCL_FORCE_INLINE void RespirSample_DeepCopy(__constant const Film* restrict film, const RespirSample* in, RespirSample* out) {
-	Radiance_Copy(film, pathRadiance, out->integrand);
+	Radiance_Copy(film, in->integrand, out->integrand);
 	Radiance_Copy(film, in->rc.irradiance, out->rc.irradiance);
 	out->prefixBsdf = in->prefixBsdf;
 	out->hitTime = in->hitTime;
@@ -213,8 +213,7 @@ OPENCL_FORCE_INLINE void RespirSample_DeepCopy(__constant const Film* restrict f
 	out->rc.pathDepth = in->rc.pathDepth;
 }
 
-OPENCL_FORCE_INLINE void RespirReservoir_DeepCopy(__constant const Film* restrict film, const RespirReservoir* inReservoir,
-		RespirReservoir* out) {
+OPENCL_FORCE_INLINE void RespirReservoir_DeepCopy(__constant const Film* restrict film, const RespirReservoir* in, RespirReservoir* out) {
 	RespirSample_DeepCopy(film, &in->sample, &out->sample);
 	out->M = in->M;
 	out->weight = in->weight;
@@ -261,7 +260,8 @@ OPENCL_FORCE_INLINE bool RespirReservoir_Merge(RespirReservoir* restrict outRese
 
 	outReservoir->weight += weight;
 	if (Rnd_FloatValue(seed) * outReservoir->weight <= weight) {
-		RespirSample_Copy(film, &inReservoir->sample, &outReservoir->sample);
+		RespirSample_DeepCopy(film, &inReservoir->sample, &outReservoir->sample);
+		Radiance_Copy(film, pathRadiance, out->integrand);
 		return true;
 	}
 	return false;
@@ -354,6 +354,7 @@ OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(GPUTaskState* restrict tas
 		taskState->neighborGid = PixelIndexMap_Get(pixelIndexMap, filmWidth, searchX, searchY);
 		// check that the neighbor is actually being worked on by a gputask
 		if (taskState->neighborGid != -1) {
+			taskState->numValidNeighbors++;
 			// Successfully found valid neighbor
 			return true;
 		}

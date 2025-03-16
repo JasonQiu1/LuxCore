@@ -1210,7 +1210,10 @@ __kernel void SpatialReuse_MK_INIT(
 	// Save ray time state
 	taskState->preSpatialReuseTime = ray->time;
 
-	// PRIME LOOP
+	/*
+	// Set up for first spatial reuse iteration.
+	*/
+
 	// Finalize initial path resampling RIS: calculate unbiased contribution weight of final sample
 	const float luminance = Radiance_Y(film, reservoir->sample.integrand);
 	if (reservoir->weight != 0) {
@@ -1220,6 +1223,7 @@ __kernel void SpatialReuse_MK_INIT(
 	// Prime neighbor search
 	taskState->numNeighborsLeft = numSpatialNeighbors;
 	taskState->neighborGid = -1;
+	taskState->numValidNeighbors = 0;
 	PixelIndexMap_Set(pixelIndexMap, filmWidth, 
 			sampleResult->pixelX, sampleResult->pixelY, 
 			gid);
@@ -1639,13 +1643,12 @@ __kernel void SpatialReuse_MK_FINISH_RESAMPLE(
 	//--------------------------------------------------------------------------
 	__constant const Film* restrict film = &taskConfig->film;
 
-	const RespirReservoir* restrict shifted = &taskState->shiftReservoir;
+	RespirReservoir* restrict shifted = &taskState->shiftReservoir;
 	const RespirReservoir* neighbor = &tasksState[taskState->shiftSrcGid].reservoir;
 	const RespirReservoir* central = &tasksState[taskState->shiftDstGid].reservoir;
 	//--------------------------------------------------------------------------
 	// End of variables setup
 	//--------------------------------------------------------------------------
-
 
 	/*
 	// Calculate pairwise resampling weight for the neighbor sample.
@@ -1654,7 +1657,7 @@ __kernel void SpatialReuse_MK_FINISH_RESAMPLE(
 
 	shifted->M = central->M;
 	shifted->weight = central->weight;
-	const float weight = shifted->M * Radiance_Y(film, shifted->sample.integrand) 
+	const float weight = shifted->M * Radiance_Y(film, shifted->sample.integrand)
 			* shifted->sample.rc.jacobian * shifted->weight;
 	if (weight <= 0.0f || isnan(weight) || isinf(weight)) {
 		Radiance_Clear(shifted->sample.integrand);
@@ -1672,7 +1675,7 @@ __kernel void SpatialReuse_MK_FINISH_RESAMPLE(
 	*/
 	RespirReservoir_Merge(&taskState->spatialReuseReservoir, 
 		shifted->sample.integrand, shifted->sample.rc.jacobian, neighbor,
-		neighborWeight, &taskConfig->seed, film);
+		neighborWeight, &task->seed, film);
 
 	taskState->state = SR_MK_NEXT_NEIGHBOR;
 }
@@ -1699,10 +1702,10 @@ __kernel void SpatialReuse_MK_FINISH_ITERATION(
 	// Start of variables setup
 	//--------------------------------------------------------------------------
 	__constant const Film* restrict film = &taskConfig->film;
+	const SampleResult* restrict sampleResult = &sampleResultsBuff[gid];  
 
-	const RespirReservoir* restrict shifted = &taskState->shiftReservoir;
-	const RespirReservoir* restrict central = &tasksState[gid].reservoir;
-	const RespirReservoir* restrict srReservoir = &taskState->spatialReuseReservoir
+	RespirReservoir* restrict central = &taskState->reservoir;
+	RespirReservoir* restrict srReservoir = &taskState->spatialReuseReservoir;
 	//--------------------------------------------------------------------------
 	// End of variables setup
 	//--------------------------------------------------------------------------
@@ -1712,12 +1715,12 @@ __kernel void SpatialReuse_MK_FINISH_ITERATION(
 	*/
 	RespirReservoir_Merge(srReservoir, 
 		central->sample.integrand, 1.0f, central,
-		taskState->canonicalMisWeight, &taskConfig->seed, film);
+		taskState->canonicalMisWeight, &task->seed, film);
 
 	/*
 	// 	Finalize GRIS by calculating unbiased contribution weight.
 	*/
-	const float srIntegrand = Radiance_Y(film, srReservoir->sample.integrand);
+	float srIntegrand = Radiance_Y(film, srReservoir->sample.integrand);
 	if (srIntegrand <= 0. || isnan(srIntegrand) || isinf(srIntegrand)) {
 		srIntegrand = 0.0f;
 		srReservoir->weight = 0.0f;
@@ -1735,6 +1738,7 @@ __kernel void SpatialReuse_MK_FINISH_ITERATION(
 	// Prime neighbor search
 	taskState->numNeighborsLeft = numSpatialNeighbors;
 	taskState->neighborGid = -1;
+	taskState->numValidNeighbors = 0;
 	PixelIndexMap_Set(pixelIndexMap, filmWidth, 
 			sampleResult->pixelX, sampleResult->pixelY, 
 			gid);
