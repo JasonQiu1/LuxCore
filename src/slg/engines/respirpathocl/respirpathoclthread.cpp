@@ -314,19 +314,28 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 				SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Beginning spatial reuse iteration " << i);
 				bool isSpatialReuseDone = false;
 				u_int visibilityIterations = 0;
-				// Resample neighboring pixels
+				// Resample neighboring pixels (ASYNC WORK-ITEMS)
 				while (!isSpatialReuseDone) {
 					SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Spatial reuse (iteration " << i << "): tracing shadow paths");
 					for (int i = 0; i < totalIterationsThisFrame; i++) {
-						// Resample next neighboring pixel
-						intersectionDevice->EnqueueKernel(spatialReuseKernel_MK_RESAMPLE_NEIGHBOR,
+						// Find next neighboring pixel
+						intersectionDevice->EnqueueKernel(spatialReuseKernel_MK_NEXT_NEIGHBOR,
 							HardwareDeviceRange(taskCount), HardwareDeviceRange(spatialReuseAsyncWorkGroupSize));
-
+						
+						// Shift from/to neighbor
+						intersectionDevice->EnqueueKernel(spatialReuseKernel_MK_SHIFT,
+							HardwareDeviceRange(taskCount), HardwareDeviceRange(spatialReuseAsyncWorkGroupSize));
 						// Trace shadow rays to reconnection vertices
 						intersectionDevice->EnqueueTraceRayBuffer(raysBuff, hitsBuff, taskCount);
-
 						// Check visibility and update reservoirs if successful
 						intersectionDevice->EnqueueKernel(spatialReuseKernel_MK_CHECK_VISIBILITY,
+							HardwareDeviceRange(taskCount), HardwareDeviceRange(spatialReuseAsyncWorkGroupSize));
+							
+						// Use shifted result for canonical pairwise MIS calculation and resample for actual replacement
+						intersectionDevice->EnqueueKernel(spatialReuseKernel_MK_RESAMPLE,
+							HardwareDeviceRange(taskCount), HardwareDeviceRange(spatialReuseAsyncWorkGroupSize));
+						// Finish resampling neighbor into current reservoir
+						intersectionDevice->EnqueueKernel(spatialReuseKernel_MK_FINISH_RESAMPLE,
 							HardwareDeviceRange(taskCount), HardwareDeviceRange(spatialReuseAsyncWorkGroupSize));
 					}
 					// This is blocking and waits for queue to finish
@@ -346,11 +355,11 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 			}
 			
 			// Finish up reuse
-			// if (numSpatialReuseIterations > 0) {
+			if (numSpatialReuseIterations > 0) {
 				SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Spatial reuse passes are complete, finishing reuse.");
 				intersectionDevice->EnqueueKernel(spatialReuseKernel_MK_FINISH_REUSE,
                     HardwareDeviceRange(engine->taskCount), HardwareDeviceRange(spatialReuseWorkGroupSize));
-			// }
+			}
 
 			// Check halt conditions
 			if (engine->film->GetConvergence() == 1.f)
@@ -368,47 +377,7 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 
 			//------------------------------------------------------------------
 
-			const double timeTransferStart = WallClockTime();
-
-			// Transfer the film from GPU to CPU only if I have already spent enough time running
-			// rendering kernels. This is very important when rendering very high
-			// resolution images (for instance at 4961x3508)
-			// Also transfer if numFrames is less than 10 in order to get accurate low spp images.
-			if (totalTransferTime < totalKernelTime * (1.0 / 100.0) || numFrames < 10) {
-				SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Transferring film and checking convergence conditions.");
-				bool blocking = CL_FALSE;
-				if (numFrames < 10) {
-					blocking = CL_TRUE;
-				}
-				// Transfer of the Film buffers
-				threadFilms[0]->RecvFilm(intersectionDevice, blocking);
-
-				// Transfer of GPU task statistics
-				intersectionDevice->EnqueueReadBuffer(
-					taskStatsBuff,
-					blocking,
-					sizeof(slg::ocl::pathoclbase::GPUTaskStats) * taskCount,
-					gpuTaskStats);
-
-				intersectionDevice->FinishQueue();
-				
-				// Update the film samples count
-				double totalCount = 0.0;
-				for (size_t i = 0; i < taskCount; ++i)
-					totalCount += gpuTaskStats[i].sampleCount;
-				threadFilms[0]->film->SetSampleCount(totalCount, totalCount, 0.0);
-
-				SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Finished transferring film.");
-			}
-			const double timeTransferEnd = WallClockTime();
-			totalTransferTime += timeTransferEnd - timeTransferStart;
-
             numFrames++;
-
-			/*if (threadIndex == 0)
-				SLG_LOG("[DEBUG] transfer time: " << (timeTransferEnd - timeTransferStart) * 1000.0 << "ms "
-						"kernel time: " << (timeKernelEnd - timeKernelStart) * 1000.0 << "ms "
-						"iterations: " << iterations << " #"<< taskCount << ")");*/
 
 			// Check halt conditions
 			if (engine->film->GetConvergence() == 1.f || numFrames >= haltSpp)
@@ -421,8 +390,8 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 	}
     SLG_LOG("[PathOCLRespirRenderThread::" << threadIndex << "]: Rendered " << numFrames << " frames in total.");
 
-	// threadFilms[0]->RecvFilm(intersectionDevice);
-	// intersectionDevice->FinishQueue();
+	threadFilms[0]->RecvFilm(intersectionDevice);
+	intersectionDevice->FinishQueue();
 	
 	threadDone = true;
 	
