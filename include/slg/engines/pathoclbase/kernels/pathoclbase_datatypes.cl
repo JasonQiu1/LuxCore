@@ -96,7 +96,10 @@ typedef struct {
 typedef struct {
 	Spectrum irradiance[FILM_MAX_RADIANCE_GROUP_COUNT]; // the radiance of the path of the path at the rc vertex and after
 	BSDF bsdf; // contains info on the exact hit point on the rc vertex
-	// the bsdf contains the incident direction coming into the reconnection vertex
+	Vector incidentDir; // cache the scatter direction from the next vertex to the rc vertex
+	float incidentPdf; // cache pdf from rc vertex towards incident dir
+	Spectrum incidentBsdfValue; // cache bsdf value from rc vertex towards incident dir
+	float prefixToRcPdf; // cache pdf from prefix point towards this rc vertex 
 	float jacobian; // cache the prefix vertex part of the jacobian (squared distance to self rc vertex / cos angle to norm of rc vertex)
 	int pathDepth; // -1 (no rcVertex), 0 is primary hit, 1 is secondary hit, ...
 } RcVertex;

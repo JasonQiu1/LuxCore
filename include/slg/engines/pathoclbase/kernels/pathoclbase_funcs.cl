@@ -90,11 +90,15 @@ OPENCL_FORCE_INLINE void RespirReservoir_Init(RespirReservoir* restrict reservoi
 	reservoir->M = 0.0f;
 	Radiance_Clear(reservoir->sample.integrand);
 	VSTORE3F(BLACK, &reservoir->sample.prefixBsdf.hitPoint.p.x);
-	reservoir->sample.jacobian = 0.0f;
 	reservoir->sample.lightPdf = 0.0f;
 	reservoir->sample.hitTime = 0.0f;
 	Radiance_Clear(reservoir->sample.rc.irradiance);
 	VSTORE3F(BLACK, &reservoir->sample.rc.bsdf.hitPoint.p.x);
+	VSTORE3F(BLACK, &reservoir->sample.rc.incidentDir.x);
+	VSTORE3F(BLACK, &reservoir->sample.rc.incidentBsdfValue.x);
+	reservoir->sample.rc.incidentPdf = 0.0f;
+	reservoir->sample.rc.prefixToRcPdf = 0.0f;
+	reservoir->sample.rc.jacobian = 0.0f;
 	reservoir->sample.rc.pathDepth = -1;
 }
 
@@ -271,9 +275,23 @@ OPENCL_FORCE_INLINE bool RespirReservoir_AddNEEVertex(
 			const float distanceSquared = dot(toRc, toRc);
 			const float cosAngle = dot(bsdf->hitPoint.fixedDir, BSDF_GetLandingGeometryN(bsdf));
 			reservoir->sample.rc.jacobian = distanceSquared / cosAngle;
+			reservoir->sample.rc.prefixToRcPdf = pathInfo->lastBSDFPdfW;
 		}
 	}
 	return wasSelected;
+}
+
+OPENCL_FORCE_INLINE void Respir_HandleInvalidShift(GPUTaskState* restrict taskState,
+		RespirReservoir* out) 
+{
+	out->sample.rc.jacobian = 0.0f;
+	Radiance_Clear(&out->sample.integrand);
+	taskState->state = taskState->afterShiftState;
+	return;
+}
+
+OPENCL_FORCE_INLINE bool Respir_IsInvalidJacobian(const float jacobianDeterminant) {
+	return jacobianDeterminant <= 0.0f || isnan(jacobianDeterminant) || isinf(jacobianDeterminant);
 }
 
 // Find the spatial neighbors around the pixel this work-item is handling for now

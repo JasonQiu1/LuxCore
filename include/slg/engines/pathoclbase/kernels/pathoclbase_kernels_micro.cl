@@ -846,6 +846,17 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 		sampleResult->firstPathVertexEvent = bsdfEvent;
 	}
 
+#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
+	// Secondary vertex, reconnection vertex
+	// Store incident direction, pdf, and bsdf value
+	RcVertex* rc = &taskState->reservoir.sample.rc;
+	if (pathInfo->depth.depth == 1) {
+		VSTORE3F(sampleDir, &rc->incidentDir.x);
+		rc->incidentPdf = bsdfPdfW;
+		VSTORE3F(bsdfSample, &rc->incidentBsdfValue.x);
+	}
+#endif
+
 	EyePathInfo_AddVertex(pathInfo, bsdf, bsdfEvent, bsdfPdfW,
 			taskConfig->pathTracer.hybridBackForward.glossinessThreshold
 			MATERIALS_PARAM);
@@ -1299,7 +1310,7 @@ __kernel void SpatialReuse_MK_NEXT_NEIGHBOR(
 //
 // Shift from one reservoir (domain/pixel) SRC to another (domain/pixel) DST.
 // This means the resulting path will start at DST's path.
-// Stores results in TaskState->shiftReservoir.
+// Stores shifted integrand and jacobian into TaskState->shiftReservoir.
 //
 // FROM: SpatialReuse_MK_NEXT_NEIGHBOR (for canonical pairwise MIS calculation)
 // FROM: SpatialReuse_MK_RESAMPLE (for resampling neighbors into current reservoir)
@@ -1314,6 +1325,7 @@ __kernel void SpatialReuse_MK_SHIFT(
 	) {
 	const size_t gid = get_global_id(0);
 
+	// Check correct pathstate during async execution
 	GPUTask *task = &tasks[gid];
 	GPUTaskState *taskState = &tasksState[gid];
 	if (taskState->state != SR_MK_SHIFT)
@@ -1322,11 +1334,19 @@ __kernel void SpatialReuse_MK_SHIFT(
 	//--------------------------------------------------------------------------
 	// Start of variables setup
 	//--------------------------------------------------------------------------
-	const RespirReservoir* dst = &tasks[taskState->neighborGid].tmpReservoir;
+
+	// Initialize shift reservoir to use as output for shifted integrand and jacobian
+	RespirReservoir_Init(&taskState->shiftReservoir);
+	const RespirReservoir* out = &taskState->shiftReservoir;
+	const RespirReservoir* src = &tasksState[taskState->shiftSrcGid]->reservoir;
+	const RespirReservoir* dst = &tasksState[taskState->shiftDstGid]->reservoir;
+	const RcVertex* rc = &src->sample.rc;
 	
-	const float3 rcPoint = VLOAD3F(&dst->sample.rc.bsdf.hitPoint.p.x);
-	const float3 srcPoint = VLOAD3F(&src->sample.prefixBsdf.hitPoint.p.x);
-	const float3 dstPoint = VLOAD3F(&dst->sample.prefixBsdf.hitPoint.p.x);
+	if (rc->pathDepth == -1) {
+		// No reconnection vertex, invalid shift
+		Respir_HandleInvalidShift(taskState, out);
+		return;
+	}
 
 	// Initialize image maps page pointer table
 	INIT_IMAGEMAPS_PAGES
@@ -1335,12 +1355,12 @@ __kernel void SpatialReuse_MK_SHIFT(
 	// End of variables setup
 	//--------------------------------------------------------------------------
 
-	// CALCULATE RESAMPLING WEIGHT
-	// CALCULATE JACOBIAN DETERMINANT TO FIND UNSHADOWED SHIFTED CONTRIBUTION
-	float3 srcToRc = rcPoint - srcPoint;
-	const float srcDistanceSquared = dot(srcToRc, srcToRc);
-	const float srcDistance = sqrt(srcDistanceSquared);
-	srcToRc /= srcDistance;
+	/*
+	/	Calculate and verify valid Jacobian determinant for the shift.
+	*/
+
+	const float3 rcPoint = VLOAD3F(&rc->bsdf.hitPoint.p.x);
+	const float3 dstPoint = VLOAD3F(&dst->sample.prefixBsdf.hitPoint.p.x);
 
 	float3 dstToRc = rcPoint - dstPoint;
 	const float dstDistanceSquared = dot(dstToRc, dstToRc);
@@ -1349,10 +1369,10 @@ __kernel void SpatialReuse_MK_SHIFT(
 
 	// absolute value of Cos(angle from surface normal of rc point to prefix point) 
 	const float3 rcGeometricN = HitPoint_GetGeometryN(&dst->sample.rc.bsdf.hitPoint);
-	const float srcCosW = abs(dot(srcToRc, rcGeometricN));
 	const float dstCosW = abs(dot(dstToRc, rcGeometricN));
 
-	const float jacobianDeterminant = (srcCosW / dstCosW) * (dstDistanceSquared / srcDistanceSquared);
+	// Cached jacobian is src: (sqr distance) / (cos angle)
+	out->sample.rc.jacobian = rc->jacobian * (dstCosW / dstDistanceSquared);
 
 	if (get_global_id(0) == filmWidth * filmHeight / 2 ) {
 		printf("Src prefix point: (%f, %f, %f)\n", srcPoint.x, srcPoint.y, srcPoint.z);
@@ -1361,11 +1381,24 @@ __kernel void SpatialReuse_MK_SHIFT(
 		printf("Rc geometric normal: (%f, %f, %f)\n", rcGeometricN.x, rcGeometricN.y, rcGeometricN.z);
 		printf("srcDistance (%f), dstDistance(%f)\n", srcDistance, dstDistance);
 		printf("SrcCosW (%f), DstCosW(%f)\n", srcCosW, dstCosW);
-		printf("Jacobian determinant: %f\n", jacobianDeterminant);
+		printf("Jacobian determinant: %f\n", out->sample.rc.jacobian);
 	}
+
+	// Check if shifted jacobian is valid
+	if (Respir_IsInvalidJacobian(out->sample.rc.jacobian)) 
+	{
+		// Invalid Jacobian, shift fails
+		Respir_HandleInvalidShift(taskState, out);
+		return;
+	}
+
+	/*
+	/	Verify connectability conditions.
+	*/
 
 	// distance threshold of 2-5% world size recommended by GRIS paper
 	// TODO: make distance threshold configurable as percent world size
+	const float3 srcPoint = VLOAD3F(&src->sample.prefixBsdf.hitPoint.p.x);
 	const float3 srcToSrcRc = srcPoint - VLOAD3F(&src->sample.rc.bsdf.hitPoint.p.x);
 	const float srcToSrcRcDistance = sqrt(dot(srcToSrcRc, srcToSrcRc));
 	const float distanceThreshold = worldRadius * 2 * 0.025; 
@@ -1373,8 +1406,8 @@ __kernel void SpatialReuse_MK_SHIFT(
 		|| dstDistance <= distanceThreshold
 		|| srcToSrcRcDistance <= distanceThreshold) 
 	{
-		// Shift failed
-		// TODO: set state to next path state
+		// Shift failed or noninvertible
+		Respir_HandleInvalidShift(taskState, out);
 		return;
 	}
 
@@ -1386,10 +1419,62 @@ __kernel void SpatialReuse_MK_SHIFT(
 			|| BSDF_GetGlossiness(&dst->sample.rc.bsdf MATERIALS_PARAM) > glossinessThreshold 
 			|| BSDF_GetGlossiness(&src->sample.prefixBsdf MATERIALS_PARAM) > glossinessThreshold
 			|| BSDF_GetGlossiness(&dst->sample.prefixBsdf MATERIALS_PARAM) > glossinessThreshold) {
-		// Shift failed
-		// TODO: set state to next path state
+		// Shift failed or noninvertible
+		Respir_HandleInvalidShift(taskState, out);
 		return;
 	}
+
+	/*
+	/	Calculate and verify valid, nonblack shifted integrand.
+	*/
+
+	// Correct jacobian for scattering pdf from prefix vertex towards reconnection
+	// Use cached BSDF info from src/base path
+	const float srcPdf = rc->prefixToRcPdf;
+	BSDF* dstBsdf = dst->sample.prefixBsdf;
+	float dstPdf = 1.0f;
+	BSDFEvent event;
+	const float3 dstBsdfValue = BSDF_Evaluate(dstBsdf,
+			dstToRc, &event, &dstPdf
+			MATERIALS_PARAM);
+	out->sample.rc.jacobian *= dstPdf / srcPdf;
+	if (Respir_IsInvalidJacobian(out->sample.rc.jacobian) || Spectrum_IsBlack(dstBsdfValue)) {
+		Respir_HandleInvalidShift(taskState, out);
+		return;
+	}
+
+	// Correct jacobian for bsdf scattering value from prefix vertex to reconnection to incident dir
+	// Use cached BSDF info from src/base path
+	const float srcRcIncidentPdf = rc->incidentPdf;
+	BSDF* rcBsdf = rc->bsdf;
+	float dstRcIncidentPdf = 1.0f;
+	const float3 dstRcIncidentBsdfValue = BSDF_EvaluateWithEyeDir(rcBsdf,
+		-dstToRc, VLOAD3F(&rc->incidentDir.x), 
+		&event, &dstRcIncidentPdf
+		MATERIALS_PARAM);
+	out->sample.rc.jacobian *= dstRcIncidentPdf / srcRcIncidentPdf;
+	if (Respir_IsInvalidJacobian(out->sample.rc.jacobian) || Spectrum_IsBlack(dstRcIncidentBsdfValue)) {
+		Respir_HandleInvalidShift(taskState, out);
+		return;
+	}
+
+	const float dstPdf2 = dstRcIncidentPdf;
+	// TODO: if rcVertex is the last vertex and was sampled via NEE, then dstPdf2 = src->sample.lightPdf
+
+	// Store shifted integrand
+	Radiance_ScaleGroup(rc->irradiance,
+		(dstBsdfValue / dstPdf) * (dstRcIncidentBsdfValue / dstPdf2),
+		out->sample.integrand
+	);
+
+	if (Radiance_IsBlack(out->sample.integrand)) {
+		Respir_HandleInvalidShift(taskState, out);
+		return;
+	}
+
+	/*
+	/	Set up shadow ray for visibility check.
+	*/
 
 	// Do visibility check from dst primary hit vertex to src secondary hit vertex
 	// Initialize the trough a shadow transparency flag used by Scene_Intersect()
@@ -1399,19 +1484,14 @@ __kernel void SpatialReuse_MK_SHIFT(
 	// shadow ray
 	directLightVolInfos[gid] = eyePathInfos[gid].volume;
 
-	float3 toRcPoint = rcPoint - srcPoint;
-	const float toRcPointDistanceSquared = dot(toRcPoint, toRcPoint);
-	const float toRcPointDistance = sqrt(toRcPointDistanceSquared);
-	toRcPoint /= toRcPointDistance;
-
-	const float3 shadowRayOrigin = BSDF_GetRayOrigin(&src->sample.prefixBsdf, toRcPoint);
-	float3 shadowRayDir = rcPoint + (BSDF_GetLandingGeometryN(&src->sample.prefixBsdf) 
-			* MachineEpsilon_E_Float3(rcPoint) * (dst->sample.rc.bsdf.hitPoint.intoObject ? 1.f : -1.f) ) - 
+	const float3 shadowRayOrigin = BSDF_GetRayOrigin(&dst->sample.prefixBsdf, dstToRc);
+	float3 shadowRayDir = dstToRc + (BSDF_GetLandingGeometryN(&dst->sample.prefixBsdf) 
+			* MachineEpsilon_E_Float3(rcPoint) * (rcBsdf.hitPoint.intoObject ? 1.f : -1.f)) - 
 			shadowRayOrigin;
 	const float shadowRayDirDistanceSquared = dot(shadowRayDir, shadowRayDir);
 	const float shadowRayDirDistance = sqrt(shadowRayDirDistanceSquared);
 	shadowRayDir /= shadowRayDirDistance;
-	Ray_Init4(&rays[gid], shadowRayOrigin, shadowRayDir, 0.f, shadowRayDirDistance, src->sample.hitTime);
+	Ray_Init4(&rays[gid], shadowRayOrigin, shadowRayDir, 0.f, shadowRayDirDistance, dst->sample.hitTime);
 	
 	taskState->state = SR_CHECK_VISIBILITY;
 	return;

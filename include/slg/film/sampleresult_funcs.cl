@@ -178,6 +178,16 @@ OPENCL_FORCE_INLINE float Radiance_Y(__constant const Film* restrict film,
 	return y;
 }
 
+OPENCL_FORCE_INLINE float3 Radiance_IsBlack(__constant const Film* restrict film,
+	const Spectrum *radianceGroups) {
+	for (uint i = 0; i < film->radianceGroupCount; ++i) {
+		if (!Spectrum_IsBlack(radianceGroups[i])) {
+			return false;
+		}
+	}
+	return true;
+}
+
 OPENCL_FORCE_INLINE float3 Radiance_GetUnscaledSpectrum(__constant const Film* restrict film,
 		const Spectrum *radianceGroups) {
 	float3 c = BLACK;
@@ -215,6 +225,13 @@ OPENCL_FORCE_INLINE void Radiance_Add_Weighted(__constant const Film* restrict f
 
 OPENCL_FORCE_INLINE void Radiance_Scale(__constant const Film* restrict film, 
 	const Spectrum* a, const float scale, Spectrum* out) {
+	for (uint i = 0; i < film->radianceGroupCount; i++) {
+		VSTORE3F((VLOAD3F(a[i].c) * scale), out[i].c);
+	}
+}
+
+OPENCL_FORCE_INLINE void Radiance_ScaleGroup(__constant const Film* restrict film, 
+	const Spectrum* a, const float3 scale, Spectrum* out) {
 	for (uint i = 0; i < film->radianceGroupCount; i++) {
 		VSTORE3F((VLOAD3F(a[i].c) * scale), out[i].c);
 	}
