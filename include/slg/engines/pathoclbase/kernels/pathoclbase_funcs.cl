@@ -233,7 +233,7 @@ OPENCL_FORCE_INLINE bool RespirReservoir_Add(RespirReservoir* restrict reservoir
 	// increase sample count
 	reservoir->M++;
 
-	float weight = Radiance_Y(film, pathRadiance) / pdf;
+	float weight = Radiance_Filter(film, pathRadiance) / pdf;
 
 	// return if no chance of selection
 	if (isinf(weight) || isnan(weight) || weight == 0.f) {
@@ -258,7 +258,7 @@ OPENCL_FORCE_INLINE bool RespirReservoir_Merge(RespirReservoir* restrict outRese
 	const Spectrum* restrict inRadiance, const float inJacobian, const RespirReservoir* inReservoir,
 	const float misWeight, Seed* restrict seed, __constant const Film* restrict film) 
 {
-	float weight = Radiance_Y(film, inRadiance) * inJacobian * inReservoir->weight * misWeight;
+	float weight = Radiance_Filter(film, inRadiance) * inJacobian * inReservoir->weight * misWeight;
 
 	// Add sample counts
 	outReservoir->M += inReservoir->M;

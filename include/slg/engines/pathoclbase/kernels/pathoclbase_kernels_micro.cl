@@ -1217,9 +1217,9 @@ __kernel void SpatialReuse_MK_INIT(
 	*/
 
 	// Finalize initial path resampling RIS: calculate unbiased contribution weight of final sample
-	const float luminance = Radiance_Y(film, reservoir->sample.integrand);
+	const float integrand = Radiance_Filter(film, reservoir->sample.integrand);
 	if (reservoir->weight != 0) {
-		reservoir->weight = reservoir->weight / luminance;
+		reservoir->weight = reservoir->weight / integrand;
 	}
 
 	// Prime neighbor search
@@ -1619,8 +1619,8 @@ __kernel void SpatialReuse_MK_RESAMPLE(
 	// 	Update canonical pairwise MIS weight with shifted integrand and jacobian.
 	*/
 	taskState->canonicalMisWeight += 1.0f;
-	const float prefixApproximateIntegrandM = neighbor->M * Radiance_Y(film, shifted->sample.integrand) * shifted->sample.rc.jacobian;
-	const float centralIntegrandM = central->M * Radiance_Y(film, central->sample.integrand);
+	const float prefixApproximateIntegrandM = neighbor->M * Radiance_Filter(film, shifted->sample.integrand) * shifted->sample.rc.jacobian;
+	const float centralIntegrandM = central->M * Radiance_Filter(film, central->sample.integrand);
 	if (prefixApproximateIntegrandM >= 0.0f) {
 		taskState->canonicalMisWeight -= prefixApproximateIntegrandM
 				/ (prefixApproximateIntegrandM + centralIntegrandM / numSpatialNeighbors);
@@ -1683,13 +1683,13 @@ __kernel void SpatialReuse_MK_FINISH_RESAMPLE(
 
 	shifted->M = central->M;
 	shifted->weight = central->weight;
-	const float weight = shifted->M * Radiance_Y(film, shifted->sample.integrand)
+	const float weight = shifted->M * Radiance_Filter(film, shifted->sample.integrand)
 			* shifted->sample.rc.jacobian * shifted->weight;
 	if (weight <= 0.0f || isnan(weight) || isinf(weight)) {
 		Radiance_Clear(shifted->sample.integrand);
 	} else {
-		const float neighborIntegrandM = neighbor->M * Radiance_Y(film, neighbor->sample.integrand) / shifted->sample.rc.jacobian;
-		const float shiftedIntegrandM = central->M * Radiance_Y(film, shifted->sample.integrand);
+		const float neighborIntegrandM = neighbor->M * Radiance_Filter(film, neighbor->sample.integrand) / shifted->sample.rc.jacobian;
+		const float shiftedIntegrandM = central->M * Radiance_Filter(film, shifted->sample.integrand);
 		neighborWeight = neighborIntegrandM / (neighborIntegrandM + shiftedIntegrandM / numSpatialNeighbors);
 		if (isnan(neighborWeight) || isinf(neighborWeight)) {
 			neighborWeight = 0.0f;
@@ -1752,7 +1752,7 @@ __kernel void SpatialReuse_MK_FINISH_ITERATION(
 	/*
 	// 	Finalize GRIS by calculating unbiased contribution weight.
 	*/
-	float srIntegrand = Radiance_Y(film, srReservoir->sample.integrand);
+	float srIntegrand = Radiance_Filter(film, srReservoir->sample.integrand);
 	if (srIntegrand <= 0. || isnan(srIntegrand) || isinf(srIntegrand)) {
 		srIntegrand = 0.0f;
 		srReservoir->weight = 0.0f;
