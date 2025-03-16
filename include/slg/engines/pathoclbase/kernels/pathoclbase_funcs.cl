@@ -23,7 +23,6 @@
 //  PARAM_RAY_EPSILON_MAX
 
 // #define DEBUG
-#define DEBUG_GID 37107
 
 /*void MangleMemory(__global unsigned char *ptr, const size_t size) {
 	Seed seed;
@@ -287,6 +286,9 @@ OPENCL_FORCE_INLINE bool RespirReservoir_AddNEEVertex(
 		const int pathDepth, Seed* restrict seed, __constant const Film* restrict film,
 		const float worldRadius MATERIALS_PARAM_DECL)
 {
+	if (get_global_id(0) == DEBUG_GID) {
+		printf("Initial path resampling: Resampling with rr prob %f at depth %d\n", rrProbProd, pathDepth);
+	}
 	if (RespirReservoir_Add(reservoir, integrand, rrProbProd, seed, film)) {
 		if (get_global_id(0) == DEBUG_GID) {
 			printf("Initial path resampling: Selected new vertex at depth: %d\n", pathDepth);
