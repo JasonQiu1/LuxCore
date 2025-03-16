@@ -1203,7 +1203,7 @@ __kernel void SpatialReuse_MK_INIT(
 	// no reconnection vertex, no invertible shift mapping
 	// CAN shift FROM other domains, CANNOT shift TO other domains
 	if (taskState->reservoir.sample.rc.pathDepth == -1 
-		|| taskState->reservoir.sample.rc.pathDepth > reservoir.sample.pathDepth) {
+		|| taskState->reservoir.sample.rc.pathDepth > taskState->reservoir.sample.pathDepth) {
 		// keep pathstate to SYNC so that resampling and visibility kernels do not run
 		// keep pixelIndexMap to be -1 so this pixel isn't resampled from
 		return;
@@ -1721,7 +1721,7 @@ __kernel void SpatialReuse_MK_FINISH_ITERATION(
 	GPUTask *task = &tasks[gid];
 	GPUTaskState *taskState = &tasksState[gid];
 	if (taskState->reservoir.sample.rc.pathDepth == -1 
-		|| taskState->reservoir.sample.rc.pathDepth > reservoir.sample.pathDepth) {
+		|| taskState->reservoir.sample.rc.pathDepth > taskState->reservoir.sample.pathDepth) {
 		return;
 	}
 
@@ -1814,7 +1814,7 @@ __kernel void SpatialReuse_MK_FINISH_REUSE(
 			sampleResult->radiancePerPixelNormalized);
 	
 	if (taskState->reservoir.sample.rc.pathDepth == -1 
-		|| taskState->reservoir.sample.rc.pathDepth > reservoir.sample.pathDepth) {
+		|| taskState->reservoir.sample.rc.pathDepth > taskState->reservoir.sample.pathDepth) {
 		return;
 	}
 
