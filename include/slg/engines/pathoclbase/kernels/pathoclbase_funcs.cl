@@ -23,6 +23,7 @@
 //  PARAM_RAY_EPSILON_MAX
 
 // #define DEBUG
+#define DEBUG_GID 0
 
 /*void MangleMemory(__global unsigned char *ptr, const size_t size) {
 	Seed seed;
@@ -281,18 +282,16 @@ OPENCL_FORCE_INLINE bool RespirReservoir_AddNEEVertex(
 		const int pathDepth, Seed* restrict seed, __constant const Film* restrict film,
 		const float worldRadius MATERIALS_PARAM_DECL)
 {
-	if (get_global_id(0) == 2500) {
-		printf("Initial path resampling: Resampling with rr pdf of: %f\n", rrProbProd);
-	}
+	printf("Initial path resampling: Resampling with rr pdf of: %f\n", rrProbProd);
 	bool wasSelected = RespirReservoir_Add(reservoir, integrand, rrProbProd, seed, film);
 	if (wasSelected) {
-		if (get_global_id(0) == 2500) {
+		if (get_global_id(0) == DEBUG_GID) {
 			printf("Initial path resampling: Selected new vertex at depth: %d\n", pathDepth);
 		}
 		reservoir->sample.lightPdf = lightPdf;
 		// reconnection shift always chooses primary vertex as prefix vertex
 		if (pathDepth == 0) { 
-			if (get_global_id(0) == 2500) {
+			if (get_global_id(0) == DEBUG_GID) {
 				printf("Initial path resampling: Cached prefix vertex info.\n");
 			}
 			reservoir->sample.prefixBsdf = *bsdf;
@@ -300,7 +299,7 @@ OPENCL_FORCE_INLINE bool RespirReservoir_AddNEEVertex(
 		}
 		// reconnection shift always chooses secondary vertex as rc vertex
 		if (pathDepth == 1) {
-			if (get_global_id(0) == 2500) {
+			if (get_global_id(0) == DEBUG_GID) {
 				printf("Initial path resampling: Cached reconnection vertex info.\n");
 			}
 			const float3 toRc = VLOAD3F(&bsdf->hitPoint.p.x) - VLOAD3F(&reservoir->sample.prefixBsdf.hitPoint.p.x);
@@ -324,7 +323,7 @@ OPENCL_FORCE_INLINE bool RespirReservoir_AddNEEVertex(
 					Radiance_Scale(film, reservoir->sample.rc.irradiance, lightPdf / misWeight,
 						reservoir->sample.rc.irradiance);
 			} else {
-				if (get_global_id(0) == 2500) {
+				if (get_global_id(0) == DEBUG_GID) {
 				printf("Initial path resampling: Rejected reconnection vertex based on glossiness or distance.\n");
 				}
 			}	
