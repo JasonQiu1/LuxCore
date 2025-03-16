@@ -261,7 +261,7 @@ OPENCL_FORCE_INLINE bool RespirReservoir_Merge(RespirReservoir* restrict outRese
 	outReservoir->weight += weight;
 	if (Rnd_FloatValue(seed) * outReservoir->weight <= weight) {
 		RespirSample_DeepCopy(film, &inReservoir->sample, &outReservoir->sample);
-		Radiance_Copy(film, inRadiance, outReservoir->integrand);
+		Radiance_Copy(film, inRadiance, outReservoir->sample.integrand);
 		return true;
 	}
 	return false;
