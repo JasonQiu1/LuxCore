@@ -887,7 +887,7 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 		VSTORE3F(throughputFactor * VLOAD3F(taskState->throughput.c), taskState->throughput.c);
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
 		VSTORE3F(bsdfSample * VLOAD3F(taskState->pathPdf.c), taskState->pathPdf.c);
-		taskState->rrProbProd *= 1.0f - rrProb;
+		taskState->rrProbProd *= rrProb;
 #endif
 		// This is valid for irradiance AOV only if it is not a SPECULAR material and
 		// first path vertex. Set or update sampleResult.irradiancePathThroughput
