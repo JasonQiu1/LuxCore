@@ -1202,7 +1202,7 @@ __kernel void SpatialReuse_MK_INIT(
 	taskState->preSpatialReuseTime = ray->time;
 
 	// PRIME LOOP
-	// Finalize RIS: calculate unbiased contribution weight of final sample
+	// Finalize initial path resampling RIS: calculate unbiased contribution weight of final sample
 	const float luminance = Radiance_Y(film, &reservoir->sample.integrand);
 	if (reservoir->weight != 0) {
 		reservoir->weight = reservoir->weight / luminance;
@@ -1220,7 +1220,7 @@ __kernel void SpatialReuse_MK_INIT(
 	taskState->canonicalMisWeight = 1.f;
 	
 	// Prime pathstate
-	taskState->state = SR_RESAMPLE_NEIGHBOR;
+	taskState->state = SR_MK_NEXT_NEIGHBOR;
 
 	//--------------------------------------------------------------------------
 
@@ -1259,142 +1259,31 @@ __kernel void SpatialReuse_MK_NEXT_NEIGHBOR(
 	const Scene* restrict scene = &taskConfig->scene;
 	RespirReservoir* src = &taskState->reservoir; 
 
-	// Initialize image maps page pointer table
-	INIT_IMAGEMAPS_PAGES
-
 	//--------------------------------------------------------------------------
 	// End of variables setup
 	//--------------------------------------------------------------------------
 
 	// Get pixels around this point
-	// Resample neighbors until one succeeds, then check its visibility
-	while (Respir_UpdateNextNeighborGid(
+	if (!Respir_UpdateNextNeighborGid(
 		taskState, sampleResult, 
 		spatialRadius, pixelIndexMap, filmWidth, filmHeight, &task->seed
 	)) {
-		const RespirReservoir* dst = &tasks[taskState->currentNeighborGid].tmpReservoir;
-		
-		// CALCULATE RESAMPLING WEIGHT
-		// CALCULATE JACOBIAN DETERMINANT TO FIND UNSHADOWED SHIFTED CONTRIBUTION
-		const float3 rcPoint = VLOAD3F(&dst->sample.rc.bsdf.hitPoint.p.x);
-		const float3 srcPoint = VLOAD3F(&src->sample.prefixBsdf.hitPoint.p.x);
-		const float3 dstPoint = VLOAD3F(&dst->sample.prefixBsdf.hitPoint.p.x);
-
-		float3 srcToRc = rcPoint - srcPoint;
-		const float srcDistanceSquared = dot(srcToRc, srcToRc);
-		const float srcDistance = sqrt(srcDistanceSquared);
-		srcToRc /= srcDistance;
-
-		float3 dstToRc = rcPoint - dstPoint;
-		const float dstDistanceSquared = dot(dstToRc, dstToRc);
-		const float dstDistance = sqrt(dstDistanceSquared);
-		dstToRc /= dstDistance;
-
-		// absolute value of Cos(angle from surface normal of rc point to prefix point) 
-		const float3 rcGeometricN = HitPoint_GetGeometryN(&dst->sample.rc.bsdf.hitPoint);
-		const float srcCosW = abs(dot(srcToRc, rcGeometricN));
-		const float dstCosW = abs(dot(dstToRc, rcGeometricN));
-
-		const float jacobianDeterminant = (srcCosW / dstCosW) * (dstDistanceSquared / srcDistanceSquared);
-
-		if (get_global_id(0) == filmWidth * filmHeight / 2 ) {
-			printf("Src prefix point: (%f, %f, %f)\n", srcPoint.x, srcPoint.y, srcPoint.z);
-			printf("Dst prefix point: (%f, %f, %f)\n", dstPoint.x, dstPoint.y, dstPoint.z);
-			printf("Rc vertex point: (%f, %f, %f)\n", rcPoint.x, rcPoint.y, rcPoint.z);
-			printf("Rc geometric normal: (%f, %f, %f)\n", rcGeometricN.x, rcGeometricN.y, rcGeometricN.z);
-			printf("srcDistance (%f), dstDistance(%f)\n", srcDistance, dstDistance);
-			printf("SrcCosW (%f), DstCosW(%f)\n", srcCosW, dstCosW);
-			printf("Jacobian determinant: %f\n", jacobianDeterminant);
-		}
-
-		// TODO: move this to the rc vertex selection in the future
-		// distance threshold of 2-5% world size recommended by GRIS paper
-		const float3 srcToSrcRc = srcPoint - VLOAD3F(&src->sample.rc.bsdf.hitPoint.p.x);
-		const float srcToSrcRcDistance = sqrt(dot(srcToSrcRc, srcToSrcRc));
-		const float distanceThreshold = worldRadius * 2 * 0.025; 
-		if (srcDistance <= distanceThreshold 
-			|| dstDistance <= distanceThreshold
-			|| srcToSrcRcDistance <= distanceThreshold) 
-		{
-			continue;
-		}
-
-		// TODO: move this to the rc vertex selection in the future
-		// assume glossiness range is [0.f,1.f], and 1-glossiness is the roughness
-		// roughness threshold of at least 0.2 is recommended from GRIS paper, so we want glossiness to be <= 0.2
-		const float glossinessThreshold = 0.2;
-		if (BSDF_GetGlossiness(&src->sample.rc.bsdf MATERIALS_PARAM) > glossinessThreshold
-				|| BSDF_GetGlossiness(&dst->sample.rc.bsdf MATERIALS_PARAM) > glossinessThreshold 
-				|| BSDF_GetGlossiness(&src->sample.prefixBsdf MATERIALS_PARAM) > glossinessThreshold
-				|| BSDF_GetGlossiness(&dst->sample.prefixBsdf MATERIALS_PARAM) > glossinessThreshold) {
-			continue;
-		}
-
-		// RECALCULATE UNSHADOWED SAMPLE THROUGHPUT
-		Radiance_Add(film,
-			src->sample.normPrefixRadiance, 
-			dst->sample.rc.normPostfixRadiance, 
-			taskState->resamplingRadiance);
-
-		// Calculate resampling weight
-		const float shiftedContribution = Radiance_Y(film, taskState->resamplingRadiance);
-		if (shiftedContribution != 0) {
-			// TODO: change 1/M to correct MIS weight factor
-			src->weight = (1.0f / numSpatialNeighbors) * shiftedContribution * dst->weight * jacobianDeterminant;
-		} else {
-			src->weight = 0;
-		}
-
-		// Resample the dst reservoir into the src reservoir
-		src->sumWeight += dst->sumWeight;
-		if (Rnd_FloatValue(&task->seed) >= src->weight / src->sumWeight) {
-			// Failed resampling chance.
-			continue;
-		}
-
-		// SET UP SHADOW RAY TO FINISH RESAMPLING PROCESS
-	#ifdef DEBUG
-			if (get_global_id(0) == 1) {
-				printf("Spatial resampling succeeded.\n");
-			}
-	#endif
-		// Using the simplest but biased rc shift mapping for now
-		// TODO: upgrade to hybrid shift mapping
-
-		// Do visibility check from dst primary hit vertex to src secondary hit vertex
-		// Initialize the trough a shadow transparency flag used by Scene_Intersect()
-		tasksDirectLight[gid].throughShadowTransparency = false;
-
-		// Make a copy of current PathVolumeInfo for tracing the
-		// shadow ray
-		directLightVolInfos[gid] = eyePathInfos[gid].volume;
-
-		float3 toRcPoint = rcPoint - srcPoint;
-		const float toRcPointDistanceSquared = dot(toRcPoint, toRcPoint);
-		const float toRcPointDistance = sqrt(toRcPointDistanceSquared);
-		toRcPoint /= toRcPointDistance;
-
-		const float3 shadowRayOrigin = BSDF_GetRayOrigin(&src->sample.prefixBsdf, toRcPoint);
-		float3 shadowRayDir = rcPoint + (BSDF_GetLandingGeometryN(&src->sample.prefixBsdf) 
-				* MachineEpsilon_E_Float3(rcPoint) * (dst->sample.rc.bsdf.hitPoint.intoObject ? 1.f : -1.f) ) - 
-				shadowRayOrigin;
-		const float shadowRayDirDistanceSquared = dot(shadowRayDir, shadowRayDir);
-		const float shadowRayDirDistance = sqrt(shadowRayDirDistanceSquared);
-		shadowRayDir /= shadowRayDirDistance;
-		Ray_Init4(&rays[gid], shadowRayOrigin, shadowRayDir, 0.f, shadowRayDirDistance, src->sample.hitTime);
-		
-		taskState->state = SR_CHECK_VISIBILITY;
-		return;
+		// No more neighbors, this iteration is finished
+		taskState->state = SYNC;
 	}
-	// If no more neighbors, then this spatial iteration is finished 
-	taskState->state = SYNC;
+
+	// Set up CENTRAL (current pixel) -> NEIGHBOR shift for canonical pairwise MIS accumulation
+	// TODO
+
+	taskState->state = SR_MK_SHIFT;
 }
 
 //------------------------------------------------------------------------------
 // SpatialReuse_MK_SHIFT Kernel
 //
-// Shift from one reservoir (domain/pixel) to another (domain/pixel).
-// Stores results in (TODO EXACTLY WHAT ???).
+// Shift from one reservoir (domain/pixel) SRC to another (domain/pixel) DST.
+// This means the resulting path will start at DST's path.
+// Stores results in TaskState->shiftReservoir.
 //
 // FROM: SpatialReuse_MK_NEXT_NEIGHBOR (for canonical pairwise MIS calculation)
 // FROM: SpatialReuse_MK_RESAMPLE (for resampling neighbors into current reservoir)
@@ -1414,14 +1303,109 @@ __kernel void SpatialReuse_MK_SHIFT(
 	if (taskState->state != SR_MK_SHIFT)
 		return;
 
-	// TODO
+	//--------------------------------------------------------------------------
+	// Start of variables setup
+	//--------------------------------------------------------------------------
+	const RespirReservoir* dst = &tasks[taskState->currentNeighborGid].tmpReservoir;
+	
+	const float3 rcPoint = VLOAD3F(&dst->sample.rc.bsdf.hitPoint.p.x);
+	const float3 srcPoint = VLOAD3F(&src->sample.prefixBsdf.hitPoint.p.x);
+	const float3 dstPoint = VLOAD3F(&dst->sample.prefixBsdf.hitPoint.p.x);
+
+	// Initialize image maps page pointer table
+	INIT_IMAGEMAPS_PAGES
+
+	//--------------------------------------------------------------------------
+	// End of variables setup
+	//--------------------------------------------------------------------------
+
+	// CALCULATE RESAMPLING WEIGHT
+	// CALCULATE JACOBIAN DETERMINANT TO FIND UNSHADOWED SHIFTED CONTRIBUTION
+	float3 srcToRc = rcPoint - srcPoint;
+	const float srcDistanceSquared = dot(srcToRc, srcToRc);
+	const float srcDistance = sqrt(srcDistanceSquared);
+	srcToRc /= srcDistance;
+
+	float3 dstToRc = rcPoint - dstPoint;
+	const float dstDistanceSquared = dot(dstToRc, dstToRc);
+	const float dstDistance = sqrt(dstDistanceSquared);
+	dstToRc /= dstDistance;
+
+	// absolute value of Cos(angle from surface normal of rc point to prefix point) 
+	const float3 rcGeometricN = HitPoint_GetGeometryN(&dst->sample.rc.bsdf.hitPoint);
+	const float srcCosW = abs(dot(srcToRc, rcGeometricN));
+	const float dstCosW = abs(dot(dstToRc, rcGeometricN));
+
+	const float jacobianDeterminant = (srcCosW / dstCosW) * (dstDistanceSquared / srcDistanceSquared);
+
+	if (get_global_id(0) == filmWidth * filmHeight / 2 ) {
+		printf("Src prefix point: (%f, %f, %f)\n", srcPoint.x, srcPoint.y, srcPoint.z);
+		printf("Dst prefix point: (%f, %f, %f)\n", dstPoint.x, dstPoint.y, dstPoint.z);
+		printf("Rc vertex point: (%f, %f, %f)\n", rcPoint.x, rcPoint.y, rcPoint.z);
+		printf("Rc geometric normal: (%f, %f, %f)\n", rcGeometricN.x, rcGeometricN.y, rcGeometricN.z);
+		printf("srcDistance (%f), dstDistance(%f)\n", srcDistance, dstDistance);
+		printf("SrcCosW (%f), DstCosW(%f)\n", srcCosW, dstCosW);
+		printf("Jacobian determinant: %f\n", jacobianDeterminant);
+	}
+
+	// distance threshold of 2-5% world size recommended by GRIS paper
+	// TODO: make distance threshold configurable as percent world size
+	const float3 srcToSrcRc = srcPoint - VLOAD3F(&src->sample.rc.bsdf.hitPoint.p.x);
+	const float srcToSrcRcDistance = sqrt(dot(srcToSrcRc, srcToSrcRc));
+	const float distanceThreshold = worldRadius * 2 * 0.025; 
+	if (srcDistance <= distanceThreshold 
+		|| dstDistance <= distanceThreshold
+		|| srcToSrcRcDistance <= distanceThreshold) 
+	{
+		// Shift failed
+		// TODO: set state to next path state
+		return;
+	}
+
+	// assume glossiness range is [0.f,1.f], and 1-glossiness is the roughness
+	// roughness threshold of at least 0.2 is recommended from GRIS paper, so we want glossiness to be <= 0.2
+	// TODO: make glossinessThreshold configurable
+	const float glossinessThreshold = 0.2;
+	if (BSDF_GetGlossiness(&src->sample.rc.bsdf MATERIALS_PARAM) > glossinessThreshold
+			|| BSDF_GetGlossiness(&dst->sample.rc.bsdf MATERIALS_PARAM) > glossinessThreshold 
+			|| BSDF_GetGlossiness(&src->sample.prefixBsdf MATERIALS_PARAM) > glossinessThreshold
+			|| BSDF_GetGlossiness(&dst->sample.prefixBsdf MATERIALS_PARAM) > glossinessThreshold) {
+		// Shift failed
+		// TODO: set state to next path state
+		return;
+	}
+
+	// Do visibility check from dst primary hit vertex to src secondary hit vertex
+	// Initialize the trough a shadow transparency flag used by Scene_Intersect()
+	tasksDirectLight[gid].throughShadowTransparency = false;
+
+	// Make a copy of current PathVolumeInfo for tracing the
+	// shadow ray
+	directLightVolInfos[gid] = eyePathInfos[gid].volume;
+
+	float3 toRcPoint = rcPoint - srcPoint;
+	const float toRcPointDistanceSquared = dot(toRcPoint, toRcPoint);
+	const float toRcPointDistance = sqrt(toRcPointDistanceSquared);
+	toRcPoint /= toRcPointDistance;
+
+	const float3 shadowRayOrigin = BSDF_GetRayOrigin(&src->sample.prefixBsdf, toRcPoint);
+	float3 shadowRayDir = rcPoint + (BSDF_GetLandingGeometryN(&src->sample.prefixBsdf) 
+			* MachineEpsilon_E_Float3(rcPoint) * (dst->sample.rc.bsdf.hitPoint.intoObject ? 1.f : -1.f) ) - 
+			shadowRayOrigin;
+	const float shadowRayDirDistanceSquared = dot(shadowRayDir, shadowRayDir);
+	const float shadowRayDirDistance = sqrt(shadowRayDirDistanceSquared);
+	shadowRayDir /= shadowRayDirDistance;
+	Ray_Init4(&rays[gid], shadowRayOrigin, shadowRayDir, 0.f, shadowRayDirDistance, src->sample.hitTime);
+	
+	taskState->state = SR_CHECK_VISIBILITY;
+	return;
 }
 
 //------------------------------------------------------------------------------
 // SpatialReuse_MK_CHECK_VISIBILITY Kernel
 //
 // Checks if the shadow ray shot to the reconnection vertex is blocked or not.
-// If visible, then update (TODO WHICH???) reservoir appropriately.
+// If visible, then update TaskState->shiftReservoir appropriately (TODO EXACTLY WHAT??).
 //
 // FROM: SpatialReuse_MK_SHIFT
 // TO: SpatialReuse_MK_CHECK_VISIBILITY (if ray is not finished tracing)
@@ -1485,27 +1469,29 @@ __kernel void SpatialReuse_MK_CHECK_VISIBILITY(
 	const bool rayMiss = (rayHits[gid].meshIndex == NULL_INDEX);
 
 	// If continueToTrace, there is nothing to do, just keep the same state
-	if (!continueToTrace) {
-		taskState->state = SR_RESAMPLE_NEIGHBOR;
-		if (rayMiss) {
-			// Nothing was hit, the light source is visible
-
-			// VISIBLE: FINISH SUCCESSFUL RESAMPLING PROCESS
-			RespirReservoir* src = &taskState->reservoir;
-			const RespirReservoir* dst = &tasks[taskState->currentNeighborGid].tmpReservoir;
-			
-			Radiance_Copy(film, 
-				taskState->resamplingRadiance,
-				src->sample.sampleResult.radiancePerPixelNormalized);
-
-			// set src rc vertex to dst rc vertex
-			src->sample.rc = dst->sample.rc;
-
-			taskDirectLight->directLightResult = ILLUMINATED;
-		} else {
-			taskDirectLight->directLightResult = SHADOWED;
-		}
+	if (continueToTrace) {
+		return;
 	}
+
+	if (rayMiss) {
+		// Nothing was hit, the light source is visible
+
+		// VISIBLE: FINISH SUCCESSFUL RESAMPLING PROCESS
+		RespirReservoir* src = &taskState->reservoir;
+		const RespirReservoir* dst = &tasks[taskState->currentNeighborGid].tmpReservoir;
+		
+		Radiance_Copy(film, 
+			taskState->resamplingRadiance,
+			src->sample.sampleResult.radiancePerPixelNormalized);
+
+		// set src rc vertex to dst rc vertex
+		src->sample.rc = dst->sample.rc;
+
+		taskDirectLight->directLightResult = ILLUMINATED;
+	} else {
+		taskDirectLight->directLightResult = SHADOWED;
+	}
+	taskState->state = SR_MK_NEXT_NEIGHBOR;
 }
 
 //------------------------------------------------------------------------------
@@ -1552,6 +1538,21 @@ __kernel void SpatialReuse_MK_FINISH_RESAMPLE(
 		return;
 
 	// TODO
+	// Calculate resampling weight
+	const float shiftedContribution = Radiance_Y(film, taskState->resamplingRadiance);
+	if (shiftedContribution != 0) {
+		// TODO: change 1/M to correct MIS weight factor
+		src->weight = (1.0f / numSpatialNeighbors) * shiftedContribution * dst->weight * jacobianDeterminant;
+	} else {
+		src->weight = 0;
+	}
+
+	// Resample the dst reservoir into the src reservoir
+	src->weight += dst->weight;
+	if (Rnd_FloatValue(&task->seed) >= src->weight / src->weight) {
+		// Failed resampling chance.
+		continue;
+	}	
 }
 
 //------------------------------------------------------------------------------
@@ -1584,13 +1585,15 @@ __kernel void SpatialReuse_MK_FINISH_ITERATION(
 	// End of variables setup
 	//--------------------------------------------------------------------------
 
+	// TODO: Resample canonical (central) sample using canonical mis weight
+
 	// PRIME LOOP
+	// TODO: correct this equation for GRIS reservoir merging
 	// Recalculate unbiased contribution weight
 	const float luminance = SampleResult_GetRadianceY(film, &reservoir->sample.sampleResult);
 	if (reservoir->weight != 0) {
-		reservoir->weight = reservoir->sumWeight / luminance;
+		reservoir->weight = reservoir->weight / luminance;
 	}
-	reservoir->sumWeight = reservoir->weight;
 
 	// Prime neighbor search
 	taskState->numNeighborsLeft = numSpatialNeighbors;
@@ -1608,9 +1611,8 @@ __kernel void SpatialReuse_MK_FINISH_ITERATION(
 	// TODO: replace with correct MIS weight
 	// identity shift, so jacobian identity is 1
 	reservoir->weight = (1.0f / numSpatialNeighbors) * luminance * reservoir->weight;
-	reservoir->sumWeight = reservoir->weight;
 	// Prime pathstate
-	taskState->state = SR_RESAMPLE_NEIGHBOR;
+	taskState->state = SR_MK_NEXT_NEIGHBOR;
 }
 
 //------------------------------------------------------------------------------
