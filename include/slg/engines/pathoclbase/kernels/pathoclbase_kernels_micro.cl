@@ -1342,7 +1342,7 @@ __kernel void SpatialReuse_MK_SHIFT(
 	const Scene* restrict scene = &taskConfig->scene;
 
 	// Initialize shift reservoir to use as output for shifted integrand and jacobian
-	RespirReservoir* out = &taskState->shiftReservoir;
+	RespirReservoir* restrict out = &taskState->shiftReservoir;
 	RespirReservoir_Init(out);
 	const RespirReservoir* src = &tasksState[taskState->shiftSrcGid].reservoir;
 	const RespirReservoir* dst = &tasksState[taskState->shiftDstGid].reservoir;
@@ -1585,11 +1585,43 @@ __kernel void SpatialReuse_MK_RESAMPLE(
 	GPUTaskState *taskState = &tasksState[gid];
 	if (taskState->state != SR_MK_RESAMPLE)
 		return;
+		
+	//--------------------------------------------------------------------------
+	// Start of variables setup
+	//--------------------------------------------------------------------------
 
-	// TODO
+	const Film* restrict film = &taskConfig->film;
 
-	// DEBUG
-	taskState->state = SYNC;
+	const RespirReservoir* restrict shifted = &taskConfig->shiftReservoir;
+	const RespirReservoir* central = &tasksState[taskState->shiftSrcGid].reservoir;
+	const RespirReservoir* neighbor = &tasksState[taskState->shiftDstGid].reservoir;
+	
+	//--------------------------------------------------------------------------
+	// End of variables setup
+	//--------------------------------------------------------------------------
+
+	/*
+	// 	Update canonical pairwise MIS weight with shifted integrand and jacobian.
+	*/
+	taskState->canonicalMisWeight += 1.0f;
+	const prefixApproximateIntegrandM = neighbor->M * Radiance_Y(film, shifted->sample.integrand) * shifted->sample.rc.jacobian;
+	const centralIntegrandM = central->M * Radiance_Y(film, central->sample.integrand);
+	if (prefixApproximatePdf >= 0.0f) {
+		taskState->canonicalMisWeight -= prefixApproximateIntegrandM
+				/ (prefixApproximateIntegrandM + centralIntegrandM / numSpatialNeighbors);
+	} 
+
+	/*
+	//	Set up NEIGHBOR -> CENTRAL (current/canonical pixel) shift 
+	//	for neighbor resampling
+	*/
+
+	// Set up inputs to MK_SHIFT
+	taskState->shiftSrcGid = taskState->neighborGid;
+	taskState->shiftDstGid = gid;
+	taskState->afterShiftState = SR_MK_FINISH_RESAMPLE;
+
+	taskState->state = SR_MK_SHIFT;
 }
 
 //------------------------------------------------------------------------------
