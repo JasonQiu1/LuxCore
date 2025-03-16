@@ -283,14 +283,23 @@ OPENCL_FORCE_INLINE bool RespirReservoir_AddNEEVertex(
 {
 	bool wasSelected = RespirReservoir_Add(reservoir, integrand, rrProbProd, seed, film);
 	if (wasSelected) {
+		if (get_global_id(0) == 2500) {
+			printf("Initial path resampling: Selected new vertex at depth: %d\n", pathDepth);
+		}
 		reservoir->sample.lightPdf = lightPdf;
 		// reconnection shift always chooses primary vertex as prefix vertex
 		if (pathDepth == 0) { 
+			if (get_global_id(0) == 2500) {
+				printf("Initial path resampling: Cached prefix vertex info.\n");
+			}
 			reservoir->sample.prefixBsdf = *bsdf;
 			reservoir->sample.hitTime = time;
 		}
 		// reconnection shift always chooses secondary vertex as rc vertex
 		if (pathDepth == 1) {
+			if (get_global_id(0) == 2500) {
+				printf("Initial path resampling: Cached reconnection vertex info.\n");
+			}
 			const float3 toRc = VLOAD3F(&bsdf->hitPoint.p.x) - VLOAD3F(&reservoir->sample.prefixBsdf.hitPoint.p.x);
 			const float distanceSquared = dot(toRc, toRc);
 			const float cosAngle = dot(VLOAD3F(&bsdf->hitPoint.fixedDir.x), BSDF_GetLandingGeometryN(bsdf));
@@ -311,9 +320,10 @@ OPENCL_FORCE_INLINE bool RespirReservoir_AddNEEVertex(
 					Radiance_Copy(film, postfixRadiance, reservoir->sample.rc.irradiance);
 					Radiance_Scale(film, reservoir->sample.rc.irradiance, lightPdf / misWeight,
 						reservoir->sample.rc.irradiance);
-				}
-			
-			
+			} else {
+				if (get_global_id(0) == 2500) {
+				printf("Initial path resampling: Rejected reconnection vertex based on glossiness or distance.\n");
+			}	
 		}
 	}
 	return wasSelected;
