@@ -323,6 +323,7 @@ OPENCL_FORCE_INLINE bool RespirReservoir_AddNEEVertex(
 			} else {
 				if (get_global_id(0) == 2500) {
 				printf("Initial path resampling: Rejected reconnection vertex based on glossiness or distance.\n");
+				}
 			}	
 		}
 	}
