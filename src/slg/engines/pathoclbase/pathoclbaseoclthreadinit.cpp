@@ -310,7 +310,7 @@ void PathOCLBaseOCLRenderThread::InitImageMaps() {
 }
 
 void PathOCLBaseOCLRenderThread::InitGPUTaskBuffer(const u_int taskCount) {
-	intersectionDevice->AllocBufferRW(&tasksBuff, nullptr, sizeof(slg::ocl::pathoclbase::VanillaGPUTask) * taskCount, "Vanilla GPUTask");
+	intersectionDevice->AllocBufferRW(&tasksBuff, nullptr, sizeof(slg::ocl::pathoclbase::GPUTask) * taskCount, "GPUTask");
 }
 
 void PathOCLBaseOCLRenderThread::InitGPUTaskStateBuffer(const u_int taskCount) {
@@ -569,7 +569,6 @@ void PathOCLBaseOCLRenderThread::InitRender() {
 	//--------------------------------------------------------------------------
 
 	InitPhotonGI();
-
 	//--------------------------------------------------------------------------
 	// GPUTaskStats
 	//--------------------------------------------------------------------------
@@ -581,6 +580,12 @@ void PathOCLBaseOCLRenderThread::InitRender() {
 	gpuTaskStats = new slg::ocl::pathoclbase::GPUTaskStats[taskCount];
 	for (u_int i = 0; i < taskCount; ++i)
 		gpuTaskStats[i].sampleCount = 0;
+
+	//--------------------------------------------------------------------------
+	// Allocate PathStates buffer
+	//--------------------------------------------------------------------------
+
+	intersectionDevice->AllocBufferRW(&pathStatesBuff, nullptr, sizeof(slg::ocl::pathoclbase::PathState) * taskCount, "PathState");
 
 	//--------------------------------------------------------------------------
 	// Allocate Ray/RayHit buffers

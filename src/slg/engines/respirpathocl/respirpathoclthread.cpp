@@ -45,7 +45,10 @@ RespirPathOCLRenderThread::RespirPathOCLRenderThread(const u_int index, luxrays:
 	  spatialRadius(re->spatialRadius),
 	  numSpatialNeighbors(re->numSpatialNeighbors)
 {
+	centralReservoirsBuff = nullptr;
 	pixelIndexMapBuff = nullptr;
+	spatialReuseDatasBuff = nullptr;
+	shiftInOutDatasBuff = nullptr;
 
     spatialReuseKernel_MK_INIT = nullptr;
 	spatialReuseKernel_MK_NEXT_NEIGHBOR = nullptr;
@@ -139,8 +142,10 @@ void RespirPathOCLRenderThread::Stop() {
 	intersectionDevice->FreeBuffer(&pixelFilterBuff);
 
 	// Respir buffers
-
+	intersectionDevice->FreeBuffer(&centralReservoirsBuff);
 	intersectionDevice->FreeBuffer(&pixelIndexMapBuff);
+	intersectionDevice->FreeBuffer(&spatialReuseDatasBuff);
+	intersectionDevice->FreeBuffer(&shiftInOutDatasBuff);
 
 	started = false;
 
@@ -157,17 +162,16 @@ void RespirPathOCLRenderThread::GetThreadFilmSize(u_int *filmWidth, u_int *filmH
 }
 
 // Check that all path states are equal to the target
-bool RespirPathOCLRenderThread::CheckSyncedPathStates(slg::ocl::pathoclbase::RespirGPUTaskState* tasksStateReadBuffer, 
-		const u_int taskCount, slg::ocl::pathoclbase::PathState targetState) {
-	// TODO: move pathState to a separate buffer so minimal amount of memory needs to be read here
-	intersectionDevice->EnqueueReadBuffer(tasksStateBuff, true,
-		sizeof(slg::ocl::pathoclbase::RespirGPUTaskState) * taskCount,
-		tasksStateReadBuffer);
+bool RespirPathOCLRenderThread::CheckSyncedPathStates(slg::ocl::respir::RespirAsyncState* pathStatesReadBuffer, 
+		const u_int taskCount, slg::ocl::respir::RespirAsyncState targetState) {
+	intersectionDevice->EnqueueReadBuffer(pathStatesBuff, true,
+		sizeof(slg::ocl::respir::RespirAsyncState) * taskCount,
+		pathStatesReadBuffer);
 
 	for (u_int i = 0; i < taskCount; i++) {
 		//SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] TaskState(" << i << ") PathState=" << tasksState[i].state);
-		if (tasksStateReadBuffer[i].state != targetState) {
-			SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] TaskState(" << i << ") PathState=" << tasksStateReadBuffer[i].state << " Not synced.");
+		if (pathStatesReadBuffer[i] != targetState) {
+			SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] TaskState(" << i << ") PathState=" << pathStatesReadBuffer[i] << " Not synced.");
 			return false;
 		}
 	}
@@ -210,7 +214,7 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 		if (engine->hasStartFilm && (threadIndex == 0))
 			threadFilms[0]->SendFilm(intersectionDevice);
 
-        slg::ocl::pathoclbase::RespirGPUTaskState* tasksStateReadBuffer = (slg::ocl::pathoclbase::RespirGPUTaskState*)malloc(sizeof(*tasksStateReadBuffer) * taskCount);
+		ocl::respir::RespirAsyncState* pathStatesReadBuffer = (ocl::respir::RespirAsyncState*)malloc(sizeof(*pathStatesReadBuffer) * taskCount);
 
 		//----------------------------------------------------------------------
 		// Rendering loop
@@ -284,7 +288,7 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
                 // Check if initial path resampling for all pixels is complete
 				// This is blocking and waits for queue to finish
 				intersectionDevice->FinishQueue();
-                isInitialPathResamplingDone = CheckSyncedPathStates(tasksStateReadBuffer, taskCount, slg::ocl::pathoclbase::PathState::SYNC);
+                isInitialPathResamplingDone = CheckSyncedPathStates(pathStatesReadBuffer, taskCount, ocl::respir::RespirAsyncState::SYNC);
 
                 totalIterationsThisFrame += iterations;
 
@@ -341,7 +345,7 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 					// This is blocking and waits for queue to finish
 					intersectionDevice->FinishQueue();
 					visibilityIterations += totalIterationsThisFrame;
-					isSpatialReuseDone = CheckSyncedPathStates(tasksStateReadBuffer, taskCount, slg::ocl::pathoclbase::PathState::SYNC);
+					isSpatialReuseDone = CheckSyncedPathStates(pathStatesReadBuffer, taskCount, ocl::respir::RespirAsyncState::SYNC);
 				}
 
 				SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Number of iterations for visibility checks: " << visibilityIterations);
@@ -383,7 +387,7 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 			if (engine->film->GetConvergence() == 1.f || numFrames >= haltSpp)
 				break;
 		}
-        free(tasksStateReadBuffer);
+        free(pathStatesReadBuffer);
 
 	} catch (boost::thread_interrupted) {
 		SLG_LOG("[PathOCLRenderThread::" << threadIndex << "] Rendering thread halted");

@@ -50,14 +50,7 @@ typedef enum {
 	MK_SPLAT_SAMPLE = 7,
 	MK_NEXT_SAMPLE = 8,
 	MK_GENERATE_CAMERA_RAY = 9,
-	MK_DONE = 10,
-	SYNC = 11,
-	SR_MK_NEXT_NEIGHBOR = 12,
-	SR_MK_SHIFT = 13,
-	SR_MK_CHECK_VISIBILITY = 14,
-	SR_MK_RESAMPLE = 15,
-	SR_MK_FINISH_RESAMPLE = 16
-
+	MK_DONE = 10
 } PathState;
 
 typedef struct {
@@ -92,83 +85,7 @@ typedef struct {
 	unsigned int lightID;
 } DirectLightIlluminateInfo;
 
-// Stores information about the reconnection vertex for a particular path in the ReSTIR algorithm.
 typedef struct {
-	Spectrum irradiance[FILM_MAX_RADIANCE_GROUP_COUNT]; // the radiance of the path of the path at the rc vertex and after
-	BSDF bsdf; // contains info on the exact hit point on the rc vertex
-	Vector incidentDir; // cache the scatter direction from the next vertex to the rc vertex
-	float incidentPdf; // cache pdf from rc vertex towards incident dir
-	Spectrum incidentBsdfValue; // cache bsdf value from rc vertex towards incident dir
-	float prefixToRcPdf; // cache pdf from prefix point towards this rc vertex 
-	float jacobian; // cache the prefix vertex part of the jacobian (squared distance to self rc vertex / cos angle to norm of rc vertex)
-	int pathDepth; // -1 (no rcVertex), 0 is primary hit, 1 is secondary hit, ...
-} RcVertex;
-
-// Stores reuse information about a selected ReSPIR sample. (spatial reuse only)
-typedef struct {
-	Spectrum integrand[FILM_MAX_RADIANCE_GROUP_COUNT]; // the cached integrand of the path, updated each time a new sample is selected
-	BSDF prefixBsdf; // the BSDF point where the vertex before the rc vertex was hit
-	RcVertex rc; // the chosen rc vertex for this path
-	float lightPdf; // the NEE light pick probability of the sample
-	float hitTime; // time the prefix vertex was hit. we use this to shoot a visibility ray to the rc vertex
-	int pathDepth;
-} RespirSample;
-
-// A streaming random-sampling reservoir for spatial reuse.
-typedef struct {
-	RespirSample sample; // selected sample result
-	float M; // sample count
-	float weight; // sum weight when used during initial path resampling 
-				  // otherwise (unbiased contribution) weight of selected sample 1/p(sample) * 1/M * w_sum
-} RespirReservoir;
-
-// The state used to keep track of the rendered path
-typedef struct {
-	// TODO: MOVE PATHSTATE INTO SEPARATE STRUCTURE IN THE FUTURE
-	PathState state;
-
-	Spectrum throughput;
-	BSDF bsdf; // Variable size structure
-
-	Seed seedPassThroughEvent;
-	Seed seedReservoirSampling;
-
-	// keep track of cumulative products
-	Spectrum pathPdf; // bsdfProduct and connectionThroughput
-	float rrProbProd;
-	float lastDirectLightPdf; // for direct light illumination sampled from NEE (+ cheater BSDF)
-
-	// TODO: MOVE INTO SEPARATE BUFFER IN THE FUTURE
-	uint preSpatialReuseTime; // save time before spatial reuse to make sure rays after spatial reuse are using the correct time
-	// Reservoir data structure for initial path resampling using RIS
-	RespirReservoir reservoir;
-	
-	// Neighbor search info
-	int neighborGid;
-	uint numNeighborsLeft;
-	uint numValidNeighbors;
-
-	// For each reuse
-	float canonicalMisWeight;
-	RespirReservoir spatialReuseReservoir;
-
-	// MK_SHIFT kernel inputs and outputs
-	// Shift from src reservoir to dst reservoir and store results in shiftReservoir
-	// Executes the kernel stored in afterShiftState afterwards.
-	// TODO: only need this for the ASYNC kernels, move out of TaskState
-	uint shiftSrcGid, shiftDstGid;
-	RespirReservoir shiftReservoir;
-	PathState afterShiftState;
-	
-	int albedoToDo, photonGICacheEnabledOnLastHit,
-			photonGICausticCacheUsed, photonGIShowIndirectPathMixUsed,
-			// The shadow transparency lag used by Scene_Intersect()
-			throughShadowTransparency;
-} RespirGPUTaskState;
-
-typedef struct {
-	PathState state;
-
 	Spectrum throughput;
 	BSDF bsdf; // Variable size structure
 
@@ -179,6 +96,10 @@ typedef struct {
 			// The shadow transparency lag used by Scene_Intersect()
 			throughShadowTransparency;
 } VanillaGPUTaskState;
+
+#if !defined(RENDER_ENGINE_RESPIRPATHOCL)
+typedef VanillaGPUTaskState GPUTaskState;
+#endif
 
 typedef enum {
 	ILLUMINATED, SHADOWED, NOT_VISIBLE
@@ -210,33 +131,7 @@ typedef struct {
 	
 	// This is used by DirectLight_BSDFSampling()
 	PathDepthInfo tmpPathDepthInfo;
-} VanillaGPUTask;
-
-typedef struct {
-	// The task seed
-	Seed seed;
-
-	// Space for temporary storage
-	BSDF tmpBsdf; // Variable size structure
-
-	// This is used by TriangleLight_Illuminate() to temporary store the
-	// point on the light sources.
-	// Also used by Scene_Intersect() for evaluating volume textures.
-	HitPoint tmpHitPoint;
-	
-	// This is used by DirectLight_BSDFSampling()
-	PathDepthInfo tmpPathDepthInfo;
-} RespirGPUTask;
-
-
-#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-typedef RespirGPUTaskState GPUTaskState;
-typedef RespirGPUTask GPUTask;
-#else
-typedef VanillaGPUTaskState GPUTaskState;
-typedef VanillaGPUTask GPUTask;
-#endif
-
+} GPUTask;
 
 typedef struct {
 	unsigned int sampleCount;

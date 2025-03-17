@@ -190,7 +190,6 @@ protected:
 			luxrays::HardwareIntersectionDevice *intersectionDevice,
 			const std::string renderEngineType,
 			const float epsilonMin, const float epsilonMax);
-    // TODO: Refactor to make this non-static so that derived classes can specify their own set of kernel sources.
 	static std::string GetKernelSources();
 
 	u_int threadIndex;
@@ -247,6 +246,7 @@ protected:
 	luxrays::HardwareDeviceBuffer *pgicCausticPhotonsBVHNodesBuff;
 
 	// OpenCL task related buffers
+	luxrays::HardwareDeviceBuffer *pathStatesBuff;
 	luxrays::HardwareDeviceBuffer *raysBuff;
 	luxrays::HardwareDeviceBuffer *hitsBuff;
 	luxrays::HardwareDeviceBuffer *taskConfigBuff;

@@ -27,6 +27,8 @@
 #include "luxrays/devices/ocldevice.h"
 #include "luxrays/kernels/kernels.h"
 
+#include "luxcore/cfg.h"
+
 #include "slg/slg.h"
 #include "slg/kernels/kernels.h"
 #include "slg/renderconfig.h"
@@ -60,6 +62,170 @@ void RespirPathOCLRenderThread::GetKernelParameters(
 		else
 			params.push_back("-D LUXCORE_GENERIC_OPENCL");
 	}}
+
+string RespirPathOCLRenderThread::GetKernelSources() {
+	// Compile sources
+	stringstream ssKernel;
+	ssKernel <<
+			// OpenCL LuxRays Types
+			luxrays::ocl::KernelSource_luxrays_types <<
+			luxrays::ocl::KernelSource_bvhbuild_types <<
+			luxrays::ocl::KernelSource_randomgen_types <<
+			luxrays::ocl::KernelSource_uv_types <<
+			luxrays::ocl::KernelSource_point_types <<
+			luxrays::ocl::KernelSource_vector_types <<
+			luxrays::ocl::KernelSource_normal_types <<
+			luxrays::ocl::KernelSource_triangle_types <<
+			luxrays::ocl::KernelSource_ray_types <<
+			luxrays::ocl::KernelSource_bbox_types <<
+			luxrays::ocl::KernelSource_epsilon_types <<
+			luxrays::ocl::KernelSource_color_types <<
+			luxrays::ocl::KernelSource_frame_types <<
+			luxrays::ocl::KernelSource_matrix4x4_types <<
+			luxrays::ocl::KernelSource_quaternion_types <<
+			luxrays::ocl::KernelSource_transform_types <<
+			luxrays::ocl::KernelSource_motionsystem_types <<
+			luxrays::ocl::KernelSource_trianglemesh_types <<
+			luxrays::ocl::KernelSource_exttrianglemesh_types <<
+			// OpenCL LuxRays Funcs
+			luxrays::ocl::KernelSource_randomgen_funcs <<
+			luxrays::ocl::KernelSource_atomic_funcs <<
+			luxrays::ocl::KernelSource_epsilon_funcs <<
+			luxrays::ocl::KernelSource_utils_funcs <<
+			luxrays::ocl::KernelSource_mc_funcs <<
+			luxrays::ocl::KernelSource_vector_funcs <<
+			luxrays::ocl::KernelSource_ray_funcs <<
+			luxrays::ocl::KernelSource_bbox_funcs <<
+			luxrays::ocl::KernelSource_color_funcs <<
+			luxrays::ocl::KernelSource_frame_funcs <<
+			luxrays::ocl::KernelSource_matrix4x4_funcs <<
+			luxrays::ocl::KernelSource_quaternion_funcs <<
+			luxrays::ocl::KernelSource_transform_funcs <<
+			luxrays::ocl::KernelSource_motionsystem_funcs <<
+			luxrays::ocl::KernelSource_triangle_funcs <<
+			luxrays::ocl::KernelSource_exttrianglemesh_funcs <<
+			// OpenCL SLG Types
+			slg::ocl::KernelSource_sceneobject_types <<
+			slg::ocl::KernelSource_scene_types <<
+			slg::ocl::KernelSource_hitpoint_types <<
+			slg::ocl::KernelSource_imagemap_types <<
+			slg::ocl::KernelSource_mapping_types <<
+			slg::ocl::KernelSource_texture_types <<
+			slg::ocl::KernelSource_bsdf_types <<
+			slg::ocl::KernelSource_material_types <<
+			slg::ocl::KernelSource_volume_types <<
+			slg::ocl::KernelSource_sampleresult_types <<
+			slg::ocl::KernelSource_film_types <<
+			slg::ocl::KernelSource_filter_types <<
+			slg::ocl::KernelSource_sampler_types <<
+			slg::ocl::KernelSource_camera_types <<
+			slg::ocl::KernelSource_light_types <<
+			slg::ocl::KernelSource_dlsc_types <<
+			slg::ocl::KernelSource_elvc_types <<
+			slg::ocl::KernelSource_pgic_types <<
+			// OpenCL SLG Funcs
+			slg::ocl::KernelSource_mortoncurve_funcs <<
+			slg::ocl::KernelSource_evalstack_funcs <<
+			slg::ocl::KernelSource_hitpoint_funcs << // Required by mapping funcs
+			slg::ocl::KernelSource_mapping_funcs <<
+			slg::ocl::KernelSource_imagemap_funcs <<
+			slg::ocl::KernelSource_texture_bump_funcs <<
+			slg::ocl::KernelSource_texture_noise_funcs <<
+			slg::ocl::KernelSource_texture_blender_noise_funcs <<
+			slg::ocl::KernelSource_texture_blender_noise_funcs2 <<
+			slg::ocl::KernelSource_texture_blender_funcs <<
+			slg::ocl::KernelSource_texture_abs_funcs <<
+			slg::ocl::KernelSource_texture_bilerp_funcs <<
+			slg::ocl::KernelSource_texture_blackbody_funcs <<
+			slg::ocl::KernelSource_texture_bombing_funcs <<
+			slg::ocl::KernelSource_texture_brick_funcs <<
+			slg::ocl::KernelSource_texture_clamp_funcs <<
+			slg::ocl::KernelSource_texture_colordepth_funcs <<
+			slg::ocl::KernelSource_texture_densitygrid_funcs <<
+			slg::ocl::KernelSource_texture_distort_funcs <<
+			slg::ocl::KernelSource_texture_fresnelcolor_funcs <<
+			slg::ocl::KernelSource_texture_fresnelconst_funcs <<
+			slg::ocl::KernelSource_texture_hitpoint_funcs <<
+			slg::ocl::KernelSource_texture_hsv_funcs <<
+			slg::ocl::KernelSource_texture_irregulardata_funcs <<
+			slg::ocl::KernelSource_texture_triplanar_funcs <<
+			slg::ocl::KernelSource_texture_imagemap_funcs <<
+			slg::ocl::KernelSource_texture_others_funcs <<
+			slg::ocl::KernelSource_texture_random_funcs <<
+			slg::ocl::KernelSource_texture_funcs_evalops <<
+			slg::ocl::KernelSource_texture_funcs;
+
+	ssKernel <<
+			slg::ocl::KernelSource_materialdefs_funcs_generic <<
+			slg::ocl::KernelSource_materialdefs_funcs_default <<
+			slg::ocl::KernelSource_materialdefs_funcs_thinfilmcoating <<
+			slg::ocl::KernelSource_materialdefs_funcs_archglass <<
+			slg::ocl::KernelSource_materialdefs_funcs_carpaint <<
+			slg::ocl::KernelSource_materialdefs_funcs_clearvol <<
+			slg::ocl::KernelSource_materialdefs_funcs_cloth <<
+			slg::ocl::KernelSource_materialdefs_funcs_disney <<
+			slg::ocl::KernelSource_materialdefs_funcs_glass <<
+			slg::ocl::KernelSource_materialdefs_funcs_glossy2 <<
+			slg::ocl::KernelSource_materialdefs_funcs_glossycoating <<
+			slg::ocl::KernelSource_materialdefs_funcs_glossytranslucent <<
+			slg::ocl::KernelSource_materialdefs_funcs_heterogeneousvol <<
+			slg::ocl::KernelSource_materialdefs_funcs_homogeneousvol <<
+			slg::ocl::KernelSource_materialdefs_funcs_matte <<
+			slg::ocl::KernelSource_materialdefs_funcs_matte_translucent <<
+			slg::ocl::KernelSource_materialdefs_funcs_metal2 <<
+			slg::ocl::KernelSource_materialdefs_funcs_mirror <<
+			slg::ocl::KernelSource_materialdefs_funcs_mix <<
+			slg::ocl::KernelSource_materialdefs_funcs_null <<
+			slg::ocl::KernelSource_materialdefs_funcs_roughglass <<
+			slg::ocl::KernelSource_materialdefs_funcs_roughmatte_translucent <<
+			slg::ocl::KernelSource_materialdefs_funcs_twosided <<
+			slg::ocl::KernelSource_materialdefs_funcs_velvet <<
+			slg::ocl::KernelSource_material_funcs_evalops <<
+			slg::ocl::KernelSource_material_funcs;
+
+	ssKernel <<
+			slg::ocl::KernelSource_pathdepthinfo_types <<
+			slg::ocl::KernelSource_pathvolumeinfo_types <<
+			slg::ocl::KernelSource_pathinfo_types <<
+			slg::ocl::KernelSource_pathtracer_types <<
+			// PathOCL types
+			slg::ocl::KernelSource_pathoclbase_datatypes <<
+			// Respir types
+			slg::ocl::KernelSource_respir_types;
+
+	ssKernel <<
+			slg::ocl::KernelSource_bsdfutils_funcs << // Must be before volumeinfo_funcs
+			slg::ocl::KernelSource_volume_funcs <<
+			slg::ocl::KernelSource_pathdepthinfo_funcs <<
+			slg::ocl::KernelSource_pathvolumeinfo_funcs <<
+			slg::ocl::KernelSource_pathinfo_funcs <<
+			slg::ocl::KernelSource_camera_funcs <<
+			slg::ocl::KernelSource_dlsc_funcs <<
+			slg::ocl::KernelSource_elvc_funcs <<
+			slg::ocl::KernelSource_lightstrategy_funcs <<
+			slg::ocl::KernelSource_light_funcs <<
+			slg::ocl::KernelSource_filter_funcs <<
+			slg::ocl::KernelSource_sampleresult_funcs <<
+			slg::ocl::KernelSource_filmdenoiser_funcs <<
+			slg::ocl::KernelSource_film_funcs <<
+			slg::ocl::KernelSource_varianceclamping_funcs <<
+			slg::ocl::KernelSource_sampler_random_funcs <<
+			slg::ocl::KernelSource_sampler_sobol_funcs <<
+			slg::ocl::KernelSource_sampler_metropolis_funcs <<
+			slg::ocl::KernelSource_sampler_tilepath_funcs <<
+			slg::ocl::KernelSource_sampler_funcs <<
+			slg::ocl::KernelSource_bsdf_funcs <<
+			slg::ocl::KernelSource_scene_funcs <<
+			slg::ocl::KernelSource_pgic_funcs <<
+			// Respir funcs
+			slg::ocl::KernelSource_respir_funcs <<
+			slg::ocl::KernelSource_respir_kernels_micro <<
+			// PathOCL Funcs
+			slg::ocl::KernelSource_pathoclbase_funcs <<
+			slg::ocl::KernelSource_pathoclbase_kernels_micro;
+
+	return ssKernel.str();
+}
 
 void RespirPathOCLRenderThread::InitKernels() {
 	//--------------------------------------------------------------------------
@@ -203,16 +369,8 @@ void RespirPathOCLRenderThread::InitKernels() {
 	delete program;
 }
 
-void RespirPathOCLRenderThread::InitGPUTaskBuffer(const u_int taskCount) {
-	intersectionDevice->AllocBufferRW(&tasksBuff, nullptr, sizeof(slg::ocl::pathoclbase::RespirGPUTask) * taskCount, "ReSPIR GPUTask");
-}
-
 void RespirPathOCLRenderThread::InitGPUTaskStateBuffer(const u_int taskCount) {
-	intersectionDevice->AllocBufferRW(&tasksStateBuff, nullptr, sizeof(slg::ocl::pathoclbase::RespirGPUTaskState) * taskCount, "ReSPIR GPUTaskState");
-}
-
-void RespirPathOCLRenderThread::InitGPUTaskBuffer() {
-	PathOCLBaseOCLRenderThread::InitGPUTaskBuffer();
+	intersectionDevice->AllocBufferRW(&tasksStateBuff, nullptr, sizeof(slg::ocl::respir::RespirGPUTaskState) * taskCount, "ReSPIR GPUTaskState");
 }
 
 void RespirPathOCLRenderThread::InitPixelIndexMapBuffer(const u_int filmWidth, const u_int filmHeight) {
@@ -228,8 +386,23 @@ void RespirPathOCLRenderThread::InitPixelIndexMapBuffer(const u_int filmWidth, c
 	free(initial);
 }
 
-void RespirPathOCLRenderThread::InitRespirBuffers() {
+void RespirPathOCLRenderThread::InitCentralReservoirsBuffer(const u_int taskCount) {
+	intersectionDevice->AllocBufferRW(&centralReservoirsBuff, nullptr, sizeof(slg::ocl::respir::RespirReservoir) * taskCount, "CentralReservoir");
+}
+
+void RespirPathOCLRenderThread::InitSpatialReuseDatasBuffer(const u_int taskCount) {
+	intersectionDevice->AllocBufferRW(&spatialReuseDatasBuff, nullptr, sizeof(slg::ocl::respir::SpatialReuseData) * taskCount, "SpatialReuseData");
+}
+
+void RespirPathOCLRenderThread::InitShiftInOutDatasBuffer(const u_int taskCount) {
+	intersectionDevice->AllocBufferRW(&shiftInOutDatasBuff, nullptr, sizeof(slg::ocl::respir::ShiftInOutData) * taskCount, "ShiftInOutData");
+}
+
+void RespirPathOCLRenderThread::InitRespirBuffers(const u_int taskCount) {
 	InitPixelIndexMapBuffer(threadFilms[0]->film->GetWidth(), threadFilms[0]->film->GetHeight());
+	InitCentralReservoirsBuffer(taskCount);
+	InitSpatialReuseDatasBuffer(taskCount);
+	InitShiftInOutDatasBuffer(taskCount);
 }
 
 void RespirPathOCLRenderThread::SetInitKernelArgs(const u_int filmIndex) {
@@ -248,6 +421,7 @@ void RespirPathOCLRenderThread::SetSpatialReuseKernelArgs(HardwareDeviceKernel *
 	CompiledScene *cscene = renderEngine->compiledScene;
 
 	u_int argIndex = 0;
+	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, pathStatesBuff);
 	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, taskConfigBuff);
 	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, tasksBuff);
 	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, tasksDirectLightBuff);
@@ -510,7 +684,7 @@ void RespirPathOCLRenderThread::InitRender() {
 	// Allocate Respir related buffers
 	//--------------------------------------------------------------------------
 
-	InitRespirBuffers();
+	InitRespirBuffers(taskCount);
 
 	//--------------------------------------------------------------------------
 	// Compile kernels

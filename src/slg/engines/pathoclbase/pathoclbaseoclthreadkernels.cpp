@@ -381,6 +381,7 @@ void PathOCLBaseOCLRenderThread::SetAdvancePathsKernelArgs(HardwareDeviceKernel 
 	CompiledScene *cscene = renderEngine->compiledScene;
 
 	u_int argIndex = 0;
+	intersectionDevice->SetKernelArg(advancePathsKernel, argIndex++, pathStatesBuff);
 	intersectionDevice->SetKernelArg(advancePathsKernel, argIndex++, taskConfigBuff);
 	intersectionDevice->SetKernelArg(advancePathsKernel, argIndex++, tasksBuff);
 	intersectionDevice->SetKernelArg(advancePathsKernel, argIndex++, tasksDirectLightBuff);

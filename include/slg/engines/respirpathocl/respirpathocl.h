@@ -26,6 +26,11 @@
 
 namespace slg {
 
+// Respir data types
+namespace ocl { namespace respir {
+#include "slg/engines/respirpathocl/kernels/respir_types.cl"
+} }
+
 class RespirPathOCLRenderEngine;
 
 class RespirPathOCLRenderThread : public PathOCLOpenCLRenderThread {
@@ -44,14 +49,17 @@ protected:
 			const std::string renderEngineType,
 			const float epsilonMin, const float epsilonMax) override;
 	void InitRender() override;
-	void InitGPUTaskBuffer(const u_int taskCount) override;
 	void InitGPUTaskStateBuffer(const u_int taskCount) override;
-	void InitGPUTaskBuffer() override;
 	void GetThreadFilmSize(u_int *filmWidth, u_int *filmHeight, u_int *filmSubRegion) override;
 	void RenderThreadImpl() override;
+
+	static std::string GetKernelSources();
     void InitKernels() override;
+	void InitCentralReservoirsBuffer(const u_int taskCount);
 	void InitPixelIndexMapBuffer(const u_int filmWidth, const u_int filmHeight);
-	void InitRespirBuffers();
+	void InitSpatialReuseDatasBuffer(const u_int taskCount);
+	void InitShiftInOutDatasBuffer(const u_int taskCount);
+	void InitRespirBuffers(const u_int taskCount);
     void SetInitKernelArgs(const u_int filmIndex) override;
     void SetAdvancePathsKernelArgs(luxrays::HardwareDeviceKernel *advancePathsKernel, const u_int filmIndex) override;
     void SetAllAdvancePathsKernelArgs(const u_int filmIndex) override;
@@ -60,10 +68,12 @@ protected:
 	void SetKernelArgs() override;
 
     void EnqueueAdvancePathsKernel() override;
-	bool CheckSyncedPathStates(ocl::pathoclbase::RespirGPUTaskState* tasksStateReadBuffer, const u_int taskCount, ocl::pathoclbase::PathState targetState);
+	bool CheckSyncedPathStates(ocl::respir::RespirAsyncState* tasksStateReadBuffer, const u_int taskCount, ocl::respir::RespirAsyncState targetState);
 
-
+	luxrays::HardwareDeviceBuffer* centralReservoirsBuff;
 	luxrays::HardwareDeviceBuffer* pixelIndexMapBuff;
+	luxrays::HardwareDeviceBuffer* spatialReuseDatasBuff;
+	luxrays::HardwareDeviceBuffer* shiftInOutDatasBuff;
 
 	luxrays::HardwareDeviceKernel* spatialReuseKernel_MK_INIT;
 	luxrays::HardwareDeviceKernel* spatialReuseKernel_MK_NEXT_NEIGHBOR;

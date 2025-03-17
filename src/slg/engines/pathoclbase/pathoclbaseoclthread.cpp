@@ -99,6 +99,7 @@ PathOCLBaseOCLRenderThread::PathOCLBaseOCLRenderThread(const u_int index,
 	pgicCausticPhotonsBVHNodesBuff = nullptr;
 
 	// OpenCL task related buffers
+	pathStatesBuff = nullptr;
 	raysBuff = nullptr;
 	hitsBuff = nullptr;
 	taskConfigBuff = nullptr;
@@ -223,6 +224,7 @@ void PathOCLBaseOCLRenderThread::Stop() {
 	intersectionDevice->FreeBuffer(&pgicCausticPhotonsBVHNodesBuff);
 
 	// OpenCL task related buffers
+	intersectionDevice->FreeBuffer(&pathStatesBuff);
 	intersectionDevice->FreeBuffer(&raysBuff);
 	intersectionDevice->FreeBuffer(&hitsBuff);
 	intersectionDevice->FreeBuffer(&taskConfigBuff);

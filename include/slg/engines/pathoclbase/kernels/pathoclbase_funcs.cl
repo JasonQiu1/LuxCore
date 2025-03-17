@@ -88,24 +88,6 @@ OPENCL_FORCE_INLINE void InitSampleResult(
 	sampleResult->lastPathVertex = (taskConfig->pathTracer.maxPathDepth.depth == 1);
 }
 
-OPENCL_FORCE_INLINE void RespirReservoir_Init(RespirReservoir* restrict reservoir) {
-	reservoir->weight = 0.0f;
-	reservoir->M = 0.0f;
-	Radiance_Clear(reservoir->sample.integrand);
-	VSTORE3F(BLACK, &reservoir->sample.prefixBsdf.hitPoint.p.x);
-	reservoir->sample.lightPdf = 0.0f;
-	reservoir->sample.hitTime = 0.0f;
-	reservoir->sample.pathDepth = -1;
-	Radiance_Clear(reservoir->sample.rc.irradiance);
-	VSTORE3F(BLACK, &reservoir->sample.rc.bsdf.hitPoint.p.x);
-	VSTORE3F(BLACK, &reservoir->sample.rc.incidentDir.x);
-	VSTORE3F(BLACK, reservoir->sample.rc.incidentBsdfValue.c);
-	reservoir->sample.rc.incidentPdf = 0.0f;
-	reservoir->sample.rc.prefixToRcPdf = 0.0f;
-	reservoir->sample.rc.jacobian = 0.0f;
-	reservoir->sample.rc.pathDepth = -1;
-}
-
 OPENCL_FORCE_INLINE void GenerateEyePath(
 		__global GPUTask *task, 
 		__constant const GPUTaskConfiguration* restrict taskConfig,
@@ -181,214 +163,13 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 	taskState->seedPassThroughEvent = initSeed;
 
 #if defined(RENDER_ENGINE_RESPIRPATHOCL)
-	RespirReservoir_Init(&taskState->reservoir);
-
-	VSTORE3F(WHITE, taskState->pathPdf.c);
-	taskState->rrProbProd = 1.0f;
-	taskState->lastDirectLightPdf = 1.0f;
+	Respir_Init(taskState);
 #endif
 }
 
 //------------------------------------------------------------------------------
 // Utility functions
 //------------------------------------------------------------------------------
-
-#if defined(RENDER_ENGINE_RESPIRPATHOCL)
-OPENCL_FORCE_INLINE int PixelIndexMap_Get(__global const int* pixelIndexMap, const uint mapWidth, const uint x, const uint y) {
-	return pixelIndexMap[y * mapWidth + x];
-}
-
-OPENCL_FORCE_INLINE void PixelIndexMap_Set(__global int* pixelIndexMap, const uint mapWidth, const uint x, const uint y, const int value) {
-	pixelIndexMap[y * mapWidth + x] = value;
-}
-
-OPENCL_FORCE_INLINE void RespirSample_DeepCopy(__constant const Film* restrict film, const RespirSample* in, RespirSample* out) {
-	Radiance_Copy(film, in->integrand, out->integrand);
-	Radiance_Copy(film, in->rc.irradiance, out->rc.irradiance);
-	out->prefixBsdf = in->prefixBsdf;
-	out->hitTime = in->hitTime;
-	out->lightPdf = in->lightPdf;
-	out->pathDepth = in->pathDepth;
-	out->rc.bsdf = in->rc.bsdf;
-	out->rc.incidentDir = in->rc.incidentDir;
-	out->rc.incidentPdf = in->rc.incidentPdf;
-	out->rc.incidentBsdfValue = in->rc.incidentBsdfValue;
-	out->rc.prefixToRcPdf = in->rc.prefixToRcPdf;
-	out->rc.jacobian = in->rc.jacobian;
-	out->rc.pathDepth = in->rc.pathDepth;
-}
-
-OPENCL_FORCE_INLINE void RespirReservoir_DeepCopy(__constant const Film* restrict film, const RespirReservoir* in, RespirReservoir* out) {
-	RespirSample_DeepCopy(film, &in->sample, &out->sample);
-	out->M = in->M;
-	out->weight = in->weight;
-}
-
-// Add a sample to the streaming reservoir.
-// Simply replace based on the new sample's weight and the reservoir's current sum weight.
-OPENCL_FORCE_INLINE bool RespirReservoir_Add(RespirReservoir* restrict reservoir, 
-	const Spectrum* restrict pathRadiance, float pdf, 
-	Seed* restrict seed, __constant const Film* restrict film) 
-{
-	// increase sample count
-	reservoir->M++;
-
-	float weight = Radiance_Filter(film, pathRadiance) / pdf;
-
-	// return if no chance of selection
-	if (isinf(weight) || isnan(weight) || weight == 0.f) {
-		return false;
-	}
-
-	reservoir->weight += weight;
-
-	if (get_global_id(0) == DEBUG_GID) {
-		printf("Initial path resampling: Resampling with weight %f against sum weight %f\n", weight, reservoir->weight);
-	}
-
-	if (Rnd_FloatValue(seed) * reservoir->weight <= weight) {
-		Radiance_Copy(film, pathRadiance, reservoir->sample.integrand);
-		return true;
-	}
-	return false;
-}
-
-// Merge inReservoir into outReservoir.
-OPENCL_FORCE_INLINE bool RespirReservoir_Merge(RespirReservoir* restrict outReservoir, 
-	const Spectrum* restrict inRadiance, const float inJacobian, const RespirReservoir* inReservoir,
-	const float misWeight, Seed* restrict seed, __constant const Film* restrict film) 
-{
-	float weight = Radiance_Filter(film, inRadiance) * inJacobian * inReservoir->weight * misWeight;
-
-	// Add sample counts
-	outReservoir->M += inReservoir->M;
-
-	// return if no chance of selection
-	if (isinf(weight) || isnan(weight) || weight == 0.f) {
-		return false;
-	}
-
-	outReservoir->weight += weight;
-	if (Rnd_FloatValue(seed) * outReservoir->weight <= weight) {
-		RespirSample_DeepCopy(film, &inReservoir->sample, &outReservoir->sample);
-		Radiance_Copy(film, inRadiance, outReservoir->sample.integrand);
-		return true;
-	}
-	return false;
-}
-
-OPENCL_FORCE_INLINE bool RespirReservoir_AddNEEVertex(
-		RespirReservoir* restrict reservoir, 
-		// integrand is the path contribution up to and including this vertex
-		// postfixRadiance is the radiance emitted from the vertex
-		const Spectrum* restrict integrand, const Spectrum* restrict postfixRadiance,
-		// misWeight is the mis of the vertex's bsdfPdfW and lightPdf
-		// lightPdf is the NEE light pick prob
-		// pathPdf is cumulative product of all bsdfPdfW and connectionThroughput
-		// rrProbProd is the cumulative product of the russian roulette probability so far
-		const float misWeight, const float3 pathPdf, const float rrProbProd, const float lightPdf, 
-		const float lastBsdfPdfW, const BSDF* restrict bsdf, const float time,
-		const int pathDepth, Seed* restrict seed, __constant const Film* restrict film,
-		const float worldRadius MATERIALS_PARAM_DECL)
-{
-	if (get_global_id(0) == DEBUG_GID) {
-		printf("Initial path resampling: Resampling with rr prob %f at depth %d\n", rrProbProd, pathDepth);
-	}
-	reservoir->sample.lightPdf = lightPdf;
-	// reconnection shift always chooses primary vertex as prefix vertex
-	if (pathDepth == 0) { 
-		if (get_global_id(0) == DEBUG_GID) {
-			printf("Initial path resampling: Cached prefix vertex info.\n");
-		}
-		reservoir->sample.prefixBsdf = *bsdf;
-		reservoir->sample.hitTime = time;
-	}
-	// reconnection shift always chooses secondary vertex as rc vertex
-	if (pathDepth == 1) {
-		if (get_global_id(0) == DEBUG_GID) {
-			printf("Initial path resampling: Cached reconnection vertex info.\n");
-		}
-		const float3 toRc = VLOAD3F(&bsdf->hitPoint.p.x) - VLOAD3F(&reservoir->sample.prefixBsdf.hitPoint.p.x);
-		const float distanceSquared = dot(toRc, toRc);
-		const float cosAngle = dot(VLOAD3F(&bsdf->hitPoint.fixedDir.x), BSDF_GetLandingGeometryN(bsdf));
-		// check roughness and distance connectability requirements
-		// assume glossiness range is [0.f,1.f], and 1-glossiness is the roughness
-		// distance threshold of 2-5% world size recommended by GRIS paper
-		const float maxGlossiness = 0.2;
-		const float minDistance = worldRadius * 2.0f * 0.025f;
-		if (sqrt(distanceSquared) >= minDistance
-			&& BSDF_GetGlossiness(&reservoir->sample.prefixBsdf MATERIALS_PARAM) <= maxGlossiness
-			&& BSDF_GetGlossiness(bsdf MATERIALS_PARAM) <= maxGlossiness) {
-				// cache partial jacobian here (squared distance / cos angle from rc norm)
-				reservoir->sample.rc.jacobian = distanceSquared / cosAngle;
-				reservoir->sample.rc.prefixToRcPdf = lastBsdfPdfW;
-				reservoir->sample.rc.pathDepth = pathDepth;
-				reservoir->sample.rc.bsdf = *bsdf;
-				// remove the weighting from the irradiance.
-				Radiance_Copy(film, postfixRadiance, reservoir->sample.rc.irradiance);
-				Radiance_Scale(film, reservoir->sample.rc.irradiance, lightPdf / misWeight,
-					reservoir->sample.rc.irradiance);
-		} else {
-			if (get_global_id(0) == DEBUG_GID) {
-			printf("Initial path resampling: Rejected reconnection vertex based on glossiness or distance.\n");
-			}
-		}	
-	}
-	// Resample for path integrand
-	if (RespirReservoir_Add(reservoir, integrand, rrProbProd, seed, film)) {
-		if (get_global_id(0) == DEBUG_GID) {
-			printf("Initial path resampling: Selected new vertex at depth: %d\n", pathDepth);
-		}
-		return true;
-	}
-	return false;
-}
-
-OPENCL_FORCE_INLINE void Respir_HandleInvalidShift(GPUTaskState* restrict taskState,
-		RespirReservoir* out) 
-{
-	out->sample.rc.jacobian = 0.0f;
-	Radiance_Clear(out->sample.integrand);
-	taskState->state = taskState->afterShiftState;
-	return;
-}
-
-OPENCL_FORCE_INLINE bool Respir_IsInvalidJacobian(const float jacobianDeterminant) {
-	return jacobianDeterminant <= 0.0f || isnan(jacobianDeterminant) || isinf(jacobianDeterminant);
-}
-
-// Find the spatial neighbors around the pixel this work-item is handling for now
-// Spatial radius is the square grid distance, not circle distance
-// Advances taskState->neighborGid to the next neighbor.
-// Return true if a neighbor was found, otherwise false.
-// PRECONDITION: numNeighborsLeft > 0
-// TODO: upgrade to n-rooks sampling around pixel and customizable spatial radius and number of spatial neighbors
-OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(GPUTaskState* restrict taskState, 
-		const SampleResult* restrict sampleResult, const int spatialRadius,
-		const int* restrict pixelIndexMap, const uint filmWidth, const uint filmHeight, Seed* restrict seed) {
-	taskState->neighborGid = -1;
-
-	// randomly choose a pixel in the radius (inclusive) not including self
-	int searchX = sampleResult->pixelX + (int) copysign(floor(Rnd_FloatValue(seed) * spatialRadius) + 1.0f, Rnd_FloatValue(seed) - 0.5f);
-	int searchY = sampleResult->pixelY + (int) copysign(floor(Rnd_FloatValue(seed) * spatialRadius) + 1.0f, Rnd_FloatValue(seed) - 0.5f);
-	taskState->numNeighborsLeft--;
-
-	if (searchX >= 0 && searchX < filmWidth && searchY >= 0 && searchY < filmHeight // check in bounds
-		&& (searchX != sampleResult->pixelX || searchY != sampleResult->pixelY)) // check not the pixel itself
-	{ 
-		taskState->neighborGid = PixelIndexMap_Get(pixelIndexMap, filmWidth, searchX, searchY);
-		// check that the neighbor is actually being worked on by a gputask
-		if (taskState->neighborGid != -1) {
-			taskState->numValidNeighbors++;
-			// Successfully found valid neighbor
-			return true;
-		}
-	}
-	
-	return false;
-}
-
-#endif
 
 OPENCL_FORCE_INLINE bool CheckDirectHitVisibilityFlags(__global const LightSource* restrict lightSource,
 		__global PathDepthInfo *depthInfo,
@@ -698,7 +479,8 @@ OPENCL_FORCE_INLINE bool DirectLight_BSDFSampling(
 		, __global const IndexBVHArrayNode* restrict pgicCausticPhotonsBVHNodes
 
 #define KERNEL_ARGS \
-		__constant const GPUTaskConfiguration* restrict taskConfig \
+		__global PathState* pathStates \
+		, __constant const GPUTaskConfiguration* restrict taskConfig \
 		, __global GPUTask *tasks \
 		, __global GPUTaskDirectLight *tasksDirectLight \
 		, __global GPUTaskState *tasksState \
@@ -762,11 +544,6 @@ OPENCL_FORCE_INLINE bool DirectLight_BSDFSampling(
 		/* Images */ \
 		KERNEL_ARGS_IMAGEMAPS_PAGES \
 		KERNEL_ARGS_PHOTONGI
-
-#define KERNEL_ARGS_SPATIALREUSE \
-		, __global int* pixelIndexMap \
-		, const uint spatialRadius \
-		, const uint numSpatialNeighbors
 
 //------------------------------------------------------------------------------
 // To initialize image maps page pointer table
