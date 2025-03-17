@@ -851,7 +851,7 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
 	__constant const Film* restrict film = &taskConfig->film;
-	Reservoir* reservoir = &taskState->reservoir;
+	RespirReservoir* reservoir = &taskState->reservoir;
 	RcVertex* rc = &taskState->reservoir.sample.rc;
 	// reconnection shift always chooses primary vertex as prefix vertex
 	if (pathInfo->depth.depth == 0) { 
@@ -862,6 +862,7 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 		}
 		reservoir->sample.prefixBsdf = *bsdf;
 		reservoir->sample.hitTime = ray->time;
+		reservoir->sample.rc.prefixToRcPdf = bsdfPdfW;
 	}
 	
 	// Secondary vertex, reconnection vertex
@@ -890,8 +891,7 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 			&& BSDF_GetGlossiness(bsdf MATERIALS_PARAM) <= maxGlossiness) {
 				// cache partial jacobian here (squared distance / cos angle from rc norm)
 				reservoir->sample.rc.jacobian = distanceSquared / cosAngle;
-				reservoir->sample.rc.prefixToRcPdf = lastBsdfPdfW;
-				reservoir->sample.rc.pathDepth = pathDepth;
+				reservoir->sample.rc.pathDepth = pathInfo->depth.depth;
 				reservoir->sample.rc.bsdf = *bsdf;
 		} else {
 			if (get_global_id(0) == DEBUG_GID) {
@@ -1185,7 +1185,7 @@ __kernel void AdvancePaths_MK_GENERATE_CAMERA_RAY(
 	// Re-initialize the volume information
 	PathVolumeInfo_Init(&pathInfo->volume);
 
-	GenerateEyePath(task, taskConfig,
+	GenerateEyePath(&pathStates[gid], task, taskConfig,
 			&tasksDirectLight[gid], taskState,
 			camera,
 			cameraBokehDistribution,

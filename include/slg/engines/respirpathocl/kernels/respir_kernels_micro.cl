@@ -132,7 +132,7 @@ __kernel void SpatialReuse_MK_NEXT_NEIGHBOR(
     const Film* restrict film = &taskConfig->film;
     const Scene* restrict scene = &taskConfig->scene;
     SpatialReuseData* restrict spatialReuseData = &spatialReuseDatas[gid];
-    ShiftInOutData* restrict shiftInOutdata = &shiftInOutDatas[gid];
+    ShiftInOutData* restrict shiftInOutData = &shiftInOutDatas[gid];
     //--------------------------------------------------------------------------
     // End of variables setup
     //--------------------------------------------------------------------------
@@ -387,7 +387,7 @@ __kernel void SpatialReuse_MK_CHECK_VISIBILITY(
     const Scene* restrict scene = &taskConfig->scene;
     SampleResult *sampleResult = &sampleResultsBuff[gid];
     SpatialReuseData* spatialReuseData = &spatialReuseDatas[gid];
-    ShiftInOutData* shiftInOutdata = &shiftInOutDatas[gid];
+    ShiftInOutData* shiftInOutData = &shiftInOutDatas[gid];
 
     // Initialize image maps page pointer table
     INIT_IMAGEMAPS_PAGES
@@ -583,8 +583,7 @@ __kernel void SpatialReuse_MK_FINISH_ITERATION(
 ) {
     const size_t gid = get_global_id(0);
 
-    GPUTask *task = &tasks[gid];
-    RespirReservoir* restrict central = &reservoir;
+    RespirReservoir* restrict central = &tasksState[gid]->reservoir;
     if (central->sample.rc.pathDepth == -1 
         || central->sample.rc.pathDepth > central->sample.pathDepth) {
         return;
@@ -598,6 +597,7 @@ __kernel void SpatialReuse_MK_FINISH_ITERATION(
     //--------------------------------------------------------------------------
     // Start of variables setup
     //--------------------------------------------------------------------------
+    GPUTask *task = &tasks[gid];
     __constant const Film* restrict film = &taskConfig->film;
     const SampleResult* restrict sampleResult = &sampleResultsBuff[gid];  
     SpatialReuseData* spatialReuseData = &spatialReuseDatas[gid];
