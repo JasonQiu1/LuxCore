@@ -252,10 +252,8 @@ OPENCL_FORCE_INLINE bool RespirReservoir_AddNEEVertex(
 		// lightPdf is the NEE light pick prob
 		// pathPdf is cumulative product of all bsdfPdfW and connectionThroughput
 		// rrProbProd is the cumulative product of the russian roulette probability so far
-		const float misWeight, const float3 pathPdf, const float rrProbProd, const float lightPdf, 
-		const float lastBsdfPdfW, const BSDF* restrict bsdf, const float time,
-		const int pathDepth, Seed* restrict seed, __constant const Film* restrict film,
-		const float worldRadius MATERIALS_PARAM_DECL)
+		const float misWeight, const float rrProbProd, const float lightPdf,
+		const int pathDepth, Seed* restrict seed, __constant const Film* restrict film)
 {
 	if (get_global_id(0) == DEBUG_GID) {
 		printf("Initial path resampling: Resampling with rr prob %f at depth %d\n", rrProbProd, pathDepth);
@@ -267,7 +265,7 @@ OPENCL_FORCE_INLINE bool RespirReservoir_AddNEEVertex(
 			printf("Initial path resampling: Selected new vertex at depth: %d\n", pathDepth);
 		}
 		Radiance_Copy(film, postfixRadiance, reservoir->sample.rc.irradiance);
-		if (pathDepth->depth.depth == reservoir->sample.rc.pathDepth) {
+		if (pathDepth == reservoir->sample.rc.pathDepth) {
 			Radiance_Scale(film, reservoir->sample.rc.irradiance, 
 				lightPdf / misWeight, reservoir->sample.rc.irradiance);
 		}

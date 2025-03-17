@@ -559,11 +559,8 @@ __kernel void AdvancePaths_MK_RT_DL(
 					1.f);
 				RespirReservoir_AddNEEVertex(&taskState->reservoir, 
 						sampleResult->radiancePerPixelNormalized, postfix.radiancePerPixelNormalized,
-						taskState->lastDirectLightPdf, VLOAD3F(taskState->pathPdf.c), taskState->rrProbProd, 
-						taskDirectLight->illumInfo.pickPdf,
-						pathInfo->lastBSDFPdfW, bsdf, rays[gid].time, pathInfo->depth.depth, 
-						&taskState->seedReservoirSampling, &taskConfig->film, worldRadius
-						MATERIALS_PARAM);
+						taskState->lastDirectLightPdf, taskState->rrProbProd, taskDirectLight->illumInfo.pickPdf,
+						pathInfo->depth.depth, &taskState->seedReservoirSampling, &taskConfig->film);
 #endif
 			}
 
