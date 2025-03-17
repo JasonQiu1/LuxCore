@@ -35,11 +35,10 @@
 __kernel void SpatialReuse_MK_INIT(
     KERNEL_ARGS
     KERNEL_ARGS_SPATIALREUSE
-    ) {
+) {
     const size_t gid = get_global_id(0);
 
     // Read the path state
-    __global GPUTask *task = &tasks[gid];
     #if defined(DEBUG_PRINTF_SR_KERNEL_NAME)
     if (gid == DEBUG_GID)
         printf("Kernel: SpatialReuse_MK_INIT(state = %d)\n", pathStates[gid]);
@@ -50,7 +49,8 @@ __kernel void SpatialReuse_MK_INIT(
     //--------------------------------------------------------------------------
     SampleResult *sampleResult = &sampleResultsBuff[gid];
     const Film* restrict film = &taskConfig->film;
-    RespirReservoir* reservoir = &tasksState[gid]->reservoir;
+    RespirReservoir* reservoir = &tasksState[gid].reservoir;
+    SpatialReuseData* restrict spatialReuseData = &spatialReuseDatas[gid];
     const Ray* ray = &rays[gid];
 
     //--------------------------------------------------------------------------
@@ -113,7 +113,7 @@ __kernel void SpatialReuse_MK_NEXT_NEIGHBOR(
     KERNEL_ARGS
     KERNEL_ARGS_SPATIALREUSE
     KERNEL_ARGS_SHIFT
-    ) {
+) {
     const size_t gid = get_global_id(0);
 
     if (pathStates[gid] != SR_MK_NEXT_NEIGHBOR)
@@ -129,8 +129,6 @@ __kernel void SpatialReuse_MK_NEXT_NEIGHBOR(
     //--------------------------------------------------------------------------
     GPUTask *task restrict = &tasks[gid];
     const SampleResult* restrict sampleResult = &sampleResultsBuff[gid];
-    const Film* restrict film = &taskConfig->film;
-    const Scene* restrict scene = &taskConfig->scene;
     SpatialReuseData* restrict spatialReuseData = &spatialReuseDatas[gid];
     ShiftInOutData* restrict shiftInOutData = &shiftInOutDatas[gid];
     //--------------------------------------------------------------------------
@@ -205,7 +203,7 @@ __kernel void SpatialReuse_MK_SHIFT(
     const Film* restrict film = &taskConfig->film;
     const Scene* restrict scene = &taskConfig->scene;
     SpatialReuseData* spatialReuseData = &spatialReuseDatas[gid];
-    ShiftInOutData* shiftInOutdata = &shiftInOutDatas[gid];
+    ShiftInOutData* shiftInOutData = &shiftInOutDatas[gid];
 
     // Initialize shift reservoir to use as output for shifted integrand and jacobian
     RespirReservoir* restrict out = &shiftInOutData->shiftReservoir;
@@ -382,11 +380,8 @@ __kernel void SpatialReuse_MK_CHECK_VISIBILITY(
     // Start of variables setup
     //--------------------------------------------------------------------------
     GPUTask *task = &tasks[gid];
-    const Film* restrict film = &taskConfig->film;
     GPUTaskDirectLight *taskDirectLight = &tasksDirectLight[gid];
     const Scene* restrict scene = &taskConfig->scene;
-    SampleResult *sampleResult = &sampleResultsBuff[gid];
-    SpatialReuseData* spatialReuseData = &spatialReuseDatas[gid];
     ShiftInOutData* shiftInOutData = &shiftInOutDatas[gid];
 
     // Initialize image maps page pointer table
@@ -469,7 +464,7 @@ __kernel void SpatialReuse_MK_RESAMPLE(
     GPUTask *task = &tasks[gid];
     const Film* restrict film = &taskConfig->film;
     SpatialReuseData* spatialReuseData = &spatialReuseDatas[gid];
-    ShiftInOutData* shiftInOutdata = &shiftInOutDatas[gid];
+    ShiftInOutData* shiftInOutData = &shiftInOutDatas[gid];
 
     const RespirReservoir* restrict shifted = &shiftInOutData->shiftReservoir;
     const RespirReservoir* central = &tasksState[shiftInOutData->shiftSrcGid].reservoir;
@@ -533,7 +528,7 @@ __kernel void SpatialReuse_MK_FINISH_RESAMPLE(
     //--------------------------------------------------------------------------
     __constant const Film* restrict film = &taskConfig->film;
     SpatialReuseData* spatialReuseData = &spatialReuseDatas[gid];
-    ShiftInOutData* shiftInOutdata = &shiftInOutDatas[gid];
+    ShiftInOutData* shiftInOutData = &shiftInOutDatas[gid];
 
     RespirReservoir* restrict shifted = &shiftInOutData->shiftReservoir;
     const RespirReservoir* neighbor = &tasksState[shiftInOutData->shiftSrcGid].reservoir;
@@ -583,7 +578,7 @@ __kernel void SpatialReuse_MK_FINISH_ITERATION(
 ) {
     const size_t gid = get_global_id(0);
 
-    RespirReservoir* restrict central = &tasksState[gid]->reservoir;
+    RespirReservoir* restrict central = &tasksState[gid].reservoir;
     if (central->sample.rc.pathDepth == -1 
         || central->sample.rc.pathDepth > central->sample.pathDepth) {
         return;
