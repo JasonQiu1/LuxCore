@@ -70,6 +70,8 @@ __kernel void SpatialReuse_MK_INIT(
         return;
     }
 
+    printf("GID: %d\n", gid);
+
     // Save ray time state
     spatialReuseData->preSpatialReuseTime = ray->time;
 
