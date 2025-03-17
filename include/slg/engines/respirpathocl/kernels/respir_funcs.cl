@@ -19,35 +19,6 @@
  ***************************************************************************/
 
 /*
-// Respir init functions
-*/
-OPENCL_FORCE_INLINE void RespirReservoir_Init(RespirReservoir* restrict reservoir) {
-	reservoir->weight = 0.0f;
-	reservoir->M = 0.0f;
-	Radiance_Clear(reservoir->sample.integrand);
-	VSTORE3F(BLACK, &reservoir->sample.prefixBsdf.hitPoint.p.x);
-	reservoir->sample.lightPdf = 0.0f;
-	reservoir->sample.hitTime = 0.0f;
-	reservoir->sample.pathDepth = -1;
-	Radiance_Clear(reservoir->sample.rc.irradiance);
-	VSTORE3F(BLACK, &reservoir->sample.rc.bsdf.hitPoint.p.x);
-	VSTORE3F(BLACK, &reservoir->sample.rc.incidentDir.x);
-	VSTORE3F(BLACK, reservoir->sample.rc.incidentBsdfValue.c);
-	reservoir->sample.rc.incidentPdf = 0.0f;
-	reservoir->sample.rc.prefixToRcPdf = 0.0f;
-	reservoir->sample.rc.jacobian = 0.0f;
-	reservoir->sample.rc.pathDepth = -1;
-}
-
-OPENCL_FORCE_INLINE void Respir_Init(TaskState* restrict taskState) {
-    RespirReservoir_Init(&taskState->reservoir);
-
-	VSTORE3F(WHITE, taskState->pathPdf.c);
-	taskState->rrProbProd = 1.0f;
-	taskState->lastDirectLightPdf = 1.0f;
-}
-
-/*
 // Radiance group utility functions
 */
 OPENCL_FORCE_INLINE float3 SampleResult_GetUnscaledSpectrum(__constant const Film* restrict film,
@@ -151,6 +122,35 @@ OPENCL_FORCE_INLINE void Radiance_Copy(__constant const Film* restrict film,
     for (uint i = 0; i < film->radianceGroupCount; i++) {
         VSTORE3F(VLOAD3F(radiance[i].c), out[i].c);
     }
+}
+
+/*
+// Respir init functions
+*/
+OPENCL_FORCE_INLINE void RespirReservoir_Init(RespirReservoir* restrict reservoir) {
+	reservoir->weight = 0.0f;
+	reservoir->M = 0.0f;
+	Radiance_Clear(reservoir->sample.integrand);
+	VSTORE3F(BLACK, &reservoir->sample.prefixBsdf.hitPoint.p.x);
+	reservoir->sample.lightPdf = 0.0f;
+	reservoir->sample.hitTime = 0.0f;
+	reservoir->sample.pathDepth = -1;
+	Radiance_Clear(reservoir->sample.rc.irradiance);
+	VSTORE3F(BLACK, &reservoir->sample.rc.bsdf.hitPoint.p.x);
+	VSTORE3F(BLACK, &reservoir->sample.rc.incidentDir.x);
+	VSTORE3F(BLACK, reservoir->sample.rc.incidentBsdfValue.c);
+	reservoir->sample.rc.incidentPdf = 0.0f;
+	reservoir->sample.rc.prefixToRcPdf = 0.0f;
+	reservoir->sample.rc.jacobian = 0.0f;
+	reservoir->sample.rc.pathDepth = -1;
+}
+
+OPENCL_FORCE_INLINE void Respir_Init(TaskState* restrict taskState) {
+    RespirReservoir_Init(&taskState->reservoir);
+
+	VSTORE3F(WHITE, taskState->pathPdf.c);
+	taskState->rrProbProd = 1.0f;
+	taskState->lastDirectLightPdf = 1.0f;
 }
 
 /*
@@ -349,3 +349,20 @@ OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(GPUTaskState* restrict tas
 	
 	return false;
 }
+
+
+
+/*
+// Kernel arg macros
+*/
+
+// Reservoir data structure for initial path resampling using RIS
+#define KERNEL_ARGS_SPATIALREUSE \
+        , __global RespirReservoir* centralReservoirs \
+		, __global int* pixelIndexMap \
+        , __global SpatialReuseData* spatialReuseDatas \
+		, const uint spatialRadius \
+		, const uint numSpatialNeighbors
+
+#define KERNEL_ARGS_SHIFT \
+        , __global ShiftInOutData* shiftInOutDatas
