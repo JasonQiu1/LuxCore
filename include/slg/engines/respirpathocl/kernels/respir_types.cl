@@ -91,6 +91,9 @@ typedef struct {
 	float rrProbProd; // running product of russian roulette probability each vertex hit
 	float lastDirectLightPdf; // for direct light illumination sampled from NEE (+ cheater BSDF)
 	
+	// initial path resampling reservoir
+	RespirReservoir reservoir;
+
 	int albedoToDo, photonGICacheEnabledOnLastHit,
 			photonGICausticCacheUsed, photonGIShowIndirectPathMixUsed,
 			// The shadow transparency lag used by Scene_Intersect()
@@ -131,7 +134,6 @@ typedef struct {
 
 // Reservoir data structure for initial path resampling using RIS
 #define KERNEL_ARGS_SPATIALREUSE \
-        , __global RespirReservoir* centralReservoirs \
 		, __global int* pixelIndexMap \
         , __global SpatialReuseData* spatialReuseDatas \
 		, const uint spatialRadius \

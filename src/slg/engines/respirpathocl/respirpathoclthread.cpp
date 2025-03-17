@@ -45,7 +45,6 @@ RespirPathOCLRenderThread::RespirPathOCLRenderThread(const u_int index, luxrays:
 	  spatialRadius(re->spatialRadius),
 	  numSpatialNeighbors(re->numSpatialNeighbors)
 {
-	centralReservoirsBuff = nullptr;
 	pixelIndexMapBuff = nullptr;
 	spatialReuseDatasBuff = nullptr;
 	shiftInOutDatasBuff = nullptr;
@@ -142,7 +141,6 @@ void RespirPathOCLRenderThread::Stop() {
 	intersectionDevice->FreeBuffer(&pixelFilterBuff);
 
 	// Respir buffers
-	intersectionDevice->FreeBuffer(&centralReservoirsBuff);
 	intersectionDevice->FreeBuffer(&pixelIndexMapBuff);
 	intersectionDevice->FreeBuffer(&spatialReuseDatasBuff);
 	intersectionDevice->FreeBuffer(&shiftInOutDatasBuff);

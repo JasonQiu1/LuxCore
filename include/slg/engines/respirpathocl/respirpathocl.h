@@ -70,7 +70,6 @@ protected:
     void EnqueueAdvancePathsKernel() override;
 	bool CheckSyncedPathStates(ocl::respir::RespirAsyncState* tasksStateReadBuffer, const u_int taskCount, ocl::respir::RespirAsyncState targetState);
 
-	luxrays::HardwareDeviceBuffer* centralReservoirsBuff;
 	luxrays::HardwareDeviceBuffer* pixelIndexMapBuff;
 	luxrays::HardwareDeviceBuffer* spatialReuseDatasBuff;
 	luxrays::HardwareDeviceBuffer* shiftInOutDatasBuff;

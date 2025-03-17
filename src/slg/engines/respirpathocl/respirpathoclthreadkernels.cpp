@@ -384,10 +384,6 @@ void RespirPathOCLRenderThread::InitPixelIndexMapBuffer(const u_int filmWidth, c
 	free(initial);
 }
 
-void RespirPathOCLRenderThread::InitCentralReservoirsBuffer(const u_int taskCount) {
-	intersectionDevice->AllocBufferRW(&centralReservoirsBuff, nullptr, sizeof(slg::ocl::respir::RespirReservoir) * taskCount, "CentralReservoir");
-}
-
 void RespirPathOCLRenderThread::InitSpatialReuseDatasBuffer(const u_int taskCount) {
 	intersectionDevice->AllocBufferRW(&spatialReuseDatasBuff, nullptr, sizeof(slg::ocl::respir::SpatialReuseData) * taskCount, "SpatialReuseData");
 }
@@ -398,7 +394,6 @@ void RespirPathOCLRenderThread::InitShiftInOutDatasBuffer(const u_int taskCount)
 
 void RespirPathOCLRenderThread::InitRespirBuffers(const u_int taskCount) {
 	InitPixelIndexMapBuffer(threadFilms[0]->film->GetWidth(), threadFilms[0]->film->GetHeight());
-	InitCentralReservoirsBuffer(taskCount);
 	InitSpatialReuseDatasBuffer(taskCount);
 	InitShiftInOutDatasBuffer(taskCount);
 }
