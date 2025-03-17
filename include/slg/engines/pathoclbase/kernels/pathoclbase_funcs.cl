@@ -279,19 +279,20 @@ OPENCL_FORCE_INLINE void DirectHitFiniteLight(__constant const Film* restrict fi
 		}
 		SampleResult_AddEmission(film, sampleResult, BSDF_GetLightID(bsdf
 				MATERIALS_PARAM), VLOAD3F(taskState->throughput.c), weight * emittedRadiance);
-#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-		// Add BSDF-illuminated (with cheater NEE) sample into the reservoir.
-		SampleResult postfix;
-		SampleResult_Init(&postfix);
-		SampleResult_AddEmission(film, &postfix, BSDF_GetLightID(bsdf
-				MATERIALS_PARAM), VLOAD3F(taskState->throughput.c), weight * emittedRadiance);
-		RespirReservoir_AddNEEVertex(&taskState->reservoir,
-				sampleResult->radiancePerPixelNormalized, postfix.radiancePerPixelNormalized,
-				weight, VLOAD3F(taskState->throughput.c), taskState->rrProbProd, lightPickProb,
-				pathInfo->lastBSDFPdfW, bsdf, ray->time, pathInfo->depth.depth, 
-				&taskState->seedReservoirSampling, film, worldRadius
-				MATERIALS_PARAM);
-#endif
+// TODO: THIS SHOULD BE AN EscapedVertex
+// #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
+// 		// Add BSDF-illuminated (with cheater NEE) sample into the reservoir.
+// 		SampleResult postfix;
+// 		SampleResult_Init(&postfix);
+// 		SampleResult_AddEmission(film, &postfix, BSDF_GetLightID(bsdf
+// 				MATERIALS_PARAM), VLOAD3F(taskState->throughput.c), weight * emittedRadiance);
+// 		RespirReservoir_AddNEEVertex(&taskState->reservoir,
+// 				sampleResult->radiancePerPixelNormalized, postfix.radiancePerPixelNormalized,
+// 				weight, VLOAD3F(taskState->throughput.c), taskState->rrProbProd, lightPickProb,
+// 				pathInfo->lastBSDFPdfW, bsdf, ray->time, pathInfo->depth.depth, 
+// 				&taskState->seedReservoirSampling, film, worldRadius
+// 				MATERIALS_PARAM);
+// #endif
 	}
 }
 

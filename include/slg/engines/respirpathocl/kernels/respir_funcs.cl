@@ -266,10 +266,11 @@ OPENCL_FORCE_INLINE bool RespirReservoir_AddNEEVertex(
 		if (get_global_id(0) == DEBUG_GID) {
 			printf("Initial path resampling: Selected new vertex at depth: %d\n", pathDepth);
 		}
-		// Radiance_Copy()
-		// if (pathDepth->depth.depth == reservoir->sample.rc.pathDepth) {
-
-		// }
+		Radiance_Copy(film, postfixRadiance, reservoir->sample.rc.irradiance);
+		if (pathDepth->depth.depth == reservoir->sample.rc.pathDepth) {
+			Radiance_Scale(film, reservoir->sample.rc.irradiance, 
+				lightPdf / misWeight, reservoir->sample.rc.irradiance);
+		}
 		return true;
 	}
 	return false;
