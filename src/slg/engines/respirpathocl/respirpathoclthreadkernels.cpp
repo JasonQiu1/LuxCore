@@ -620,6 +620,12 @@ void RespirPathOCLRenderThread::InitRender() {
 		gpuTaskStats[i].sampleCount = 0;
 
 	//--------------------------------------------------------------------------
+	// Allocate PathStates buffer
+	//--------------------------------------------------------------------------
+
+	intersectionDevice->AllocBufferRW(&pathStatesBuff, nullptr, sizeof(slg::ocl::pathoclbase::PathState) * taskCount, "PathState");
+
+	//--------------------------------------------------------------------------
 	// Allocate Ray/RayHit buffers
 	//--------------------------------------------------------------------------
 
