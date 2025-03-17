@@ -40,7 +40,6 @@ __kernel void SpatialReuse_MK_INIT(
 
     // Read the path state
     __global GPUTask *task = &tasks[gid];
-    __global GPUTaskState *taskState = &tasksState[gid];
     #if defined(DEBUG_PRINTF_SR_KERNEL_NAME)
     if (gid == DEBUG_GID)
         printf("Kernel: SpatialReuse_MK_INIT(state = %d)\n", pathStates[gid]);
@@ -51,26 +50,26 @@ __kernel void SpatialReuse_MK_INIT(
     //--------------------------------------------------------------------------
     SampleResult *sampleResult = &sampleResultsBuff[gid];
     const Film* restrict film = &taskConfig->film;
-    RespirReservoir* reservoir = &taskState->reservoir;
+    RespirReservoir* reservoir = &tasksState[gid]->reservoir;
     const Ray* ray = &rays[gid];
 
     //--------------------------------------------------------------------------
     // End of variables setup
     //--------------------------------------------------------------------------
 
-    taskState->reservoir.M = 1;
+    reservoir->M = 1;
 
     // no reconnection vertex, no invertible shift mapping
     // CAN shift FROM other domains, CANNOT shift TO other domains
-    if (taskState->reservoir.sample.rc.pathDepth == -1 
-        || taskState->reservoir.sample.rc.pathDepth > taskState->reservoir.sample.pathDepth) {
+    if (reservoir->sample.rc.pathDepth == -1 
+        || reservoir->sample.rc.pathDepth > reservoir->sample.pathDepth) {
         // keep pathstate to SYNC so that resampling and visibility kernels do not run
         // keep pixelIndexMap to be -1 so this pixel isn't resampled from
         return;
     }
 
     // Save ray time state
-    taskState->preSpatialReuseTime = ray->time;
+    spatialReuseData->preSpatialReuseTime = ray->time;
 
     /*
     // Set up for first spatial reuse iteration.
@@ -83,16 +82,16 @@ __kernel void SpatialReuse_MK_INIT(
     }
 
     // Prime neighbor search
-    taskState->numNeighborsLeft = numSpatialNeighbors;
-    taskState->neighborGid = -1;
-    taskState->numValidNeighbors = 0;
+    spatialReuseData->numNeighborsLeft = numSpatialNeighbors;
+    spatialReuseData->neighborGid = -1;
+    spatialReuseData->numValidNeighbors = 0;
     PixelIndexMap_Set(pixelIndexMap, filmWidth, 
             sampleResult->pixelX, sampleResult->pixelY, 
             gid);
 
     // Init resampling reservoir and canonical MIS weight
-    RespirReservoir_Init(&taskState->spatialReuseReservoir);
-    taskState->canonicalMisWeight = 1.f;
+    RespirReservoir_Init(&spatialReuseData->spatialReuseReservoir);
+    spatialReuseData->canonicalMisWeight = 1.f;
 
     // Prime pathstate
     pathStates[gid] = SR_MK_NEXT_NEIGHBOR;
@@ -101,7 +100,7 @@ __kernel void SpatialReuse_MK_INIT(
 //------------------------------------------------------------------------------
 // SpatialReuse_MK_NEXT_NEIGHBOR Kernel
 //
-// Generates a candidate neighbor and if valid stores it in TaskState.
+// Generates a candidate neighbor and if valid stores it in ShiftInOutData.
 // Shift from current domain to neighbor domain for canonical pairwise MIS calculation.
 //
 // FROM: SpatialReuse_MK_INIT (begin the pass)
@@ -113,11 +112,10 @@ __kernel void SpatialReuse_MK_INIT(
 __kernel void SpatialReuse_MK_NEXT_NEIGHBOR(
     KERNEL_ARGS
     KERNEL_ARGS_SPATIALREUSE
+    KERNEL_ARGS_SHIFT
     ) {
     const size_t gid = get_global_id(0);
 
-    GPUTask *task = &tasks[gid];
-    GPUTaskState *taskState = &tasksState[gid];
     if (pathStates[gid] != SR_MK_NEXT_NEIGHBOR)
         return;
 
@@ -129,18 +127,19 @@ __kernel void SpatialReuse_MK_NEXT_NEIGHBOR(
     //--------------------------------------------------------------------------
     // Start of variables setup
     //--------------------------------------------------------------------------
-
+    GPUTask *task restrict = &tasks[gid];
     const SampleResult* restrict sampleResult = &sampleResultsBuff[gid];
     const Film* restrict film = &taskConfig->film;
     const Scene* restrict scene = &taskConfig->scene;
-
+    SpatialReuseData* restrict spatialReuseData = &spatialReuseDatas[gid];
+    ShiftInOutData* restrict shiftInOutdata = &shiftInOutDatas[gid];
     //--------------------------------------------------------------------------
     // End of variables setup
     //--------------------------------------------------------------------------
 
     // Generate a valid neighbor
     while (true) {
-        if (taskState->numNeighborsLeft == 0) {
+        if (spatialReuseData->numNeighborsLeft == 0) {
             // No more neighbors, this iteration is finished
             pathStates[gid] = SYNC;
             return;
@@ -148,7 +147,7 @@ __kernel void SpatialReuse_MK_NEXT_NEIGHBOR(
 
         // Generate a candidate neighbor gid
         if (Respir_UpdateNextNeighborGid(
-            taskState, sampleResult, 
+            spatialReuseData, sampleResult, 
             spatialRadius, pixelIndexMap, filmWidth, filmHeight, &task->seed))
         {
             // Found valid neighbor
@@ -161,9 +160,9 @@ __kernel void SpatialReuse_MK_NEXT_NEIGHBOR(
     / 	for canonical pairwise MIS accumulation
     */
     // Set up inputs to MK_SHIFT
-    taskState->shiftSrcGid = gid;
-    taskState->shiftDstGid = taskState->neighborGid;
-    taskState->afterShiftState = SR_MK_RESAMPLE;
+    shiftInOutData->shiftSrcGid = gid;
+    shiftInOutData->shiftDstGid = spatialReuseData->neighborGid;
+    shiftInOutData->afterShiftState = SR_MK_RESAMPLE;
 
     pathStates[gid] = SR_MK_SHIFT;
 }
@@ -173,24 +172,23 @@ __kernel void SpatialReuse_MK_NEXT_NEIGHBOR(
 //
 // Shift from one reservoir (domain/pixel) SRC to another (domain/pixel) DST.
 // This means the resulting path will start at DST's path.
-// Stores shifted integrand and jacobian into TaskState->shiftReservoir.
+// Stores shifted integrand and jacobian into ShiftInOutData->shiftReservoir.
 //
 // FROM: SpatialReuse_MK_NEXT_NEIGHBOR (for canonical pairwise MIS calculation)
 // FROM: SpatialReuse_MK_RESAMPLE (for resampling neighbors into current reservoir)
 // TO: SpatialReuse_MK_CHECK_VISIBILITY (if jacobian is valid)
-// TO: PathState stored in TaskState (if jacobian is invalid)
+// TO: PathState stored in ShiftInOutData (if jacobian is invalid)
 //		- SpatialReuse_MK_RESAMPLE if coming from SpatialReuse_MK_NEXT_NEIGHBOR
 //		- SpatialReuse_MK_FINISH_RESAMPLE if coming from SpatialReuse_MK_RESAMPLE
 //------------------------------------------------------------------------------
 __kernel void SpatialReuse_MK_SHIFT(
-KERNEL_ARGS
-KERNEL_ARGS_SPATIALREUSE
+    KERNEL_ARGS
+    KERNEL_ARGS_SPATIALREUSE
+    KERNEL_ARGS_SHIFT
 ) {
     const size_t gid = get_global_id(0);
 
     // Check correct pathstate during async execution
-    GPUTask *task = &tasks[gid];
-    GPUTaskState *taskState = &tasksState[gid];
     if (pathStates[gid] != SR_MK_SHIFT)
         return;
 
@@ -202,20 +200,23 @@ KERNEL_ARGS_SPATIALREUSE
     //--------------------------------------------------------------------------
     // Start of variables setup
     //--------------------------------------------------------------------------
-
+    
+    GPUTask *task = &tasks[gid];
     const Film* restrict film = &taskConfig->film;
     const Scene* restrict scene = &taskConfig->scene;
+    SpatialReuseData* spatialReuseData = &spatialReuseDatas[gid];
+    ShiftInOutData* shiftInOutdata = &shiftInOutDatas[gid];
 
     // Initialize shift reservoir to use as output for shifted integrand and jacobian
-    RespirReservoir* restrict out = &taskState->shiftReservoir;
+    RespirReservoir* restrict out = &shiftInOutData->shiftReservoir;
     RespirReservoir_Init(out);
-    const RespirReservoir* src = &tasksState[taskState->shiftSrcGid].reservoir;
-    const RespirReservoir* dst = &tasksState[taskState->shiftDstGid].reservoir;
+    const RespirReservoir* src = &tasksState[shiftInOutData->shiftSrcGid].reservoir;
+    const RespirReservoir* dst = &tasksState[shiftInOutData->shiftDstGid].reservoir;
     const RcVertex* rc = &src->sample.rc;
 
     if (rc->pathDepth == -1) {
         // No reconnection vertex, invalid shift
-        Respir_HandleInvalidShift(taskState, out, &pathStates[gid]);
+        Respir_HandleInvalidShift(shiftInOutData, out, &pathStates[gid]);
         return;
     }
 
@@ -256,7 +257,7 @@ KERNEL_ARGS_SPATIALREUSE
     if (Respir_IsInvalidJacobian(out->sample.rc.jacobian)) 
     {
         // Invalid Jacobian, shift fails
-        Respir_HandleInvalidShift(taskState, out, &pathStates[gid]);
+        Respir_HandleInvalidShift(shiftInOutData, out, &pathStates[gid]);
         return;
     }
 
@@ -272,7 +273,7 @@ KERNEL_ARGS_SPATIALREUSE
     const float minDistance = worldRadius * 2 * 0.025; 
     if (srcToDstRcDistance < minDistance || dstDistance < minDistance) {
         // Shift failed or noninvertible
-        Respir_HandleInvalidShift(taskState, out, &pathStates[gid]);
+        Respir_HandleInvalidShift(shiftInOutData, out, &pathStates[gid]);
         return;
     }
 
@@ -291,7 +292,7 @@ KERNEL_ARGS_SPATIALREUSE
             MATERIALS_PARAM);
     out->sample.rc.jacobian *= dstPdf / srcPdf;
     if (Respir_IsInvalidJacobian(out->sample.rc.jacobian) || Spectrum_IsBlack(dstBsdfValue)) {
-        Respir_HandleInvalidShift(taskState, out, &pathStates[gid]);
+        Respir_HandleInvalidShift(shiftInOutData, out, &pathStates[gid]);
         return;
     }
 
@@ -306,7 +307,7 @@ KERNEL_ARGS_SPATIALREUSE
         MATERIALS_PARAM);
     out->sample.rc.jacobian *= dstRcIncidentPdf / srcRcIncidentPdf;
     if (Respir_IsInvalidJacobian(out->sample.rc.jacobian) || Spectrum_IsBlack(dstRcIncidentBsdfValue)) {
-        Respir_HandleInvalidShift(taskState, out, &pathStates[gid]);
+        Respir_HandleInvalidShift(shiftInOutData, out, &pathStates[gid]);
         return;
     }
 
@@ -320,7 +321,7 @@ KERNEL_ARGS_SPATIALREUSE
     );
 
     if (Radiance_IsBlack(film, out->sample.integrand)) {
-        Respir_HandleInvalidShift(taskState, out, &pathStates[gid]);
+        Respir_HandleInvalidShift(shiftInOutData, out, &pathStates[gid]);
         return;
     }
 
@@ -353,22 +354,22 @@ KERNEL_ARGS_SPATIALREUSE
 // SpatialReuse_MK_CHECK_VISIBILITY Kernel
 //
 // Checks if the shadow ray shot to the reconnection vertex is blocked or not.
-// If visible, then update TaskState->shiftReservoir appropriately (TODO EXACTLY WHAT??).
+// If visible, then update ShiftInOutData->shiftReservoir appropriately (TODO EXACTLY WHAT??).
 //
 // FROM: SpatialReuse_MK_SHIFT
 // TO: SpatialReuse_MK_CHECK_VISIBILITY (if ray is not finished tracing)
-// TO: PathState stored in TaskState (if ray has finished tracing)
+// TO: PathState stored in ShiftInOutData (if ray has finished tracing)
 //		- SpatialReuse_MK_RESAMPLE if coming from SpatialReuse_MK_NEXT_NEIGHBOR
 //		- SpatialReuse_MK_FINISH_RESAMPLE if coming from SpatialReuse_MK_RESAMPLE
 //
 //------------------------------------------------------------------------------
 __kernel void SpatialReuse_MK_CHECK_VISIBILITY(
-    KERNEL_ARGS
-    ) {
+        KERNEL_ARGS
+        KERNEL_ARGS_SPATIALREUSE
+        KERNEL_ARGS_SHIFT
+) {
     const size_t gid = get_global_id(0);
 
-    GPUTask *task = &tasks[gid];
-    GPUTaskState *taskState = &tasksState[gid];
     if (pathStates[gid] != SR_MK_CHECK_VISIBILITY)
         return;
 
@@ -380,11 +381,13 @@ __kernel void SpatialReuse_MK_CHECK_VISIBILITY(
     //--------------------------------------------------------------------------
     // Start of variables setup
     //--------------------------------------------------------------------------
-
+    GPUTask *task = &tasks[gid];
     const Film* restrict film = &taskConfig->film;
     GPUTaskDirectLight *taskDirectLight = &tasksDirectLight[gid];
     const Scene* restrict scene = &taskConfig->scene;
     SampleResult *sampleResult = &sampleResultsBuff[gid];
+    SpatialReuseData* spatialReuseData = &spatialReuseDatas[gid];
+    ShiftInOutData* shiftInOutdata = &shiftInOutDatas[gid];
 
     // Initialize image maps page pointer table
     INIT_IMAGEMAPS_PAGES
@@ -427,13 +430,13 @@ __kernel void SpatialReuse_MK_CHECK_VISIBILITY(
         // Hit something, meaning reconnection vertex is not visible
         // Shift fails due to occlusion
         taskDirectLight->directLightResult = SHADOWED;
-        Respir_HandleInvalidShift(taskState, &taskState->shiftReservoir, &pathStates[gid]);
+        Respir_HandleInvalidShift(shiftInOutData, &shiftInOutData->shiftReservoir, &pathStates[gid]);
         return;
     }
 
     // Shift is successful, keep shifted integranad and jacobian in shiftReservoir 
     taskDirectLight->directLightResult = ILLUMINATED;
-    pathStates[gid] = taskState->afterShiftState;
+    pathStates[gid] = shiftInOutData->afterShiftState;
 }
 
 //------------------------------------------------------------------------------
@@ -448,11 +451,10 @@ __kernel void SpatialReuse_MK_CHECK_VISIBILITY(
 __kernel void SpatialReuse_MK_RESAMPLE(
     KERNEL_ARGS
     KERNEL_ARGS_SPATIALREUSE
-    ) {
+    KERNEL_ARGS_SHIFT
+) {
     const size_t gid = get_global_id(0);
 
-    GPUTask *task = &tasks[gid];
-    GPUTaskState *taskState = &tasksState[gid];
     if (pathStates[gid] != SR_MK_RESAMPLE)
         return;
 
@@ -464,12 +466,14 @@ __kernel void SpatialReuse_MK_RESAMPLE(
     //--------------------------------------------------------------------------
     // Start of variables setup
     //--------------------------------------------------------------------------
-
+    GPUTask *task = &tasks[gid];
     const Film* restrict film = &taskConfig->film;
+    SpatialReuseData* spatialReuseData = &spatialReuseDatas[gid];
+    ShiftInOutData* shiftInOutdata = &shiftInOutDatas[gid];
 
-    const RespirReservoir* restrict shifted = &taskState->shiftReservoir;
-    const RespirReservoir* central = &tasksState[taskState->shiftSrcGid].reservoir;
-    const RespirReservoir* neighbor = &tasksState[taskState->shiftDstGid].reservoir;
+    const RespirReservoir* restrict shifted = &shiftInOutData->shiftReservoir;
+    const RespirReservoir* central = &tasksState[shiftInOutData->shiftSrcGid].reservoir;
+    const RespirReservoir* neighbor = &tasksState[shiftInOutData->shiftDstGid].reservoir;
 
     //--------------------------------------------------------------------------
     // End of variables setup
@@ -478,11 +482,11 @@ __kernel void SpatialReuse_MK_RESAMPLE(
     /*
     // 	Update canonical pairwise MIS weight with shifted integrand and jacobian.
     */
-    taskState->canonicalMisWeight += 1.0f;
+    spatialReuseData->canonicalMisWeight += 1.0f;
     const float prefixApproximateIntegrandM = neighbor->M * Radiance_Filter(film, shifted->sample.integrand) * shifted->sample.rc.jacobian;
     const float centralIntegrandM = central->M * Radiance_Filter(film, central->sample.integrand);
     if (prefixApproximateIntegrandM >= 0.0f) {
-        taskState->canonicalMisWeight -= prefixApproximateIntegrandM
+        spatialReuseData->canonicalMisWeight -= prefixApproximateIntegrandM
                 / (prefixApproximateIntegrandM + centralIntegrandM / numSpatialNeighbors);
     } 
 
@@ -492,30 +496,30 @@ __kernel void SpatialReuse_MK_RESAMPLE(
     */
 
     // Set up inputs to MK_SHIFT
-    taskState->shiftSrcGid = taskState->neighborGid;
-    taskState->shiftDstGid = gid;
-    taskState->afterShiftState = SR_MK_FINISH_RESAMPLE;
+    shiftInOutData->shiftSrcGid = spatialReuseData->neighborGid;
+    shiftInOutData->shiftDstGid = gid;
+    shiftInOutData->afterShiftState = SR_MK_FINISH_RESAMPLE;
 
     pathStates[gid] = SR_MK_SHIFT;
     }
 
-    //------------------------------------------------------------------------------
-    // SpatialReuse_MK_FINISH_RESAMPLE Kernel
-    //
-    // Finish resampling neighbor into current based off of shift mapping results.
-    // Merge with spatialReuseReservoir using pairwise MIS.
-    //
-    // FROM: (SpatialReuse_MK_RESAMPLE->) SpatialReuse_MK_SHIFT
-    // TO: SR_MK_NEXT_NEIGHBOR (continue iterating through other neighbors)
-    //------------------------------------------------------------------------------
-    __kernel void SpatialReuse_MK_FINISH_RESAMPLE(
+//------------------------------------------------------------------------------
+// SpatialReuse_MK_FINISH_RESAMPLE Kernel
+//
+// Finish resampling neighbor into current based off of shift mapping results.
+// Merge with spatialReuseReservoir using pairwise MIS.
+//
+// FROM: (SpatialReuse_MK_RESAMPLE->) SpatialReuse_MK_SHIFT
+// TO: SR_MK_NEXT_NEIGHBOR (continue iterating through other neighbors)
+//------------------------------------------------------------------------------
+__kernel void SpatialReuse_MK_FINISH_RESAMPLE(
     KERNEL_ARGS
     KERNEL_ARGS_SPATIALREUSE
-    ) {
+    KERNEL_ARGS_SHIFT
+) {
     const size_t gid = get_global_id(0);
 
     GPUTask *task = &tasks[gid];
-    GPUTaskState *taskState = &tasksState[gid];
     if (pathStates[gid] != SR_MK_FINISH_RESAMPLE)
         return;
 
@@ -528,10 +532,12 @@ __kernel void SpatialReuse_MK_RESAMPLE(
     // Start of variables setup
     //--------------------------------------------------------------------------
     __constant const Film* restrict film = &taskConfig->film;
+    SpatialReuseData* spatialReuseData = &spatialReuseDatas[gid];
+    ShiftInOutData* shiftInOutdata = &shiftInOutDatas[gid];
 
-    RespirReservoir* restrict shifted = &taskState->shiftReservoir;
-    const RespirReservoir* neighbor = &tasksState[taskState->shiftSrcGid].reservoir;
-    const RespirReservoir* central = &tasksState[taskState->shiftDstGid].reservoir;
+    RespirReservoir* restrict shifted = &shiftInOutData->shiftReservoir;
+    const RespirReservoir* neighbor = &tasksState[shiftInOutData->shiftSrcGid].reservoir;
+    const RespirReservoir* central = &tasksState[shiftInOutData->shiftDstGid].reservoir;
     //--------------------------------------------------------------------------
     // End of variables setup
     //--------------------------------------------------------------------------
@@ -559,7 +565,7 @@ __kernel void SpatialReuse_MK_RESAMPLE(
     /*
     //	Resample the shifted reservoir into the spatial reuse reservoir.
     */
-    RespirReservoir_Merge(&taskState->spatialReuseReservoir, 
+    RespirReservoir_Merge(&spatialReuseData->spatialReuseReservoir, 
         shifted->sample.integrand, shifted->sample.rc.jacobian, neighbor,
         neighborWeight, &task->seed, film);
 
@@ -574,14 +580,13 @@ __kernel void SpatialReuse_MK_RESAMPLE(
 __kernel void SpatialReuse_MK_FINISH_ITERATION(
     KERNEL_ARGS
     KERNEL_ARGS_SPATIALREUSE
-    ) {
+) {
     const size_t gid = get_global_id(0);
 
-    // Read the path state
     GPUTask *task = &tasks[gid];
-    GPUTaskState *taskState = &tasksState[gid];
-    if (taskState->reservoir.sample.rc.pathDepth == -1 
-        || taskState->reservoir.sample.rc.pathDepth > taskState->reservoir.sample.pathDepth) {
+    RespirReservoir* restrict central = &reservoir;
+    if (central->sample.rc.pathDepth == -1 
+        || central->sample.rc.pathDepth > central->sample.pathDepth) {
         return;
     }
 
@@ -595,9 +600,8 @@ __kernel void SpatialReuse_MK_FINISH_ITERATION(
     //--------------------------------------------------------------------------
     __constant const Film* restrict film = &taskConfig->film;
     const SampleResult* restrict sampleResult = &sampleResultsBuff[gid];  
-
-    RespirReservoir* restrict central = &taskState->reservoir;
-    RespirReservoir* restrict srReservoir = &taskState->spatialReuseReservoir;
+    SpatialReuseData* spatialReuseData = &spatialReuseDatas[gid];
+    RespirReservoir* restrict srReservoir = &spatialReuseData->spatialReuseReservoir;
     //--------------------------------------------------------------------------
     // End of variables setup
     //--------------------------------------------------------------------------
@@ -607,7 +611,7 @@ __kernel void SpatialReuse_MK_FINISH_ITERATION(
     */
     RespirReservoir_Merge(srReservoir, 
         central->sample.integrand, 1.0f, central,
-        taskState->canonicalMisWeight, &task->seed, film);
+        spatialReuseData->canonicalMisWeight, &task->seed, film);
 
     /*
     // 	Finalize GRIS by calculating unbiased contribution weight.
@@ -617,7 +621,7 @@ __kernel void SpatialReuse_MK_FINISH_ITERATION(
         srIntegrand = 0.0f;
         srReservoir->weight = 0.0f;
     } else {
-        srReservoir->weight /= srIntegrand / (taskState->numValidNeighbors + 1);
+        srReservoir->weight /= srIntegrand / (spatialReuseData->numValidNeighbors + 1);
     }
 
     /*
@@ -628,16 +632,16 @@ __kernel void SpatialReuse_MK_FINISH_ITERATION(
     RespirReservoir_DeepCopy(film, srReservoir, central);
 
     // Prime neighbor search
-    taskState->numNeighborsLeft = numSpatialNeighbors;
-    taskState->neighborGid = -1;
-    taskState->numValidNeighbors = 0;
+    spatialReuseData->numNeighborsLeft = numSpatialNeighbors;
+    spatialReuseData->neighborGid = -1;
+    spatialReuseData->numValidNeighbors = 0;
     PixelIndexMap_Set(pixelIndexMap, filmWidth, 
             sampleResult->pixelX, sampleResult->pixelY, 
             gid);
 
     // Init resampling reservoir and canonical MIS weight
     RespirReservoir_Init(srReservoir);
-    taskState->canonicalMisWeight = 1.f;
+    spatialReuseData->canonicalMisWeight = 1.f;
 
     pathStates[gid] = SR_MK_NEXT_NEIGHBOR;
 }
@@ -650,13 +654,14 @@ __kernel void SpatialReuse_MK_FINISH_ITERATION(
 __kernel void SpatialReuse_MK_FINISH_REUSE(
     KERNEL_ARGS
     KERNEL_ARGS_SPATIALREUSE
-    ) {
+) {
     const size_t gid = get_global_id(0);
 
     //--------------------------------------------------------------------------
     // Start of variables setup
     //--------------------------------------------------------------------------
-    GPUTaskState *taskState = &tasksState[gid];
+    SpatialReuseData* spatialReuseData = &spatialReuseDatas[gid];
+    RespirReservoir* reservoir = &tasksState[gid].reservoir;
     Ray *ray = &rays[gid];
     SampleResult *sampleResult = &sampleResultsBuff[gid];
     const Film* restrict film = &taskConfig->film;
@@ -666,20 +671,20 @@ __kernel void SpatialReuse_MK_FINISH_REUSE(
 
     // Copy final sample's radiance from reservoir to sampleResultsBuff[gid] to be splatted like normal
     Radiance_Scale(film,
-            taskState->reservoir.sample.integrand,
-            taskState->reservoir.weight,
-            taskState->reservoir.sample.integrand);
+            reservoir->sample.integrand,
+            reservoir->weight,
+            reservoir->sample.integrand);
     Radiance_Copy(film,
-            taskState->reservoir.sample.integrand,
+            reservoir->sample.integrand,
             sampleResult->radiancePerPixelNormalized);
 
-    if (taskState->reservoir.sample.rc.pathDepth == -1 
-        || taskState->reservoir.sample.rc.pathDepth > taskState->reservoir.sample.pathDepth) {
+    if (reservoir->sample.rc.pathDepth == -1 
+        || reservoir->sample.rc.pathDepth > reservoir->sample.pathDepth) {
         return;
     }
 
     // maintain integrity of pathtracer by using time from before spatial reuse
-    ray->time = taskState->preSpatialReuseTime;
+    ray->time = spatialReuseData->preSpatialReuseTime;
 
     // Reinitialize PixelIndexMap state in case the pixel this task is working on changes
     PixelIndexMap_Set(pixelIndexMap, filmWidth, 
@@ -694,10 +699,6 @@ __kernel void SpatialReuse_MK_FINISH_REUSE(
 //------------------------------------------------------------------------------
 __kernel void SpatialReuse_MK_SET_SPLAT(
     KERNEL_ARGS
-    ) {
-    const size_t gid = get_global_id(0);
-
-    GPUTaskState *taskState = &tasksState[gid];
-
-    pathStates[gid] = MK_SPLAT_SAMPLE;
+) {
+    pathStates[get_global_id(0)] = MK_SPLAT_SAMPLE;
 }

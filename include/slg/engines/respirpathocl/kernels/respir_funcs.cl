@@ -310,12 +310,12 @@ OPENCL_FORCE_INLINE bool RespirReservoir_AddNEEVertex(
 	return false;
 }
 
-OPENCL_FORCE_INLINE void Respir_HandleInvalidShift(GPUTaskState* restrict taskState,
-		RespirReservoir* out, PathState* pathState) 
+OPENCL_FORCE_INLINE void Respir_HandleInvalidShift(ShiftInOutData* shiftData,
+		RespirReservoir* restrict out, PathState* restrict pathState) 
 {
 	out->sample.rc.jacobian = 0.0f;
 	Radiance_Clear(out->sample.integrand);
-	*pathState = taskState->afterShiftState;
+	*pathState = shiftData->afterShiftState;
 	return;
 }
 
@@ -329,23 +329,23 @@ OPENCL_FORCE_INLINE bool Respir_IsInvalidJacobian(const float jacobianDeterminan
 // Return true if a neighbor was found, otherwise false.
 // PRECONDITION: numNeighborsLeft > 0
 // TODO: upgrade to n-rooks sampling around pixel and customizable spatial radius and number of spatial neighbors
-OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(GPUTaskState* restrict taskState, 
+OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(SpatialReuseData* restrict srData, 
 		const SampleResult* restrict sampleResult, const int spatialRadius,
 		const int* restrict pixelIndexMap, const uint filmWidth, const uint filmHeight, Seed* restrict seed) {
-	taskState->neighborGid = -1;
+	srData->neighborGid = -1;
 
 	// randomly choose a pixel in the radius (inclusive) not including self
 	int searchX = sampleResult->pixelX + (int) copysign(floor(Rnd_FloatValue(seed) * spatialRadius) + 1.0f, Rnd_FloatValue(seed) - 0.5f);
 	int searchY = sampleResult->pixelY + (int) copysign(floor(Rnd_FloatValue(seed) * spatialRadius) + 1.0f, Rnd_FloatValue(seed) - 0.5f);
-	taskState->numNeighborsLeft--;
+	srData->numNeighborsLeft--;
 
 	if (searchX >= 0 && searchX < filmWidth && searchY >= 0 && searchY < filmHeight // check in bounds
 		&& (searchX != sampleResult->pixelX || searchY != sampleResult->pixelY)) // check not the pixel itself
 	{ 
-		taskState->neighborGid = PixelIndexMap_Get(pixelIndexMap, filmWidth, searchX, searchY);
+		srData->neighborGid = PixelIndexMap_Get(pixelIndexMap, filmWidth, searchX, searchY);
 		// check that the neighbor is actually being worked on by a gputask
-		if (taskState->neighborGid != -1) {
-			taskState->numValidNeighbors++;
+		if (srData->neighborGid != -1) {
+			srData->numValidNeighbors++;
 			// Successfully found valid neighbor
 			return true;
 		}
