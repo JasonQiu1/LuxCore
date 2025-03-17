@@ -181,7 +181,6 @@ __kernel void SpatialReuse_MK_NEXT_NEIGHBOR(
 //------------------------------------------------------------------------------
 __kernel void SpatialReuse_MK_SHIFT(
     KERNEL_ARGS
-    KERNEL_ARGS_SPATIALREUSE
     KERNEL_ARGS_SHIFT
 ) {
     const size_t gid = get_global_id(0);
@@ -199,10 +198,8 @@ __kernel void SpatialReuse_MK_SHIFT(
     // Start of variables setup
     //--------------------------------------------------------------------------
     
-    GPUTask restrict *task = &tasks[gid];
     const Film* restrict film = &taskConfig->film;
     const Scene* restrict scene = &taskConfig->scene;
-    SpatialReuseData* restrict spatialReuseData = &spatialReuseDatas[gid];
     ShiftInOutData* shiftInOutData = &shiftInOutDatas[gid];
 
     // Initialize shift reservoir to use as output for shifted integrand and jacobian
@@ -379,7 +376,7 @@ __kernel void SpatialReuse_MK_CHECK_VISIBILITY(
     //--------------------------------------------------------------------------
     // Start of variables setup
     //--------------------------------------------------------------------------
-    GPUTask *task = &tasks[gid];
+    GPUTask* restrict task = &tasks[gid];
     GPUTaskDirectLight *taskDirectLight = &tasksDirectLight[gid];
     const Scene* restrict scene = &taskConfig->scene;
     ShiftInOutData* shiftInOutData = &shiftInOutDatas[gid];
@@ -461,7 +458,7 @@ __kernel void SpatialReuse_MK_RESAMPLE(
     //--------------------------------------------------------------------------
     // Start of variables setup
     //--------------------------------------------------------------------------
-    GPUTask *task = &tasks[gid];
+    GPUTask* restrict task = &tasks[gid];
     const Film* restrict film = &taskConfig->film;
     SpatialReuseData* spatialReuseData = &spatialReuseDatas[gid];
     ShiftInOutData* shiftInOutData = &shiftInOutDatas[gid];
