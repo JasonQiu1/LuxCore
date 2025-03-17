@@ -63,6 +63,9 @@ __kernel void SpatialReuse_MK_INIT(
     // CAN shift FROM other domains, CANNOT shift TO other domains
     if (reservoir->sample.rc.pathDepth == -1 
         || reservoir->sample.rc.pathDepth > reservoir->sample.pathDepth) {
+        if (gid == DEBUG_GID)
+        printf("SpatialReuse_MK_INIT: No\n", pathStates[gid]);
+        #endif
         // keep pathstate to SYNC so that resampling and visibility kernels do not run
         // keep pixelIndexMap to be -1 so this pixel isn't resampled from
         return;
@@ -116,7 +119,7 @@ __kernel void SpatialReuse_MK_NEXT_NEIGHBOR(
 ) {
     const size_t gid = get_global_id(0);
 
-    if (pathStates[gid] != SR_MK_NEXT_NEIGHBOR)
+    if (pathStates[gid] != (PathState) SR_MK_NEXT_NEIGHBOR)
         return;
 
 #if defined(DEBUG_PRINTF_SR_KERNEL_NAME)

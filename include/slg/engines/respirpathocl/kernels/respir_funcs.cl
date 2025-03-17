@@ -261,6 +261,7 @@ OPENCL_FORCE_INLINE bool RespirReservoir_AddNEEVertex(
 	reservoir->sample.lightPdf = lightPdf;
 	// Resample for path integrand
 	if (RespirReservoir_Add(reservoir, integrand, rrProbProd, seed, film)) {
+		reservoir->sample.pathDepth = pathDepth;
 		if (get_global_id(0) == DEBUG_GID) {
 			printf("Initial path resampling: Selected new vertex at depth: %d\n", pathDepth);
 		}
