@@ -190,7 +190,7 @@ __kernel void AdvancePaths_MK_HIT_NOTHING(
 	}
 
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-	pathStates[gid] = SYNC;
+	pathStates[gid] = (PathState) SYNC;
 #else
 	pathStates[gid] = MK_SPLAT_SAMPLE;
 #endif
@@ -442,7 +442,7 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 	// and the last: I do direct light sampling without MIS.
 	if (sampleResult->lastPathVertex && !sampleResult->firstPathVertex) {
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-		pathStates[gid] = SYNC;
+		pathStates[gid] = (PathState) SYNC;
 #else
 		pathStates[gid] = MK_SPLAT_SAMPLE;
 #endif
@@ -575,7 +575,7 @@ __kernel void AdvancePaths_MK_RT_DL(
 		// Check if this is the last path vertex
 		if (sampleResult->lastPathVertex)
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-			pathState = SYNC;
+			pathState = (PathState) SYNC;
 #else
 			pathState = MK_SPLAT_SAMPLE;
 #endif
@@ -660,7 +660,7 @@ __kernel void AdvancePaths_MK_DL_ILLUMINATE(
 		// however, I have to check if this is the last path vertex
 		if (sampleResult->lastPathVertex) {
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-			pathStates[gid] = SYNC;
+			pathStates[gid] = (PathState) SYNC;
 #else
 			pathStates[gid] = MK_SPLAT_SAMPLE;
 #endif
@@ -751,7 +751,7 @@ __kernel void AdvancePaths_MK_DL_SAMPLE_BSDF(
 		// however, I have to check if this is the last path vertex
 		if (sampleResult->lastPathVertex) {
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-			pathStates[gid] = SYNC;
+			pathStates[gid] = (PathState) SYNC;
 #else
 			pathStates[gid] = MK_SPLAT_SAMPLE;
 #endif
@@ -962,7 +962,7 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 		pathState = MK_RT_NEXT_VERTEX;
 	} else {
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-		pathState = SYNC;
+		pathState = (PathState) SYNC;
 #else
 		pathState = MK_SPLAT_SAMPLE;
 #endif

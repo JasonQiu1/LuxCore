@@ -315,7 +315,7 @@ OPENCL_FORCE_INLINE void Respir_HandleInvalidShift(ShiftInOutData* shiftData,
 {
 	out->sample.rc.jacobian = 0.0f;
 	Radiance_Clear(out->sample.integrand);
-	*pathState = shiftData->afterShiftState;
+	*pathState = (PathState) shiftData->afterShiftState;
 	return;
 }
 

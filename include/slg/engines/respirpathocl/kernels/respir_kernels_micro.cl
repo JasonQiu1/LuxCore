@@ -94,7 +94,7 @@ __kernel void SpatialReuse_MK_INIT(
     spatialReuseData->canonicalMisWeight = 1.f;
 
     // Prime pathstate
-    pathStates[gid] = SR_MK_NEXT_NEIGHBOR;
+    pathStates[gid] = (PathState) SR_MK_NEXT_NEIGHBOR;
 }
 
 //------------------------------------------------------------------------------
@@ -141,7 +141,7 @@ __kernel void SpatialReuse_MK_NEXT_NEIGHBOR(
     while (true) {
         if (spatialReuseData->numNeighborsLeft == 0) {
             // No more neighbors, this iteration is finished
-            pathStates[gid] = SYNC;
+            pathStates[gid] = (PathState) SYNC;
             return;
         }
 
@@ -164,7 +164,7 @@ __kernel void SpatialReuse_MK_NEXT_NEIGHBOR(
     shiftInOutData->shiftDstGid = spatialReuseData->neighborGid;
     shiftInOutData->afterShiftState = SR_MK_RESAMPLE;
 
-    pathStates[gid] = SR_MK_SHIFT;
+    pathStates[gid] = (PathState) SR_MK_SHIFT;
 }
 
 //------------------------------------------------------------------------------
@@ -346,7 +346,7 @@ __kernel void SpatialReuse_MK_SHIFT(
     shadowRayDir /= shadowRayDirDistance;
     Ray_Init4(&rays[gid], shadowRayOrigin, shadowRayDir, 0.f, shadowRayDirDistance, dst->sample.hitTime);
 
-    pathStates[gid] = SR_MK_CHECK_VISIBILITY;
+    pathStates[gid] = (PathState) SR_MK_CHECK_VISIBILITY;
     return;
 }
 
@@ -436,7 +436,7 @@ __kernel void SpatialReuse_MK_CHECK_VISIBILITY(
 
     // Shift is successful, keep shifted integranad and jacobian in shiftReservoir 
     taskDirectLight->directLightResult = ILLUMINATED;
-    pathStates[gid] = shiftInOutData->afterShiftState;
+    pathStates[gid] = (PathState) shiftInOutData->afterShiftState;
 }
 
 //------------------------------------------------------------------------------
@@ -500,7 +500,7 @@ __kernel void SpatialReuse_MK_RESAMPLE(
     shiftInOutData->shiftDstGid = gid;
     shiftInOutData->afterShiftState = SR_MK_FINISH_RESAMPLE;
 
-    pathStates[gid] = SR_MK_SHIFT;
+    pathStates[gid] = (PathState) SR_MK_SHIFT;
     }
 
 //------------------------------------------------------------------------------
@@ -569,7 +569,7 @@ __kernel void SpatialReuse_MK_FINISH_RESAMPLE(
         shifted->sample.integrand, shifted->sample.rc.jacobian, neighbor,
         neighborWeight, &task->seed, film);
 
-    pathStates[gid] = SR_MK_NEXT_NEIGHBOR;
+    pathStates[gid] = (PathState) SR_MK_NEXT_NEIGHBOR;
 }
 
 //------------------------------------------------------------------------------
@@ -643,7 +643,7 @@ __kernel void SpatialReuse_MK_FINISH_ITERATION(
     RespirReservoir_Init(srReservoir);
     spatialReuseData->canonicalMisWeight = 1.f;
 
-    pathStates[gid] = SR_MK_NEXT_NEIGHBOR;
+    pathStates[gid] = (PathState) SR_MK_NEXT_NEIGHBOR;
 }
 
 //------------------------------------------------------------------------------
