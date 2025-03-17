@@ -64,7 +64,7 @@ __kernel void SpatialReuse_MK_INIT(
     if (reservoir->sample.rc.pathDepth == -1 
         || reservoir->sample.rc.pathDepth > reservoir->sample.pathDepth) {
         if (gid == DEBUG_GID)
-            printf("SpatialReuse_MK_INIT: No\n", pathStates[gid]);
+            printf("SpatialReuse_MK_INIT: No reconnection vertex.\n");
         // keep pathstate to SYNC so that resampling and visibility kernels do not run
         // keep pixelIndexMap to be -1 so this pixel isn't resampled from
         return;
