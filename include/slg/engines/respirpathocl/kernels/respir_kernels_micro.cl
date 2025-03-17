@@ -119,15 +119,15 @@ __kernel void SpatialReuse_MK_NEXT_NEIGHBOR(
     if (pathStates[gid] != SR_MK_NEXT_NEIGHBOR)
         return;
 
-    #if defined(DEBUG_PRINTF_SR_KERNEL_NAME)
+#if defined(DEBUG_PRINTF_SR_KERNEL_NAME)
     if (gid == DEBUG_GID)
         printf("Kernel: SpatialReuse_MK_NEXT_NEIGHBOR(state = %d)\n", pathStates[gid]);
-    #endif
+#endif
 
     //--------------------------------------------------------------------------
     // Start of variables setup
     //--------------------------------------------------------------------------
-    GPUTask *task restrict = &tasks[gid];
+    GPUTask* restrict task = &tasks[gid];
     const SampleResult* restrict sampleResult = &sampleResultsBuff[gid];
     SpatialReuseData* restrict spatialReuseData = &spatialReuseDatas[gid];
     ShiftInOutData* restrict shiftInOutData = &shiftInOutDatas[gid];
@@ -199,10 +199,10 @@ __kernel void SpatialReuse_MK_SHIFT(
     // Start of variables setup
     //--------------------------------------------------------------------------
     
-    GPUTask *task = &tasks[gid];
+    GPUTask restrict *task = &tasks[gid];
     const Film* restrict film = &taskConfig->film;
     const Scene* restrict scene = &taskConfig->scene;
-    SpatialReuseData* spatialReuseData = &spatialReuseDatas[gid];
+    SpatialReuseData* restrict spatialReuseData = &spatialReuseDatas[gid];
     ShiftInOutData* shiftInOutData = &shiftInOutDatas[gid];
 
     // Initialize shift reservoir to use as output for shifted integrand and jacobian
