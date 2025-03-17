@@ -39,10 +39,10 @@ __kernel void SpatialReuse_MK_INIT(
     const size_t gid = get_global_id(0);
 
     // Read the path state
-    #if defined(DEBUG_PRINTF_SR_KERNEL_NAME)
+#if defined(DEBUG_PRINTF_SR_KERNEL_NAME)
     if (gid == DEBUG_GID)
         printf("Kernel: SpatialReuse_MK_INIT(state = %d)\n", pathStates[gid]);
-    #endif
+#endif
 
     //--------------------------------------------------------------------------
     // Start of variables setup
@@ -64,8 +64,7 @@ __kernel void SpatialReuse_MK_INIT(
     if (reservoir->sample.rc.pathDepth == -1 
         || reservoir->sample.rc.pathDepth > reservoir->sample.pathDepth) {
         if (gid == DEBUG_GID)
-        printf("SpatialReuse_MK_INIT: No\n", pathStates[gid]);
-        #endif
+            printf("SpatialReuse_MK_INIT: No\n", pathStates[gid]);
         // keep pathstate to SYNC so that resampling and visibility kernels do not run
         // keep pixelIndexMap to be -1 so this pixel isn't resampled from
         return;
