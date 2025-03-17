@@ -22,7 +22,7 @@
 // AdvancePaths (Micro-Kernels)
 //------------------------------------------------------------------------------
 
-// #define DEBUG_PRINTF_KERNEL_NAME 1
+#define DEBUG_PRINTF_KERNEL_NAME 1
 // #define DEBUG_GID 37107
 
 //------------------------------------------------------------------------------
@@ -47,10 +47,10 @@ __kernel void AdvancePaths_MK_RT_NEXT_VERTEX(
 	if (pathState != MK_RT_NEXT_VERTEX)
 		return;
 
-		#if defined(DEBUG_PRINTF_KERNEL_NAME)
-		if (gid == DEBUG_GID)
-			printf("Kernel: AdvancePaths_MK_RT_NEXT_VERTEX(state = %d)\n", pathState);
-	#endif
+#if defined(DEBUG_PRINTF_KERNEL_NAME)
+	if (gid == DEBUG_GID)
+		printf("Kernel: AdvancePaths_MK_RT_NEXT_VERTEX(state = %d)\n", pathState);
+#endif
 	//--------------------------------------------------------------------------
 	// Start of variables setup
 	//--------------------------------------------------------------------------
@@ -122,10 +122,10 @@ __kernel void AdvancePaths_MK_HIT_NOTHING(
 	if (pathState != MK_HIT_NOTHING)
 		return;
 
-		#if defined(DEBUG_PRINTF_KERNEL_NAME)
-		if (gid == DEBUG_GID)
-			printf("Kernel: AdvancePaths_MK_HIT_NOTHING(state = %d)\n", pathState);
-	#endif
+#if defined(DEBUG_PRINTF_KERNEL_NAME)
+	if (gid == DEBUG_GID)
+		printf("Kernel: AdvancePaths_MK_HIT_NOTHING(state = %d)\n", pathState);
+#endif
 	//--------------------------------------------------------------------------
 	// Start of variables setup
 	//--------------------------------------------------------------------------
@@ -214,10 +214,10 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 	if (pathState != MK_HIT_OBJECT)
 		return;
 
-		#if defined(DEBUG_PRINTF_KERNEL_NAME)
-		if (gid == DEBUG_GID)
-			printf("Kernel: AdvancePaths_MK_HIT_OBJECT(state = %d)\n", pathState);
-	#endif
+#if defined(DEBUG_PRINTF_KERNEL_NAME)
+	if (gid == DEBUG_GID)
+		printf("Kernel: AdvancePaths_MK_HIT_OBJECT(state = %d)\n", pathState);
+#endif
 	//--------------------------------------------------------------------------
 	// Start of variables setup
 	//--------------------------------------------------------------------------
@@ -470,10 +470,10 @@ __kernel void AdvancePaths_MK_RT_DL(
 	if (pathState != MK_RT_DL)
 		return;
 
-		#if defined(DEBUG_PRINTF_KERNEL_NAME)
-		if (gid == DEBUG_GID)
-			printf("Kernel: AdvancePaths_MK_RT_DL(state = %d)\n", pathState);
-	#endif
+#if defined(DEBUG_PRINTF_KERNEL_NAME)
+	if (gid == DEBUG_GID)
+		printf("Kernel: AdvancePaths_MK_RT_DL(state = %d)\n", pathState);
+#endif
  	//--------------------------------------------------------------------------
 	// Start of variables setup
 	//--------------------------------------------------------------------------
