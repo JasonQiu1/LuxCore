@@ -63,7 +63,7 @@ protected:
     void SetInitKernelArgs(const u_int filmIndex) override;
     void SetAdvancePathsKernelArgs(luxrays::HardwareDeviceKernel *advancePathsKernel, const u_int filmIndex) override;
     void SetAllAdvancePathsKernelArgs(const u_int filmIndex) override;
-	void SetSpatialReuseKernelArgs(luxrays::HardwareDeviceKernel *spatialReuseKernel, const u_int filmIndex, bool useSpatialReuseData, bool useShiftInOutdata);
+	void SetSpatialReuseKernelArgs(luxrays::HardwareDeviceKernel *spatialReuseKernel, const u_int filmIndex, bool useSpatialReuseData, bool useShiftInOutData);
 	void SetAllSpatialReuseKernelArgs(const u_int filmIndex);
 	void SetKernelArgs() override;
 

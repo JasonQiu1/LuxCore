@@ -411,7 +411,7 @@ void RespirPathOCLRenderThread::SetAllAdvancePathsKernelArgs(const u_int filmInd
 }
 
 void RespirPathOCLRenderThread::SetSpatialReuseKernelArgs(HardwareDeviceKernel *spatialReuseKernel, const u_int filmIndex, 
-	bool useSpatialReuseData = true, bool useShiftInOutdata = true) {
+	bool useSpatialReuseData = true, bool useShiftInOutData = true) {
 	CompiledScene *cscene = renderEngine->compiledScene;
 
 	u_int argIndex = 0;
