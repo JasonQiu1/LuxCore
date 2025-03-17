@@ -89,6 +89,7 @@ OPENCL_FORCE_INLINE void InitSampleResult(
 }
 
 OPENCL_FORCE_INLINE void GenerateEyePath(
+		PathState* pathState,
 		__global GPUTask *task, 
 		__constant const GPUTaskConfiguration* restrict taskConfig,
 		__global GPUTaskDirectLight *taskDirectLight,
@@ -143,7 +144,7 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 #endif
 
 	// Initialize the path state
-	taskState->state = MK_RT_NEXT_VERTEX;
+	*pathState = MK_RT_NEXT_VERTEX;
 	VSTORE3F(WHITE, taskState->throughput.c);
 	taskState->albedoToDo = true;
 	VSTORE3F(BLACK, sampleResult->albedo.c);  // Just in case albedoToDo is never true
@@ -580,6 +581,7 @@ __kernel void InitSeed(__global GPUTask *tasks,
 
 __kernel void Init(
 		__constant const GPUTaskConfiguration* restrict taskConfig,
+		__global PathState* pathStates,
 		__global GPUTask *tasks,
 		__global GPUTaskDirectLight *tasksDirectLight,
 		__global GPUTaskState *tasksState,
@@ -603,7 +605,7 @@ __kernel void Init(
 	__global TilePathSamplerSharedData *samplerSharedData = (__global TilePathSamplerSharedData *)samplerSharedDataBuff;
 
 	if (gid >= filmWidth * filmHeight * Sqr(samplerSharedData->aaSamples)) {
-		taskState->state = MK_DONE;
+		*pathState = MK_DONE;
 		// Mark the ray like like one to NOT trace
 		rays[gid].flags = RAY_FLAGS_MASKED;
 
@@ -614,6 +616,7 @@ __kernel void Init(
 	// Initialize the task
 	__global GPUTask *task = &tasks[gid];
 	__global GPUTaskDirectLight *taskDirectLight = &tasksDirectLight[gid];
+	PathState* pathState = &pathStates[gid];
 
 	// Read the seed
 	Seed seedValue = task->seed;
@@ -638,7 +641,7 @@ __kernel void Init(
 #endif
 
 		// Generate the eye path
-		GenerateEyePath(task, taskConfig,
+		GenerateEyePath(pathState, task, taskConfig,
 				taskDirectLight, taskState,
 				camera,
 				cameraBokehDistribution,
@@ -654,9 +657,9 @@ __kernel void Init(
 				SAMPLER_PARAM);
 	} else {
 #if defined(RENDER_ENGINE_TILEPATHOCL) || defined(RENDER_ENGINE_RTPATHOCL)
-		taskState->state = MK_DONE;
+		*pathState = MK_DONE;
 #else
-		taskState->state = MK_GENERATE_CAMERA_RAY;
+		*pathState = MK_GENERATE_CAMERA_RAY;
 #endif
 		// Mark the ray like like one to NOT trace
 		rays[gid].flags = RAY_FLAGS_MASKED;

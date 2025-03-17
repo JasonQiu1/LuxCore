@@ -18,6 +18,10 @@
  * limitations under the License.                                          *
  ***************************************************************************/
 
+ #ifndef DEBUG_GID
+ #define DEBUG_GID 37107
+ #endif
+
 /*
 // Radiance group utility functions
 */
@@ -307,11 +311,11 @@ OPENCL_FORCE_INLINE bool RespirReservoir_AddNEEVertex(
 }
 
 OPENCL_FORCE_INLINE void Respir_HandleInvalidShift(GPUTaskState* restrict taskState,
-		RespirReservoir* out) 
+		RespirReservoir* out, PathState* pathState) 
 {
 	out->sample.rc.jacobian = 0.0f;
 	Radiance_Clear(out->sample.integrand);
-	taskState->state = taskState->afterShiftState;
+	*pathState = taskState->afterShiftState;
 	return;
 }
 

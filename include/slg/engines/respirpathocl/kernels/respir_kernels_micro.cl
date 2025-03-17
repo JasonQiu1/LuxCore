@@ -23,7 +23,9 @@
 //------------------------------------------------------------------------------
 
 #define DEBUG_PRINTF_SR_KERNEL_NAME 1
+#ifndef DEBUG_GID
 #define DEBUG_GID 37107
+#endif
 
 //------------------------------------------------------------------------------
 // SpatialReuse_MK_INIT Kernel
@@ -41,7 +43,7 @@ __kernel void SpatialReuse_MK_INIT(
     __global GPUTaskState *taskState = &tasksState[gid];
     #if defined(DEBUG_PRINTF_SR_KERNEL_NAME)
     if (gid == DEBUG_GID)
-        printf("Kernel: SpatialReuse_MK_INIT(state = %d)\n", taskState->state);
+        printf("Kernel: SpatialReuse_MK_INIT(state = %d)\n", pathStates[gid]);
     #endif
 
     //--------------------------------------------------------------------------
@@ -93,7 +95,7 @@ __kernel void SpatialReuse_MK_INIT(
     taskState->canonicalMisWeight = 1.f;
 
     // Prime pathstate
-    taskState->state = SR_MK_NEXT_NEIGHBOR;
+    pathStates[gid] = SR_MK_NEXT_NEIGHBOR;
 }
 
 //------------------------------------------------------------------------------
@@ -116,12 +118,12 @@ __kernel void SpatialReuse_MK_NEXT_NEIGHBOR(
 
     GPUTask *task = &tasks[gid];
     GPUTaskState *taskState = &tasksState[gid];
-    if (taskState->state != SR_MK_NEXT_NEIGHBOR)
+    if (pathStates[gid] != SR_MK_NEXT_NEIGHBOR)
         return;
 
     #if defined(DEBUG_PRINTF_SR_KERNEL_NAME)
     if (gid == DEBUG_GID)
-        printf("Kernel: SpatialReuse_MK_NEXT_NEIGHBOR(state = %d)\n", taskState->state);
+        printf("Kernel: SpatialReuse_MK_NEXT_NEIGHBOR(state = %d)\n", pathStates[gid]);
     #endif
 
     //--------------------------------------------------------------------------
@@ -140,7 +142,7 @@ __kernel void SpatialReuse_MK_NEXT_NEIGHBOR(
     while (true) {
         if (taskState->numNeighborsLeft == 0) {
             // No more neighbors, this iteration is finished
-            taskState->state = SYNC;
+            pathStates[gid] = SYNC;
             return;
         }
 
@@ -163,7 +165,7 @@ __kernel void SpatialReuse_MK_NEXT_NEIGHBOR(
     taskState->shiftDstGid = taskState->neighborGid;
     taskState->afterShiftState = SR_MK_RESAMPLE;
 
-    taskState->state = SR_MK_SHIFT;
+    pathStates[gid] = SR_MK_SHIFT;
 }
 
 //------------------------------------------------------------------------------
@@ -189,12 +191,12 @@ KERNEL_ARGS_SPATIALREUSE
     // Check correct pathstate during async execution
     GPUTask *task = &tasks[gid];
     GPUTaskState *taskState = &tasksState[gid];
-    if (taskState->state != SR_MK_SHIFT)
+    if (pathStates[gid] != SR_MK_SHIFT)
         return;
 
     #if defined(DEBUG_PRINTF_SR_KERNEL_NAME)
     if (gid == DEBUG_GID)
-        printf("Kernel: SpatialReuse_MK_SHIFT(state = %d)\n", taskState->state);
+        printf("Kernel: SpatialReuse_MK_SHIFT(state = %d)\n", pathStates[gid]);
     #endif
 
     //--------------------------------------------------------------------------
@@ -213,7 +215,7 @@ KERNEL_ARGS_SPATIALREUSE
 
     if (rc->pathDepth == -1) {
         // No reconnection vertex, invalid shift
-        Respir_HandleInvalidShift(taskState, out);
+        Respir_HandleInvalidShift(taskState, out, &pathStates[gid]);
         return;
     }
 
@@ -254,7 +256,7 @@ KERNEL_ARGS_SPATIALREUSE
     if (Respir_IsInvalidJacobian(out->sample.rc.jacobian)) 
     {
         // Invalid Jacobian, shift fails
-        Respir_HandleInvalidShift(taskState, out);
+        Respir_HandleInvalidShift(taskState, out, &pathStates[gid]);
         return;
     }
 
@@ -270,7 +272,7 @@ KERNEL_ARGS_SPATIALREUSE
     const float minDistance = worldRadius * 2 * 0.025; 
     if (srcToDstRcDistance < minDistance || dstDistance < minDistance) {
         // Shift failed or noninvertible
-        Respir_HandleInvalidShift(taskState, out);
+        Respir_HandleInvalidShift(taskState, out, &pathStates[gid]);
         return;
     }
 
@@ -289,7 +291,7 @@ KERNEL_ARGS_SPATIALREUSE
             MATERIALS_PARAM);
     out->sample.rc.jacobian *= dstPdf / srcPdf;
     if (Respir_IsInvalidJacobian(out->sample.rc.jacobian) || Spectrum_IsBlack(dstBsdfValue)) {
-        Respir_HandleInvalidShift(taskState, out);
+        Respir_HandleInvalidShift(taskState, out, &pathStates[gid]);
         return;
     }
 
@@ -304,7 +306,7 @@ KERNEL_ARGS_SPATIALREUSE
         MATERIALS_PARAM);
     out->sample.rc.jacobian *= dstRcIncidentPdf / srcRcIncidentPdf;
     if (Respir_IsInvalidJacobian(out->sample.rc.jacobian) || Spectrum_IsBlack(dstRcIncidentBsdfValue)) {
-        Respir_HandleInvalidShift(taskState, out);
+        Respir_HandleInvalidShift(taskState, out, &pathStates[gid]);
         return;
     }
 
@@ -318,7 +320,7 @@ KERNEL_ARGS_SPATIALREUSE
     );
 
     if (Radiance_IsBlack(film, out->sample.integrand)) {
-        Respir_HandleInvalidShift(taskState, out);
+        Respir_HandleInvalidShift(taskState, out, &pathStates[gid]);
         return;
     }
 
@@ -343,7 +345,7 @@ KERNEL_ARGS_SPATIALREUSE
     shadowRayDir /= shadowRayDirDistance;
     Ray_Init4(&rays[gid], shadowRayOrigin, shadowRayDir, 0.f, shadowRayDirDistance, dst->sample.hitTime);
 
-    taskState->state = SR_MK_CHECK_VISIBILITY;
+    pathStates[gid] = SR_MK_CHECK_VISIBILITY;
     return;
 }
 
@@ -367,12 +369,12 @@ __kernel void SpatialReuse_MK_CHECK_VISIBILITY(
 
     GPUTask *task = &tasks[gid];
     GPUTaskState *taskState = &tasksState[gid];
-    if (taskState->state != SR_MK_CHECK_VISIBILITY)
+    if (pathStates[gid] != SR_MK_CHECK_VISIBILITY)
         return;
 
     #if defined(DEBUG_PRINTF_SR_KERNEL_NAME)
     if (gid == DEBUG_GID)
-        printf("Kernel: SpatialReuse_MK_CHECK_VISIBILITY(state = %d)\n", taskState->state);
+        printf("Kernel: SpatialReuse_MK_CHECK_VISIBILITY(state = %d)\n", pathStates[gid]);
     #endif
 
     //--------------------------------------------------------------------------
@@ -425,13 +427,13 @@ __kernel void SpatialReuse_MK_CHECK_VISIBILITY(
         // Hit something, meaning reconnection vertex is not visible
         // Shift fails due to occlusion
         taskDirectLight->directLightResult = SHADOWED;
-        Respir_HandleInvalidShift(taskState, &taskState->shiftReservoir);
+        Respir_HandleInvalidShift(taskState, &taskState->shiftReservoir, &pathStates[gid]);
         return;
     }
 
     // Shift is successful, keep shifted integranad and jacobian in shiftReservoir 
     taskDirectLight->directLightResult = ILLUMINATED;
-    taskState->state = taskState->afterShiftState;
+    pathStates[gid] = taskState->afterShiftState;
 }
 
 //------------------------------------------------------------------------------
@@ -451,12 +453,12 @@ __kernel void SpatialReuse_MK_RESAMPLE(
 
     GPUTask *task = &tasks[gid];
     GPUTaskState *taskState = &tasksState[gid];
-    if (taskState->state != SR_MK_RESAMPLE)
+    if (pathStates[gid] != SR_MK_RESAMPLE)
         return;
 
     #if defined(DEBUG_PRINTF_SR_KERNEL_NAME)
     if (gid == DEBUG_GID)
-        printf("Kernel: SpatialReuse_MK_RESAMPLE(state = %d)\n", taskState->state);
+        printf("Kernel: SpatialReuse_MK_RESAMPLE(state = %d)\n", pathStates[gid]);
     #endif
         
     //--------------------------------------------------------------------------
@@ -494,7 +496,7 @@ __kernel void SpatialReuse_MK_RESAMPLE(
     taskState->shiftDstGid = gid;
     taskState->afterShiftState = SR_MK_FINISH_RESAMPLE;
 
-    taskState->state = SR_MK_SHIFT;
+    pathStates[gid] = SR_MK_SHIFT;
     }
 
     //------------------------------------------------------------------------------
@@ -514,12 +516,12 @@ __kernel void SpatialReuse_MK_RESAMPLE(
 
     GPUTask *task = &tasks[gid];
     GPUTaskState *taskState = &tasksState[gid];
-    if (taskState->state != SR_MK_FINISH_RESAMPLE)
+    if (pathStates[gid] != SR_MK_FINISH_RESAMPLE)
         return;
 
     #if defined(DEBUG_PRINTF_SR_KERNEL_NAME)
     if (gid == DEBUG_GID)
-        printf("Kernel: SpatialReuse_MK_FINISH_RESAMPLE(state = %d)\n", taskState->state);
+        printf("Kernel: SpatialReuse_MK_FINISH_RESAMPLE(state = %d)\n", pathStates[gid]);
     #endif
 
     //--------------------------------------------------------------------------
@@ -561,7 +563,7 @@ __kernel void SpatialReuse_MK_RESAMPLE(
         shifted->sample.integrand, shifted->sample.rc.jacobian, neighbor,
         neighborWeight, &task->seed, film);
 
-    taskState->state = SR_MK_NEXT_NEIGHBOR;
+    pathStates[gid] = SR_MK_NEXT_NEIGHBOR;
 }
 
 //------------------------------------------------------------------------------
@@ -585,7 +587,7 @@ __kernel void SpatialReuse_MK_FINISH_ITERATION(
 
     #if defined(DEBUG_PRINTF_SR_KERNEL_NAME)
     if (gid == DEBUG_GID)
-        printf("Kernel: SpatialReuse_MK_FINISH_ITERATION(state = %d)\n", taskState->state);
+        printf("Kernel: SpatialReuse_MK_FINISH_ITERATION(state = %d)\n", pathStates[gid]);
     #endif
 
     //--------------------------------------------------------------------------
@@ -637,7 +639,7 @@ __kernel void SpatialReuse_MK_FINISH_ITERATION(
     RespirReservoir_Init(srReservoir);
     taskState->canonicalMisWeight = 1.f;
 
-    taskState->state = SR_MK_NEXT_NEIGHBOR;
+    pathStates[gid] = SR_MK_NEXT_NEIGHBOR;
 }
 
 //------------------------------------------------------------------------------
@@ -697,5 +699,5 @@ __kernel void SpatialReuse_MK_SET_SPLAT(
 
     GPUTaskState *taskState = &tasksState[gid];
 
-    taskState->state = MK_SPLAT_SAMPLE;
+    pathStates[gid] = MK_SPLAT_SAMPLE;
 }
