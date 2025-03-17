@@ -217,13 +217,11 @@ string RespirPathOCLRenderThread::GetKernelSources() {
 			slg::ocl::KernelSource_bsdf_funcs <<
 			slg::ocl::KernelSource_scene_funcs <<
 			slg::ocl::KernelSource_pgic_funcs <<
-			// Respir funcs
+			// Respir and pathocl funcs
 			slg::ocl::KernelSource_respir_funcs <<
-			slg::ocl::KernelSource_respir_kernels_micro <<
-			// PathOCL Funcs
 			slg::ocl::KernelSource_pathoclbase_funcs <<
-			slg::ocl::KernelSource_pathoclbase_kernels_micro;
-
+			slg::ocl::KernelSource_pathoclbase_kernels_micro <<
+			slg::ocl::KernelSource_respir_kernels_micro;
 	return ssKernel.str();
 }
 

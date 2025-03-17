@@ -357,6 +357,7 @@ void PathOCLBaseOCLRenderThread::SetInitKernelArgs(const u_int filmIndex) {
 	// initKernel kernel
 	argIndex = 0;
 	intersectionDevice->SetKernelArg(initKernel, argIndex++, taskConfigBuff);
+	intersectionDevice->SetKernelArg(initKernel, argIndex++, pathStatesBuff);
 	intersectionDevice->SetKernelArg(initKernel, argIndex++, tasksBuff);
 	intersectionDevice->SetKernelArg(initKernel, argIndex++, tasksDirectLightBuff);
 	intersectionDevice->SetKernelArg(initKernel, argIndex++, tasksStateBuff);

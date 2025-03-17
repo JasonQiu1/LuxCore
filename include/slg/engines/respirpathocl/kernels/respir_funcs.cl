@@ -353,20 +353,3 @@ OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(GPUTaskState* restrict tas
 	
 	return false;
 }
-
-
-
-/*
-// Kernel arg macros
-*/
-
-// Reservoir data structure for initial path resampling using RIS
-#define KERNEL_ARGS_SPATIALREUSE \
-        , __global RespirReservoir* centralReservoirs \
-		, __global int* pixelIndexMap \
-        , __global SpatialReuseData* spatialReuseDatas \
-		, const uint spatialRadius \
-		, const uint numSpatialNeighbors
-
-#define KERNEL_ARGS_SHIFT \
-        , __global ShiftInOutData* shiftInOutDatas
