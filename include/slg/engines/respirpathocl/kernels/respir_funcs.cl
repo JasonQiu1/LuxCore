@@ -19,7 +19,7 @@
  ***************************************************************************/
 
  #ifndef DEBUG_GID
- #define DEBUG_GID 37107
+ #define DEBUG_GID 251901
  #endif
 
 /*
@@ -303,6 +303,10 @@ OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(SpatialReuseData* restrict
 	int searchX = sampleResult->pixelX + (int) copysign(floor(Rnd_FloatValue(seed) * spatialRadius) + 1.0f, Rnd_FloatValue(seed) - 0.5f);
 	int searchY = sampleResult->pixelY + (int) copysign(floor(Rnd_FloatValue(seed) * spatialRadius) + 1.0f, Rnd_FloatValue(seed) - 0.5f);
 	srData->numNeighborsLeft--;
+
+	if (get_global_id(0) == DEBUG_GID) {
+		printf("Pixel (%d, %d), resampling (%d, %d).\n", sampleResult->pixelX, sampleResult->pixelY, searchX, searchY);
+	}
 
 	if (searchX >= 0 && searchX < filmWidth && searchY >= 0 && searchY < filmHeight // check in bounds
 		&& (searchX != sampleResult->pixelX || searchY != sampleResult->pixelY)) // check not the pixel itself

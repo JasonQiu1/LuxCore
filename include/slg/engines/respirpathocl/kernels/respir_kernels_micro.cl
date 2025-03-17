@@ -24,7 +24,7 @@
 
 #define DEBUG_PRINTF_SR_KERNEL_NAME 1
 #ifndef DEBUG_GID
-#define DEBUG_GID 37107
+#define DEBUG_GID 251901
 #endif
 
 //------------------------------------------------------------------------------
@@ -69,8 +69,6 @@ __kernel void SpatialReuse_MK_INIT(
         // keep pixelIndexMap to be -1 so this pixel isn't resampled from
         return;
     }
-
-    printf("GID: %d\n", gid);
 
     // Save ray time state
     spatialReuseData->preSpatialReuseTime = ray->time;
