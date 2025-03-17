@@ -145,7 +145,7 @@ OPENCL_FORCE_INLINE void RespirReservoir_Init(RespirReservoir* restrict reservoi
 	reservoir->sample.rc.pathDepth = -1;
 }
 
-OPENCL_FORCE_INLINE void Respir_Init(TaskState* restrict taskState) {
+OPENCL_FORCE_INLINE void Respir_Init(GPUTaskState* restrict taskState) {
     RespirReservoir_Init(&taskState->reservoir);
 
 	VSTORE3F(WHITE, taskState->pathPdf.c);
