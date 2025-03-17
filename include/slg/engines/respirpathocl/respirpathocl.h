@@ -63,7 +63,7 @@ protected:
     void SetInitKernelArgs(const u_int filmIndex) override;
     void SetAdvancePathsKernelArgs(luxrays::HardwareDeviceKernel *advancePathsKernel, const u_int filmIndex) override;
     void SetAllAdvancePathsKernelArgs(const u_int filmIndex) override;
-	void SetSpatialReuseKernelArgs(luxrays::HardwareDeviceKernel *spatialReuseKernel, const u_int filmIndex);
+	void SetSpatialReuseKernelArgs(luxrays::HardwareDeviceKernel *spatialReuseKernel, const u_int filmIndex, bool useSpatialReuseData, bool useShiftInOutdata);
 	void SetAllSpatialReuseKernelArgs(const u_int filmIndex);
 	void SetKernelArgs() override;
 
@@ -71,8 +71,8 @@ protected:
 	bool CheckSyncedPathStates(ocl::respir::RespirAsyncState* tasksStateReadBuffer, const u_int taskCount, ocl::respir::RespirAsyncState targetState);
 
 	luxrays::HardwareDeviceBuffer* pixelIndexMapBuff;
-	luxrays::HardwareDeviceBuffer* spatialReuseDatasBuff;
-	luxrays::HardwareDeviceBuffer* shiftInOutDatasBuff;
+	luxrays::HardwareDeviceBuffer* spatialReuseDataBuff;
+	luxrays::HardwareDeviceBuffer* shiftInOutDataBuff;
 
 	luxrays::HardwareDeviceKernel* spatialReuseKernel_MK_INIT;
 	luxrays::HardwareDeviceKernel* spatialReuseKernel_MK_NEXT_NEIGHBOR;

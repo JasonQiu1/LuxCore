@@ -385,11 +385,11 @@ void RespirPathOCLRenderThread::InitPixelIndexMapBuffer(const u_int filmWidth, c
 }
 
 void RespirPathOCLRenderThread::InitSpatialReuseDatasBuffer(const u_int taskCount) {
-	intersectionDevice->AllocBufferRW(&spatialReuseDatasBuff, nullptr, sizeof(slg::ocl::respir::SpatialReuseData) * taskCount, "SpatialReuseData");
+	intersectionDevice->AllocBufferRW(&spatialReuseDataBuff, nullptr, sizeof(slg::ocl::respir::SpatialReuseData) * taskCount, "SpatialReuseData");
 }
 
 void RespirPathOCLRenderThread::InitShiftInOutDatasBuffer(const u_int taskCount) {
-	intersectionDevice->AllocBufferRW(&shiftInOutDatasBuff, nullptr, sizeof(slg::ocl::respir::ShiftInOutData) * taskCount, "ShiftInOutData");
+	intersectionDevice->AllocBufferRW(&shiftInOutDataBuff, nullptr, sizeof(slg::ocl::respir::ShiftInOutData) * taskCount, "ShiftInOutData");
 }
 
 void RespirPathOCLRenderThread::InitRespirBuffers(const u_int taskCount) {
@@ -410,7 +410,8 @@ void RespirPathOCLRenderThread::SetAllAdvancePathsKernelArgs(const u_int filmInd
     PathOCLOpenCLRenderThread::SetAllAdvancePathsKernelArgs(filmIndex);
 }
 
-void RespirPathOCLRenderThread::SetSpatialReuseKernelArgs(HardwareDeviceKernel *spatialReuseKernel, const u_int filmIndex) {
+void RespirPathOCLRenderThread::SetSpatialReuseKernelArgs(HardwareDeviceKernel *spatialReuseKernel, const u_int filmIndex, 
+	bool useSpatialReuseData = true, bool useShiftInOutdata = true) {
 	CompiledScene *cscene = renderEngine->compiledScene;
 
 	u_int argIndex = 0;
@@ -502,19 +503,26 @@ void RespirPathOCLRenderThread::SetSpatialReuseKernelArgs(HardwareDeviceKernel *
 	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, pgicCausticPhotonsBVHNodesBuff);
 
 	// Spatial reuse
-	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, pixelIndexMapBuff);
-	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, spatialRadius);
-	intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, numSpatialNeighbors);
+	if (useSpatialReuseData) {
+		intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, pixelIndexMapBuff);
+		intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, spatialReuseDataBuff);
+		intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, spatialRadius);
+		intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, numSpatialNeighbors);
+	}
+
+	if (useShiftInOutData) {
+		intersectionDevice->SetKernelArg(spatialReuseKernel, argIndex++, shiftInOutDataBuff);
+	}
 }
 
 void RespirPathOCLRenderThread::SetAllSpatialReuseKernelArgs(const u_int filmIndex) {
 	// TODO: optimize performance by setting smaller kernel args for spatial reuse kernels
 	if (spatialReuseKernel_MK_INIT)
-		SetSpatialReuseKernelArgs(spatialReuseKernel_MK_INIT, filmIndex);
+		SetSpatialReuseKernelArgs(spatialReuseKernel_MK_INIT, filmIndex, true, false);
 	if (spatialReuseKernel_MK_NEXT_NEIGHBOR)
 		SetSpatialReuseKernelArgs(spatialReuseKernel_MK_NEXT_NEIGHBOR, filmIndex);
 	if (spatialReuseKernel_MK_SHIFT)
-		SetSpatialReuseKernelArgs(spatialReuseKernel_MK_SHIFT, filmIndex);
+		SetSpatialReuseKernelArgs(spatialReuseKernel_MK_SHIFT, filmIndex, false, true);
 	if (spatialReuseKernel_MK_CHECK_VISIBILITY)
 		SetSpatialReuseKernelArgs(spatialReuseKernel_MK_CHECK_VISIBILITY, filmIndex);
 	if (spatialReuseKernel_MK_RESAMPLE)
@@ -522,11 +530,11 @@ void RespirPathOCLRenderThread::SetAllSpatialReuseKernelArgs(const u_int filmInd
 	if (spatialReuseKernel_MK_FINISH_RESAMPLE)
 		SetSpatialReuseKernelArgs(spatialReuseKernel_MK_FINISH_RESAMPLE, filmIndex);
 	if (spatialReuseKernel_MK_FINISH_ITERATION)
-		SetSpatialReuseKernelArgs(spatialReuseKernel_MK_FINISH_ITERATION, filmIndex);
+		SetSpatialReuseKernelArgs(spatialReuseKernel_MK_FINISH_ITERATION, filmIndex, true, false);
 	if (spatialReuseKernel_MK_FINISH_REUSE)
-		SetSpatialReuseKernelArgs(spatialReuseKernel_MK_FINISH_REUSE, filmIndex);
+		SetSpatialReuseKernelArgs(spatialReuseKernel_MK_FINISH_REUSE, filmIndex, true, false);
 	if (spatialReuseKernel_MK_SET_SPLAT)
-		SetSpatialReuseKernelArgs(spatialReuseKernel_MK_SET_SPLAT, filmIndex);
+		SetSpatialReuseKernelArgs(spatialReuseKernel_MK_SET_SPLAT, filmIndex, false, false);
 }
 
 void RespirPathOCLRenderThread::SetKernelArgs() {

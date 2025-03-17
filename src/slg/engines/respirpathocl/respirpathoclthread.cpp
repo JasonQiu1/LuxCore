@@ -46,8 +46,8 @@ RespirPathOCLRenderThread::RespirPathOCLRenderThread(const u_int index, luxrays:
 	  numSpatialNeighbors(re->numSpatialNeighbors)
 {
 	pixelIndexMapBuff = nullptr;
-	spatialReuseDatasBuff = nullptr;
-	shiftInOutDatasBuff = nullptr;
+	spatialReuseDataBuff = nullptr;
+	shiftInOutDataBuff = nullptr;
 
     spatialReuseKernel_MK_INIT = nullptr;
 	spatialReuseKernel_MK_NEXT_NEIGHBOR = nullptr;
@@ -142,8 +142,8 @@ void RespirPathOCLRenderThread::Stop() {
 
 	// Respir buffers
 	intersectionDevice->FreeBuffer(&pixelIndexMapBuff);
-	intersectionDevice->FreeBuffer(&spatialReuseDatasBuff);
-	intersectionDevice->FreeBuffer(&shiftInOutDatasBuff);
+	intersectionDevice->FreeBuffer(&spatialReuseDataBuff);
+	intersectionDevice->FreeBuffer(&shiftInOutDataBuff);
 
 	started = false;
 
