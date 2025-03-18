@@ -336,6 +336,10 @@ __kernel void SpatialReuse_MK_SHIFT(
             dstPdf2 = src->sample.lightPdf;
         }
     }
+    if (isRcVertexEscapedVertex) {
+        dstRcIncidentBsdfValue = 1.0f;
+    }
+
     if (Spectrum_IsBlack(dstRcIncidentBsdfValue)) {
         Respir_HandleInvalidShift(shiftInOutData, out, &pathStates[gid]);
         return;
