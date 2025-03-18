@@ -747,7 +747,7 @@ __kernel void SpatialReuse_MK_FINISH_REUSE(
         reservoir->weight,
         sampleResult->radiancePerPixelNormalized);
     if (gid == DEBUG_GID) {
-        printf("\tIntegrand after GRIS: %f\n", Radiance_Filter(film, reservoir->sample.integrand));
+        printf("\tIntegrand after GRIS: %f\n", Radiance_Filter(film, sampleResult->radiancePerPixelNormalized));
     }
 
     // maintain integrity of pathtracer by using time from before spatial reuse
