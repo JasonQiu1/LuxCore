@@ -281,7 +281,15 @@ OPENCL_FORCE_INLINE bool Respir_IsInvalidJacobian(const float jacobianDeterminan
 // TODO: upgrade to n-rooks sampling around pixel and customizable spatial radius and number of spatial neighbors
 OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(SpatialReuseData* restrict srData, 
 		const SampleResult* restrict sampleResult, const int spatialRadius,
-		const int* restrict pixelIndexMap, const uint filmWidth, const uint filmHeight, Seed* restrict seed) {
+		const int* restrict pixelIndexMap, const uint filmWidth, const uint filmHeight, Seed* restrict seed) 
+{
+	// DEBUG: IDENTITY SHIFT
+	if (srData->neighborGid != -1) {
+		return false;
+	}	
+	srData->neighborGid = get_global_gid(0);
+	return true;
+	
 	srData->neighborGid = -1;
 
 	// randomly choose a pixel in the radius (inclusive) not including self
