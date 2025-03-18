@@ -83,7 +83,6 @@ typedef struct {
 	// initial path resampling reservoir
 	RespirReservoir reservoir;
 
-	Spectrum currentThroughput; // throughput for just current vertex
 	Spectrum throughput; // total throughput
 	BSDF bsdf; // Variable size structure
 
@@ -91,9 +90,11 @@ typedef struct {
 	Seed seedReservoirSampling;
 
     // keep track of cumulative products
+	Spectrum currentThroughput; // throughput for just current vertex
 	Spectrum pathPdf; // bsdfProduct and connectionThroughput
 	float rrProbProd; // running product of russian roulette probability each vertex hit
-	float lastDirectLightPdf; // for direct light illumination sampled from NEE (+ cheater BSDF)
+	float lastDirectLightMisWeight; // for direct light illumination sampled from NEE (+ cheater BSDF)
+	float lastDirectLightBsdfEval;
 
 	int albedoToDo, photonGICacheEnabledOnLastHit,
 			photonGICausticCacheUsed, photonGIShowIndirectPathMixUsed,

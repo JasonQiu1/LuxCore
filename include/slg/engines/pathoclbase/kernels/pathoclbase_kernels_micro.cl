@@ -554,16 +554,21 @@ __kernel void AdvancePaths_MK_RT_DL(
 				// Add NEE-illuminated (with cheater BSDF) sample into the reservoir.
 				SampleResult postfix;
 				SampleResult_Init(&postfix);
+				float3 throughput = VLOAD3F(taskState->currentThroughput.c);
+				if (pathInfo->depth.depth == 1) {
+					throughput /= taskState->lastDirectLightBsdfEval;
+				}
 				// Store postfix radiance with only current vertex throughput
 				SampleResult_AddDirectLight(&taskConfig->film,
 					&postfix, taskDirectLight->illumInfo.lightID,
-					BSDF_GetEventTypes(bsdf
-						MATERIALS_PARAM),
-					VLOAD3F(taskState->currentThroughput.c), lightRadiance,
+					BSDF_GetEventTypes(bsdf MATERIALS_PARAM),
+					throughput, lightRadiance,
 					1.f);
+				
 				RespirReservoir_AddNEEVertex(&taskState->reservoir, 
 						sampleResult->radiancePerPixelNormalized, postfix.radiancePerPixelNormalized,
-						taskState->lastDirectLightPdf, taskState->rrProbProd, taskDirectLight->illumInfo.pickPdf,
+						taskState->lastDirectLightMisWeight, taskState->rrProbProd, 
+						taskDirectLight->illumInfo.directPdfW * taskDirectLight->illumInfo.pickPdf,
 						pathInfo->depth.depth, &taskState->seedReservoirSampling, &taskConfig->film);
 #endif
 			}
