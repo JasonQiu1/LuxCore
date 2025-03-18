@@ -554,7 +554,7 @@ __kernel void AdvancePaths_MK_RT_DL(
 				SampleResult postfix;
 				SampleResult_Init(&postfix);
 				SampleResult_AddDirectLight(&taskConfig->film,
-					sampleResult, taskDirectLight->illumInfo.lightID,
+					postfix, taskDirectLight->illumInfo.lightID,
 					BSDF_GetEventTypes(bsdf
 						MATERIALS_PARAM),
 					VLOAD3F(taskState->throughput.c), lightRadiance,
