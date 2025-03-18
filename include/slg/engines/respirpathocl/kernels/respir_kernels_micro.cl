@@ -337,7 +337,7 @@ __kernel void SpatialReuse_MK_SHIFT(
         }
     }
     if (isRcVertexEscapedVertex) {
-        dstRcIncidentBsdfValue = 1.0f;
+        dstRcIncidentBsdfValue = WHITE;
     }
 
     if (Spectrum_IsBlack(dstRcIncidentBsdfValue)) {
