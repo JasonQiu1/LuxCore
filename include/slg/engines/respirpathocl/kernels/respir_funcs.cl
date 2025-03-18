@@ -372,12 +372,7 @@ OPENCL_FORCE_INLINE bool Respir_IsInvalidJacobian(const float jacobianDeterminan
 OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(SpatialReuseData* restrict srData, 
 		const SampleResult* restrict sampleResult, const int spatialRadius,
 		const int* restrict pixelIndexMap, const uint filmWidth, const uint filmHeight, Seed* restrict seed) 
-{
-	// DEBUG: IDENTITY SHIFT
-	srData->neighborGid = get_global_id(0);
-	srData->numNeighborsLeft--;
-	return true;
-	
+{	
 	srData->neighborGid = -1;
 
 	// randomly choose a pixel in the radius (inclusive) not including self
