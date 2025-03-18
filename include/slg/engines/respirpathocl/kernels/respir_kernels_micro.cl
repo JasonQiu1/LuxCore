@@ -316,7 +316,14 @@ __kernel void SpatialReuse_MK_SHIFT(
     
     const BSDF* rcBsdf = &rc->bsdf;
     if (!isRcVertexEscapedVertex) {
+        // DEBUG: Just reevaluate for correctness
         srcRcIncidentPdf = rc->incidentPdf;
+        BSDF_EvaluateWithEyeDir(rcBsdf,
+            -srcToRc,
+            VLOAD3F(&rc->incidentDir.x), // should this be negative?
+            &event, &srcRcIncidentPdf
+            MATERIALS_PARAM);
+
         dstRcIncidentBsdfValue = BSDF_Evaluate(rcBsdf,
             VLOAD3F(&rc->incidentDir.x), 
             &event, &dstRcIncidentPdf
