@@ -539,17 +539,25 @@ __kernel void SpatialReuse_MK_FINISH_RESAMPLE(
     /*
     // Calculate pairwise resampling weight for the neighbor sample.
     */
+    
+    // Save shifted output.
+    const float shiftedJacobian = shifted->sample.rc.jacobian;
+    Spectrum shiftedIntegrand[FILM_MAX_RADIANCE_GROUP_COUNT];
+    Radiance_Copy(film, shifted->sample.integrand, shiftedIntegrand);
+
+    // Make a copy of neighbor so that I can update it with some info before merging.
+    *shifted = *neighbor;
+
     float neighborWeight = 0.0f;
 
-    shifted->M = central->M;
-    shifted->weight = central->weight;
-    const float weight = shifted->M * Radiance_Filter(film, shifted->sample.integrand)
-            * shifted->sample.rc.jacobian * shifted->weight;
+    // Make sure that it's even possible to select by checking that resampling weight is valid.
+    const float weight = neighbor->M * Radiance_Filter(film, shiftedIntegrand)
+            * shiftedJacobian * neighbor->weight;
     if (weight <= 0.0f || isnan(weight) || isinf(weight)) {
-        Radiance_Clear(shifted->sample.integrand);
+        Radiance_Clear(shiftedIntegrand);
     } else {
-        const float neighborIntegrandM = neighbor->M * Radiance_Filter(film, neighbor->sample.integrand) / shifted->sample.rc.jacobian;
-        const float shiftedIntegrandM = central->M * Radiance_Filter(film, shifted->sample.integrand);
+        const float neighborIntegrandM = neighbor->M * Radiance_Filter(film, neighbor->sample.integrand) / shiftedJacobian;
+        const float shiftedIntegrandM = central->M * Radiance_Filter(film, shiftedIntegrand);
         neighborWeight = neighborIntegrandM / (neighborIntegrandM + shiftedIntegrandM / numSpatialNeighbors);
         if (isnan(neighborWeight) || isinf(neighborWeight)) {
             neighborWeight = 0.0f;
@@ -560,11 +568,7 @@ __kernel void SpatialReuse_MK_FINISH_RESAMPLE(
     //	Resample the shifted reservoir into the spatial reuse reservoir.
     */
 
-    // Use shifted as a copy of neighbor reservoir, but with the shifted integrand
-    const float shiftedJacobian = shifted->sample.rc.jacobian;
-    Spectrum shiftedIntegrand[FILM_MAX_RADIANCE_GROUP_COUNT];
-    Radiance_Copy(film, shifted->sample.integrand, shiftedIntegrand);
-    *shifted = *neighbor;
+    // Set shifted integrand back before merging neighbor with spatial reuse data.
     Radiance_Copy(film, shiftedIntegrand, shifted->sample.integrand);
 
     RespirReservoir_Merge(&spatialReuseData->spatialReuseReservoir, 
