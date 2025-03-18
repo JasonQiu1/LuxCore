@@ -575,6 +575,8 @@ __kernel void SpatialReuse_MK_FINISH_RESAMPLE(
         shifted->sample.integrand, shiftedJacobian, shifted,
         neighborWeight, &task->seed, film);
 
+    printf("GID: %d\n", gid);
+
     pathStates[gid] = (PathState) SR_MK_NEXT_NEIGHBOR;
 }
 
