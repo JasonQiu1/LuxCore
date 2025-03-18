@@ -547,6 +547,23 @@ __kernel void AdvancePaths_MK_RT_DL(
 							VLOAD3F(taskDirectLight->illumInfo.lightIrradiance.c);
 					VSTORE3F(irradiance, sampleResult->irradiance.c);
 				}
+
+#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
+				const EyePathInfo* pathInfo = &eyePathInfos[gid];
+				// Add NEE-illuminated (with cheater BSDF) sample into the reservoir.
+				SampleResult postfix;
+				SampleResult_Init(&postfix);
+				SampleResult_AddDirectLight(&taskConfig->film,
+					sampleResult, taskDirectLight->illumInfo.lightID,
+					BSDF_GetEventTypes(bsdf
+						MATERIALS_PARAM),
+					VLOAD3F(taskState->throughput.c), lightRadiance,
+					1.f);
+				RespirReservoir_AddNEEVertex(&taskState->reservoir, 
+						sampleResult->radiancePerPixelNormalized, postfix.radiancePerPixelNormalized,
+						taskState->lastDirectLightPdf, taskState->rrProbProd, taskDirectLight->illumInfo.pickPdf,
+						pathInfo->depth.depth, &taskState->seedReservoirSampling, &taskConfig->film);
+#endif
 			}
 
 			taskDirectLight->directLightResult = ILLUMINATED;
