@@ -237,13 +237,13 @@ __kernel void SpatialReuse_MK_SHIFT(
     dstToRc /= dstDistance;
 
     // absolute value of Cos(angle from surface normal of rc point to prefix point) 
-    const float3 rcGeometricN = HitPoint_GetGeometryN(&dst->sample.rc.bsdf.hitPoint);
+    const float3 rcGeometricN = HitPoint_GetGeometryN(rc->bsdf.hitPoint);
     const float dstCosW = abs(dot(dstToRc, rcGeometricN));
 
     // Cached jacobian is src: (sqr distance) / (cos angle)
     out->sample.rc.jacobian = rc->jacobian * (dstCosW / dstDistanceSquared);
 
-    if (get_global_id(0) == filmWidth * filmHeight / 2 ) {
+    if (get_global_id(0) == DEBUG_GID) {
         printf("Dst prefix point: (%f, %f, %f)\n", dstPoint.x, dstPoint.y, dstPoint.z);
         printf("Src rc vertex point: (%f, %f, %f)\n", rcPoint.x, rcPoint.y, rcPoint.z);
         printf("Src rc geometric normal: (%f, %f, %f)\n", rcGeometricN.x, rcGeometricN.y, rcGeometricN.z);
