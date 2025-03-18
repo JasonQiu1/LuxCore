@@ -118,7 +118,7 @@ __kernel void SpatialReuse_MK_NEXT_NEIGHBOR(
 ) {
     const size_t gid = get_global_id(0);
 
-    if (pathStates[gid] != (PathState) SR_MK_NEXT_NEIGHBOR)
+    if (pathStates[gid] != SR_MK_NEXT_NEIGHBOR)
         return;
 
 #if defined(DEBUG_PRINTF_SR_KERNEL_NAME)
@@ -478,8 +478,8 @@ __kernel void SpatialReuse_MK_RESAMPLE(
     */
     spatialReuseData->canonicalMisWeight += 1.0f;
     const float prefixApproximateIntegrandM = neighbor->M * Radiance_Filter(film, shifted->sample.integrand) * shifted->sample.rc.jacobian;
-    const float centralIntegrandM = central->M * Radiance_Filter(film, central->sample.integrand);
     if (prefixApproximateIntegrandM >= 0.0f) {
+        const float centralIntegrandM = central->M * Radiance_Filter(film, central->sample.integrand);
         spatialReuseData->canonicalMisWeight -= prefixApproximateIntegrandM
                 / (prefixApproximateIntegrandM + centralIntegrandM / numSpatialNeighbors);
     } 
