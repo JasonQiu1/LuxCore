@@ -211,12 +211,15 @@ __kernel void SpatialReuse_MK_SHIFT(
     const RespirReservoir* dst = &tasksState[shiftInOutData->shiftDstGid].reservoir;
     const RcVertex* rc = &src->sample.rc;
 
-    if (rc->pathDepth == -1 
-        || rc->pathDepth > src->sample.pathDepth) {
+    if (rc->pathDepth == -1 || rc->pathDepth > src->sample.pathDepth) {
         // No reconnection vertex, invalid shift
         Respir_HandleInvalidShift(shiftInOutData, out, &pathStates[gid]);
         return;
     }
+
+    bool isRcVertexFinal = src->sample.pathDepth == rc->pathDepth;
+    bool isRcVertexEscapedVertex = src->sample.pathDepth + 1 == rc->pathDepth && !src->sample.isLastVertexNee;
+    bool isRcVertexNEE = isRcVertexFinal && src->sample.isLastVertexNee;
 
     // Initialize image maps page pointer table
     INIT_IMAGEMAPS_PAGES
@@ -300,35 +303,66 @@ __kernel void SpatialReuse_MK_SHIFT(
 
     // Correct jacobian for bsdf scattering value from prefix vertex to reconnection to incident dir
     // Use cached BSDF info from src/base path
-    const float srcRcIncidentPdf = rc->incidentPdf;
-    const BSDF* rcBsdf = &rc->bsdf;
+    float dstPdf2 = 1.0f;
+    float srcRcIncidentPdf = 1.0f;
     float dstRcIncidentPdf = 1.0f;
-    const float3 dstRcIncidentBsdfValue = BSDF_EvaluateWithEyeDir(rcBsdf,
-        -dstToRc, VLOAD3F(&rc->incidentDir.x), 
-        &event, &dstRcIncidentPdf
-        MATERIALS_PARAM);
-    out->sample.rc.jacobian *= dstRcIncidentPdf / srcRcIncidentPdf;
-    if (Respir_IsInvalidJacobian(out->sample.rc.jacobian) || Spectrum_IsBlack(dstRcIncidentBsdfValue)) {
+    float3 dstRcIncidentBsdfValue = WHITE;
+    
+    const BSDF* rcBsdf = &rc->bsdf;
+    if (!isRcVertexEscapedVertex) {
+        srcRcIncidentPdf = rc->incidentPdf;
+        dstRcIncidentBsdfValue = BSDF_Evaluate(rcBsdf,
+            VLOAD3F(&rc->incidentDir.x), 
+            &event, &dstRcIncidentPdf
+            MATERIALS_PARAM);
+
+        if (!isRcVertexNEE) {
+            dstPdf2 = dstRcIncidentPdf;
+        } else {
+            dstPdf2 = src->sample.lightPdf;
+        }
+    }
+    if (Spectrum_IsBlack(dstRcIncidentBsdfValue)) {
         Respir_HandleInvalidShift(shiftInOutData, out, &pathStates[gid]);
         return;
     }
 
-    if (get_global_id(0) == DEBUG_GID) {
-        printf("Correct difference in rc scatter pdfs, jacobian: %f\n", out->sample.rc.jacobian);
-    }
-
-    float dstPdf2 = dstRcIncidentPdf;
-    if (rc->pathDepth == src->sample.pathDepth) {
-        dstPdf2 = src->sample.lightPdf;
-    }
-
-    // Store shifted integrand
+    // Scale by difference
     Radiance_ScaleGroup(film, rc->irradiance,
         (dstBsdfValue / dstPdf) * (dstRcIncidentBsdfValue / dstPdf2),
         out->sample.integrand
     );
 
-    if (Radiance_IsBlack(film, out->sample.integrand)) {
+    if (get_global_id(0) == DEBUG_GID) {
+        printf("Correct difference in rc scatter pdfs, jacobian: %f\n", out->sample.rc.jacobian);
+    }
+
+    // TODO: might not need this if we're not using multi-lobed materials
+    if (isRcVertexEscapedVertex) {
+        Radiance_Scale(film, out->sample.integrand,
+            PowerHeuristic(dstPdf, src->sample.lightPdf), // supposed to be dstPdf evaluated on all lobes at dst prefix vertex
+            out->sample.integrand);
+    }
+
+    if (isRcVertexFinal) {
+        const float lightPdf = src->sample.lightPdf;
+        misWeight = 1.0f;
+        if (isRcVertexNEE) {
+            misWeight = PowerHeuristic(lightPdf, dstRcIncidentPdf); // supposed to be dstPdf evaluated on all lobes at dst prefix vertex
+        } else {
+            misWeight = PowerHeuristic(dstRcIncidentPdf, lightPdf); // supposed to be dstPdf evaluated on all lobes at dst prefix vertex
+        }
+        // TODO: might not need this if we're not using multi-lobed materials
+        Radiance_Scale(film, out->sample.integrand,
+            misWeight, 
+            out->sample.integrand);
+    }
+
+    if ((isRcVertexFinal && !isRcVertexNEE) || (!isRcVertexFinal && !isRcVertexEscapedVertex)) {
+        out->sample.rc.jacobian *= dstRcIncidentPdf / srcRcIncidentPdf;
+    }
+
+    if (Respir_IsInvalidJacobian(out->sample.rc.jacobian) || Radiance_IsBlack(film, out->sample.integrand)) {
         Respir_HandleInvalidShift(shiftInOutData, out, &pathStates[gid]);
         return;
     }

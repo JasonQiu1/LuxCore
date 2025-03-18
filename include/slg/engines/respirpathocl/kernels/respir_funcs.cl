@@ -139,13 +139,14 @@ OPENCL_FORCE_INLINE void RespirReservoir_Init(RespirReservoir* restrict reservoi
 	reservoir->sample.lightPdf = 0.0f;
 	reservoir->sample.hitTime = 0.0f;
 	reservoir->sample.pathDepth = -1;
+	reservoir->sample.isLastVertexNee = false;
 	Radiance_Clear(reservoir->sample.rc.irradiance);
 	VSTORE3F(BLACK, &reservoir->sample.rc.bsdf.hitPoint.p.x);
-	VSTORE3F(BLACK, &reservoir->sample.rc.incidentDir.x);
-	VSTORE3F(BLACK, reservoir->sample.rc.incidentBsdfValue.c);
-	reservoir->sample.rc.incidentPdf = 0.0f;
-	reservoir->sample.rc.prefixToRcPdf = 0.0f;
-	reservoir->sample.rc.jacobian = 0.0f;
+	VSTORE3F(WHITE, &reservoir->sample.rc.incidentDir.x);
+	VSTORE3F(WHITE, reservoir->sample.rc.incidentBsdfValue.c);
+	reservoir->sample.rc.incidentPdf = 1.0f;
+	reservoir->sample.rc.prefixToRcPdf = 1.0f;
+	reservoir->sample.rc.jacobian = 1.0f;
 	reservoir->sample.rc.pathDepth = -1;
 }
 
@@ -228,8 +229,40 @@ OPENCL_FORCE_INLINE bool RespirReservoir_Merge(RespirReservoir* restrict outRese
 	return false;
 }
 
+OPENCL_FORCE_INLINE bool RespirReservoir_AddVertex(
+		// incidentDir is the vector from the previous vertex to this one
+		RespirReservoir* restrict reservoir, const float3 incidentDir
+		// integrand is the path contribution up to and including this vertex
+		// postfixRadiance is the radiance emitted from the vertex
+		const Spectrum* restrict integrand, const Spectrum* restrict postfixRadiance,
+		// misWeight is the mis of the vertex's bsdfPdfW and lightPdf
+		// lightPdf is the NEE light pick prob
+		// pathPdf is cumulative product of all bsdfPdfW and connectionThroughput
+		// rrProbProd is the cumulative product of the russian roulette probability so far
+		const float misWeight, const float rrProbProd, const float lightPdf,
+		const int pathDepth, Seed* restrict seed, __constant const Film* restrict film)
+{
+	// Resample for path integrand
+	// Can't choose primary vertices
+	if (pathDepth >= 1 && RespirReservoir_Add(reservoir, integrand, rrProbProd, seed, film)) {
+		reservoir->sample.pathDepth = pathDepth;
+		reservoir->sample.lightPdf = lightPdf;
+		if (get_global_id(0) == DEBUG_GID) {
+			printf("\tSelected new vertex at depth: %d\n", pathDepth);
+		}
+		Radiance_Copy(film, postfixRadiance, reservoir->sample.rc.irradiance);
+		if (pathDepth == reservoir->sample.rc.pathDepth) {
+			// cache reconnection vertex info
+			VSTORE3F(incidentDir, reservoir->sample.rc.incidentDir);
+		}
+		return true;
+	}
+	return false;
+}
+
 OPENCL_FORCE_INLINE bool RespirReservoir_AddNEEVertex(
-		RespirReservoir* restrict reservoir, 
+		// incidentDir is the vector from the previous vertex to this one
+		RespirReservoir* restrict reservoir, const float3 incidentDir
 		// integrand is the path contribution up to and including this vertex
 		// postfixRadiance is the radiance emitted from the vertex
 		const Spectrum* restrict integrand, const Spectrum* restrict postfixRadiance,
@@ -241,23 +274,75 @@ OPENCL_FORCE_INLINE bool RespirReservoir_AddNEEVertex(
 		const int pathDepth, Seed* restrict seed, __constant const Film* restrict film)
 {
 	if (get_global_id(0) == DEBUG_GID) {
-		printf("Initial path resampling: Resampling with rr prob %f at depth %d\n", rrProbProd, pathDepth);
+		printf("Initial path resampling (NEE): Resampling with rr prob %f at depth %d\n", rrProbProd, pathDepth);
 	}
-	// Resample for path integrand
-	if (RespirReservoir_Add(reservoir, integrand, rrProbProd, seed, film)) {
-		reservoir->sample.pathDepth = pathDepth;
-		reservoir->sample.lightPdf = lightPdf;
+	bool selected = RespirReservoir_AddVertex(reservoir, incidentDir, integrand, postfixRadiance, misWeight, rrProbProd, lightPdf, pathDepth, seed, film);
+	if (selected && pathDepth == reservoir->sample.rc.pathDepth) {
+		reservoir->sample.isLastVertexNee = true;
+		Radiance_Scale(film, reservoir->sample.rc.irradiance, 
+			lightPdf / misWeight, reservoir->sample.rc.irradiance);
+	}
+	return selected;
+}
+
+OPENCL_FORCE_INLINE bool RespirReservoir_AddEscapeVertex(
+		// incidentDir is the vector from the previous vertex to this one
+		RespirReservoir* restrict reservoir, const float3 incidentDir
+		// integrand is the path contribution up to and including this vertex
+		// postfixRadiance is the radiance emitted from the vertex
+		const Spectrum* restrict integrand, const Spectrum* restrict postfixRadiance,
+		// misWeight is the mis of the vertex's bsdfPdfW and lightPdf
+		// lightPdf is the NEE light pick prob
+		// pathPdf is cumulative product of all bsdfPdfW and connectionThroughput
+		// rrProbProd is the cumulative product of the russian roulette probability so far
+		const float misWeight, const float rrProbProd, const float lightPdf,
+		const int pathDepth, Seed* restrict seed, __constant const Film* restrict film)
+{
+	if (get_global_id(0) == DEBUG_GID) {
+		printf("Initial path resampling (BSDF/Escape): Resampling with rr prob %f at depth %d\n", rrProbProd, pathDepth);
+	}
+	bool selected = RespirReservoir_AddVertex(reservoir, incidentDir, integrand, postfixRadiance, misWeight, rrProbProd, lightPdf, pathDepth, seed, film);
+	if (selected && pathDepth == reservoir->sample.rc.pathDepth) {
+		reservoir->sample.isLastVertexNee = false;
+		Radiance_Scale(film, reservoir->sample.rc.irradiance, 
+			1.0f / misWeight, reservoir->sample.rc.irradiance);
+	}
+	return selected;
+}
+
+// Set rcVertex info after BSDF scatter from rcVertex
+OPENCL_FORCE_INLINE bool RespirReservoir_SetRcVertex(
+	RespirReservoir* reservoir, const BSDF* bsdf, const float3 incidentDir, 
+	const float incidentPdf, const float incidentBsdfValue, const float worldRadius
+	MATERIALS_PARAM_DECL
+) {
+	if (get_global_id(0) == DEBUG_GID) {
+		printf("Initial path resampling: Cached reconnection vertex info.\n");
+	}
+	VSTORE3F(incidentDir, &rc->incidentDir.x);
+	rc->incidentPdf = incidentPdf;
+	VSTORE3F(incidentBsdfValue, rc->incidentBsdfValue.c);
+	
+	const float3 toRc = VLOAD3F(&bsdf->hitPoint.p.x) - VLOAD3F(&reservoir->sample.prefixBsdf.hitPoint.p.x);
+	const float distanceSquared = dot(toRc, toRc);
+	const float cosAngle = abs(dot(VLOAD3F(&bsdf->hitPoint.fixedDir.x), BSDF_GetLandingGeometryN(bsdf)));
+	// check roughness and distance connectability requirements
+	// assume glossiness range is [0.f,1.f], and 1-glossiness is the roughness
+	// distance threshold of 2-5% world size recommended by GRIS paper
+	const float maxGlossiness = 0.2;
+	const float minDistance = worldRadius * 2.0f * 0.025f;
+	if (sqrt(distanceSquared) >= minDistance
+		&& BSDF_GetGlossiness(&reservoir->sample.prefixBsdf MATERIALS_PARAM) <= maxGlossiness
+		&& BSDF_GetGlossiness(bsdf MATERIALS_PARAM) <= maxGlossiness) {
+			// cache partial jacobian here (squared distance / cos angle from rc norm)
+			reservoir->sample.rc.jacobian = distanceSquared / cosAngle;
+			reservoir->sample.rc.pathDepth = pathInfo->depth.depth;
+			reservoir->sample.rc.bsdf = *bsdf;
+	} else {
 		if (get_global_id(0) == DEBUG_GID) {
-			printf("Initial path resampling: Selected new vertex at depth: %d\n", pathDepth);
+		printf("Initial path resampling: Rejected reconnection vertex based on glossiness or distance.\n");
 		}
-		Radiance_Copy(film, postfixRadiance, reservoir->sample.rc.irradiance);
-		if (pathDepth == reservoir->sample.rc.pathDepth) {
-			Radiance_Scale(film, reservoir->sample.rc.irradiance, 
-				lightPdf / misWeight, reservoir->sample.rc.irradiance);
-		}
-		return true;
-	}
-	return false;
+	}	
 }
 
 OPENCL_FORCE_INLINE void Respir_HandleInvalidShift(ShiftInOutData* shiftData,
