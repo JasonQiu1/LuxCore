@@ -94,7 +94,7 @@ typedef struct {
 	Spectrum pathPdf; // bsdfProduct and connectionThroughput
 	float rrProbProd; // running product of russian roulette probability each vertex hit
 	float lastDirectLightMisWeight; // for direct light illumination sampled from NEE (+ cheater BSDF)
-	float3 lastDirectLightBsdfEval;
+	Spectrum lastDirectLightBsdfEval;
 
 	int albedoToDo, photonGICacheEnabledOnLastHit,
 			photonGICausticCacheUsed, photonGIShowIndirectPathMixUsed,

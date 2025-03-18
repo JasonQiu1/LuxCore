@@ -557,7 +557,7 @@ __kernel void AdvancePaths_MK_RT_DL(
 				float3 throughput = VLOAD3F(taskState->currentThroughput.c);
 				if (pathInfo->depth.depth == 1) {
 					// reconnection vertex
-					throughput /= taskState->lastDirectLightBsdfEval;
+					throughput /= VLOAD3F(taskState->lastDirectLightBsdfEval.c);
 				}
 				// Store postfix radiance with only current vertex throughput
 				SampleResult_AddDirectLight(&taskConfig->film,
