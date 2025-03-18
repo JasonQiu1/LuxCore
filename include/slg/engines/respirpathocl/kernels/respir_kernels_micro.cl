@@ -615,7 +615,7 @@ __kernel void SpatialReuse_MK_FINISH_ITERATION(
         srIntegrand = 0.0f;
         srReservoir->weight = 0.0f;
     } else {
-        srReservoir->weight /= srIntegrand / (spatialReuseData->numValidNeighbors + 1);
+        srReservoir->weight /= srIntegrand * (spatialReuseData->numValidNeighbors + 1);
     }
 
     /*
