@@ -152,6 +152,7 @@ OPENCL_FORCE_INLINE void RespirReservoir_Init(RespirReservoir* restrict reservoi
 OPENCL_FORCE_INLINE void Respir_Init(GPUTaskState* restrict taskState) {
     RespirReservoir_Init(&taskState->reservoir);
 
+	VSTORE3F(WHITE, taskState->currentThroughput.c);
 	VSTORE3F(WHITE, taskState->pathPdf.c);
 	taskState->rrProbProd = 1.0f;
 	taskState->lastDirectLightPdf = 1.0f;

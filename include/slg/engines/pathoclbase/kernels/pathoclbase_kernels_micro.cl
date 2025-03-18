@@ -87,6 +87,7 @@ __kernel void AdvancePaths_MK_RT_NEXT_VERTEX(
 	taskState->throughShadowTransparency = throughShadowTransparency;
 	VSTORE3F(connectionThroughput * VLOAD3F(taskState->throughput.c), taskState->throughput.c);
 #if defined(RENDER_ENGINE_RESPIRPATHOCL)
+	VSTORE3F(connectionThroughput * VLOAD3F(taskState->currentThroughput.c), taskState->currentThroughput.c);
 	VSTORE3F(connectionThroughput * VLOAD3F(taskState->pathPdf.c), taskState->pathPdf.c);
 #endif
 
@@ -553,11 +554,12 @@ __kernel void AdvancePaths_MK_RT_DL(
 				// Add NEE-illuminated (with cheater BSDF) sample into the reservoir.
 				SampleResult postfix;
 				SampleResult_Init(&postfix);
+				// Store postfix radiance with only current vertex throughput
 				SampleResult_AddDirectLight(&taskConfig->film,
 					&postfix, taskDirectLight->illumInfo.lightID,
 					BSDF_GetEventTypes(bsdf
 						MATERIALS_PARAM),
-					VLOAD3F(taskState->throughput.c), lightRadiance,
+					VLOAD3F(taskState->currentThroughput.c), lightRadiance,
 					1.f);
 				RespirReservoir_AddNEEVertex(&taskState->reservoir, 
 						sampleResult->radiancePerPixelNormalized, postfix.radiancePerPixelNormalized,
@@ -925,6 +927,7 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 
 		VSTORE3F(throughputFactor * VLOAD3F(taskState->throughput.c), taskState->throughput.c);
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
+		VSTORE3F(throughputFactor, taskState->currentThroughput.c);
 		VSTORE3F(bsdfSample * VLOAD3F(taskState->pathPdf.c), taskState->pathPdf.c);
 		taskState->rrProbProd *= rrProb;
 #endif
