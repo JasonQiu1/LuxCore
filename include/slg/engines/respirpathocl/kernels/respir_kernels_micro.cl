@@ -319,14 +319,14 @@ __kernel void SpatialReuse_MK_SHIFT(
         // DEBUG: Just reevaluate for correctness
         srcRcIncidentPdf = rc->incidentPdf;
         BSDF_EvaluateWithEyeDir(rcBsdf,
-            srcToRc,
-            -VLOAD3F(&rc->incidentDir.x), // should this be negative?
+            -srcToRc,
+            VLOAD3F(&rc->incidentDir.x), // should this be negative?
             &event, &srcRcIncidentPdf
             MATERIALS_PARAM);
 
         dstRcIncidentBsdfValue = BSDF_EvaluateWithEyeDir(rcBsdf,
-            dstToRc,
-            -VLOAD3F(&rc->incidentDir.x), 
+            -dstToRc,
+            VLOAD3F(&rc->incidentDir.x), 
             &event, &dstRcIncidentPdf
             MATERIALS_PARAM);
 
