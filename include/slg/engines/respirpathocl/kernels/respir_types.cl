@@ -84,21 +84,20 @@ typedef struct {
 	BSDF bsdf; // Variable size structure
 
 	Seed seedPassThroughEvent;
+	Seed seedReservoirSampling;
+
+    // keep track of cumulative products
+	Spectrum pathPdf; // bsdfProduct and connectionThroughput
+	float rrProbProd; // running product of russian roulette probability each vertex hit
+	float lastDirectLightPdf; // for direct light illumination sampled from NEE (+ cheater BSDF)
+	
+	// initial path resampling reservoir
+	RespirReservoir reservoir;
 
 	int albedoToDo, photonGICacheEnabledOnLastHit,
 			photonGICausticCacheUsed, photonGIShowIndirectPathMixUsed,
 			// The shadow transparency lag used by Scene_Intersect()
 			throughShadowTransparency;
-
-	// keep track of cumulative products
-	// respir related
-	// initial path resampling reservoir
-	RespirReservoir reservoir;
-
-	Seed seedReservoirSampling;
-	Spectrum pathPdf; // bsdfProduct and connectionThroughput
-	float rrProbProd; // running product of russian roulette probability each vertex hit
-	float lastDirectLightPdf; // for direct light illumination sampled from NEE (+ cheater BSDF)
 } RespirGPUTaskState;
 
 typedef RespirGPUTaskState GPUTaskState;

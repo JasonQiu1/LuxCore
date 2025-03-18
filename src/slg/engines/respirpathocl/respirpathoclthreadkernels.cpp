@@ -189,9 +189,9 @@ string RespirPathOCLRenderThread::GetKernelSources() {
 			slg::ocl::KernelSource_pathinfo_types <<
 			slg::ocl::KernelSource_pathtracer_types <<
 			// PathOCL types
-			slg::ocl::KernelSource_pathoclbase_datatypes;
+			slg::ocl::KernelSource_pathoclbase_datatypes <<
 			// Respir types
-			// slg::ocl::KernelSource_respir_types;
+			slg::ocl::KernelSource_respir_types;
 
 	ssKernel <<
 			slg::ocl::KernelSource_bsdfutils_funcs << // Must be before volumeinfo_funcs
@@ -218,10 +218,10 @@ string RespirPathOCLRenderThread::GetKernelSources() {
 			slg::ocl::KernelSource_scene_funcs <<
 			slg::ocl::KernelSource_pgic_funcs <<
 			// Respir and pathocl funcs
-			// slg::ocl::KernelSource_respir_funcs <<
+			slg::ocl::KernelSource_respir_funcs <<
 			slg::ocl::KernelSource_pathoclbase_funcs <<
-			slg::ocl::KernelSource_pathoclbase_kernels_micro;
-			// slg::ocl::KernelSource_respir_kernels_micro;
+			slg::ocl::KernelSource_pathoclbase_kernels_micro <<
+			slg::ocl::KernelSource_respir_kernels_micro;
 	return ssKernel.str();
 }
 
@@ -368,6 +368,8 @@ void RespirPathOCLRenderThread::InitKernels() {
 }
 
 void RespirPathOCLRenderThread::InitGPUTaskStateBuffer(const u_int taskCount) {
+	PathOCLOpenCLRenderThread::InitGPUTaskStateBuffer(taskCount);
+	return;
 	intersectionDevice->AllocBufferRW(&tasksStateBuff, nullptr, sizeof(slg::ocl::respir::RespirGPUTaskState) * taskCount, "ReSPIR GPUTaskState");
 }
 
