@@ -101,9 +101,7 @@ typedef struct {
 	float lastDirectLightPdf; // for direct light illumination sampled from NEE (+ cheater BSDF)
 } RespirGPUTaskState;
 
-#if defined(RENDER_ENGINE_RESPIRPATHOCL)
 typedef RespirGPUTaskState GPUTaskState;
-#endif
 
 // Data only used for spatial reuse
 typedef struct {
