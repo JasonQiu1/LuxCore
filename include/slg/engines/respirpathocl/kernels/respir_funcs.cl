@@ -287,7 +287,7 @@ OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(SpatialReuseData* restrict
 	if (srData->neighborGid != -1) {
 		return false;
 	}	
-	srData->neighborGid = get_global_gid(0);
+	srData->neighborGid = get_global_id(0);
 	return true;
 	
 	srData->neighborGid = -1;
