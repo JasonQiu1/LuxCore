@@ -345,12 +345,11 @@ __kernel void SpatialReuse_MK_SHIFT(
     }
 
     if (isRcVertexFinal) {
-        const float lightPdf = src->sample.lightPdf;
-        misWeight = 1.0f;
+        float misWeight = 1.0f;
         if (isRcVertexNEE) {
-            misWeight = PowerHeuristic(lightPdf, dstRcIncidentPdf); // supposed to be dstPdf evaluated on all lobes at dst prefix vertex
+            misWeight = PowerHeuristic(src->sample.lightPdf, dstRcIncidentPdf); // supposed to be dstPdf evaluated on all lobes at dst prefix vertex
         } else {
-            misWeight = PowerHeuristic(dstRcIncidentPdf, lightPdf); // supposed to be dstPdf evaluated on all lobes at dst prefix vertex
+            misWeight = PowerHeuristic(dstRcIncidentPdf, src->sample.lightPdf); // supposed to be dstPdf evaluated on all lobes at dst prefix vertex
         }
         // TODO: might not need this if we're not using multi-lobed materials
         Radiance_Scale(film, out->sample.integrand,

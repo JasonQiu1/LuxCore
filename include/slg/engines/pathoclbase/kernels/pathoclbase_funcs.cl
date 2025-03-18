@@ -280,7 +280,7 @@ OPENCL_FORCE_INLINE void DirectHitFiniteLight(__constant const Film* restrict fi
 			SampleResult postfix;
 			SampleResult_Init(&postfix);
 			float3 throughput = VLOAD3F(taskState->currentThroughput.c);
-			SampleResult_AddEmission(film, postfix, BSDF_GetLightID(bsdf
+			SampleResult_AddEmission(film, &postfix, BSDF_GetLightID(bsdf
 					MATERIALS_PARAM), throughput, weight * emittedRadiance);
 			
 			// We use depth - 1 here so that we can remove the weight from the reconnection vertex 
@@ -288,7 +288,7 @@ OPENCL_FORCE_INLINE void DirectHitFiniteLight(__constant const Film* restrict fi
 			RespirReservoir_AddEscapeVertex(&taskState->reservoir, VLOAD3F(&bsdf->hitPoint.fixedDir.x),
 					sampleResult->radiancePerPixelNormalized, postfix.radiancePerPixelNormalized,
 					weight, taskState->rrProbProd, directPdfW * lightPickProb,
-					pathInfo->depth.depth - 1, &taskState->seedReservoirSampling, &taskConfig->film);
+					pathInfo->depth.depth - 1, &taskState->seedReservoirSampling, film);
 #endif
 		}
 		SampleResult_AddEmission(film, sampleResult, BSDF_GetLightID(bsdf

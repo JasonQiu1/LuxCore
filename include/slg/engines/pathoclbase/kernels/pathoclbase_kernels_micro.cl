@@ -878,7 +878,7 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 	if (pathInfo->depth.depth == 1) {
 		// We've just hit the secondary vertex
 		// The BSDF info above is the scattering info to the tertiary vertex
-		RespirReservoir_SetRcVertex(reservoir, bsdf, sampledDir, bsdfPdfW, bsdfSample, worldRadius 
+		RespirReservoir_SetRcVertex(reservoir, pathInfo->depth.depth, bsdf, sampledDir, bsdfPdfW, bsdfSample, worldRadius 
 			MATERIALS_PARAM);
 	}
 #endif

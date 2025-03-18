@@ -312,16 +312,16 @@ OPENCL_FORCE_INLINE bool RespirReservoir_AddEscapeVertex(
 
 // Set rcVertex info after BSDF scatter from rcVertex
 OPENCL_FORCE_INLINE bool RespirReservoir_SetRcVertex(
-	RespirReservoir* reservoir, const BSDF* bsdf, const float3 incidentDir, 
-	const float incidentPdf, const float incidentBsdfValue, const float worldRadius
+	RespirReservoir* reservoir, const int pathDepth, const BSDF* bsdf, const float3 incidentDir, 
+	const float incidentPdf, const float3 incidentBsdfValue, const float worldRadius
 	MATERIALS_PARAM_DECL
 ) {
 	if (get_global_id(0) == DEBUG_GID) {
 		printf("Initial path resampling: Cached reconnection vertex info.\n");
 	}
-	VSTORE3F(incidentDir, &rc->incidentDir.x);
-	rc->incidentPdf = incidentPdf;
-	VSTORE3F(incidentBsdfValue, rc->incidentBsdfValue.c);
+	VSTORE3F(incidentDir, &reservoir->sample.rc.incidentDir.x);
+	reservoir->sample.rc.incidentPdf = incidentPdf;
+	VSTORE3F(incidentBsdfValue, reservoir->sample.rc.incidentBsdfValue.c);
 	
 	const float3 toRc = VLOAD3F(&bsdf->hitPoint.p.x) - VLOAD3F(&reservoir->sample.prefixBsdf.hitPoint.p.x);
 	const float distanceSquared = dot(toRc, toRc);
@@ -334,15 +334,17 @@ OPENCL_FORCE_INLINE bool RespirReservoir_SetRcVertex(
 	if (sqrt(distanceSquared) >= minDistance
 		&& BSDF_GetGlossiness(&reservoir->sample.prefixBsdf MATERIALS_PARAM) <= maxGlossiness
 		&& BSDF_GetGlossiness(bsdf MATERIALS_PARAM) <= maxGlossiness) {
-			// cache partial jacobian here (squared distance / cos angle from rc norm)
-			reservoir->sample.rc.jacobian = distanceSquared / cosAngle;
-			reservoir->sample.rc.pathDepth = pathInfo->depth.depth;
-			reservoir->sample.rc.bsdf = *bsdf;
-	} else {
-		if (get_global_id(0) == DEBUG_GID) {
+		// cache partial jacobian here (squared distance / cos angle from rc norm)
+		reservoir->sample.rc.jacobian = distanceSquared / cosAngle;
+		reservoir->sample.rc.pathDepth = pathDepth;
+		reservoir->sample.rc.bsdf = *bsdf;
+		return true;
+	} 
+	
+	if (get_global_id(0) == DEBUG_GID) {
 		printf("Initial path resampling: Rejected reconnection vertex based on glossiness or distance.\n");
-		}
-	}	
+	}
+	return false;
 }
 
 OPENCL_FORCE_INLINE void Respir_HandleInvalidShift(ShiftInOutData* shiftData,
