@@ -59,16 +59,9 @@ __kernel void SpatialReuse_MK_INIT(
 
     reservoir->M = 1;
 
-    // no reconnection vertex, no invertible shift mapping
-    // CAN shift FROM other domains, CANNOT shift TO other domains
-    if (reservoir->sample.rc.pathDepth == -1 
-        || reservoir->sample.rc.pathDepth > reservoir->sample.pathDepth) {
-        if (gid == DEBUG_GID)
-            printf("SpatialReuse_MK_INIT: No reconnection vertex.\n");
-        // keep pathstate to SYNC so that resampling and visibility kernels do not run
-        // keep pixelIndexMap to be -1 so this pixel isn't resampled from
-        return;
-    }
+    // Init resampling reservoir and canonical MIS weight
+    RespirReservoir_Init(&spatialReuseData->spatialReuseReservoir);
+    spatialReuseData->canonicalMisWeight = 1.f;
 
     // Finalize initial path resampling RIS: calculate unbiased contribution weight of final sample
     const float integrand = Radiance_Filter(film, reservoir->sample.integrand);
@@ -90,10 +83,6 @@ __kernel void SpatialReuse_MK_INIT(
     PixelIndexMap_Set(pixelIndexMap, filmWidth, 
             sampleResult->pixelX, sampleResult->pixelY, 
             gid);
-
-    // Init resampling reservoir and canonical MIS weight
-    RespirReservoir_Init(&spatialReuseData->spatialReuseReservoir);
-    spatialReuseData->canonicalMisWeight = 1.f;
 
     // Prime pathstate
     pathStates[gid] = (PathState) SR_MK_NEXT_NEIGHBOR;
@@ -658,10 +647,6 @@ __kernel void SpatialReuse_MK_FINISH_ITERATION(
     const size_t gid = get_global_id(0);
 
     RespirReservoir* restrict central = &tasksState[gid].reservoir;
-    if (central->sample.rc.pathDepth == -1 
-        || central->sample.rc.pathDepth > central->sample.pathDepth) {
-        return;
-    }
 
     #if defined(DEBUG_PRINTF_SR_KERNEL_NAME)
     if (gid == DEBUG_GID)
