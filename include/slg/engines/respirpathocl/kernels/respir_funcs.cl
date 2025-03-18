@@ -231,7 +231,7 @@ OPENCL_FORCE_INLINE bool RespirReservoir_Merge(RespirReservoir* restrict outRese
 
 OPENCL_FORCE_INLINE bool RespirReservoir_AddVertex(
 		// incidentDir is the vector from the previous vertex to this one
-		RespirReservoir* restrict reservoir, const float3 incidentDir
+		RespirReservoir* restrict reservoir, const float3 incidentDir,
 		// integrand is the path contribution up to and including this vertex
 		// postfixRadiance is the radiance emitted from the vertex
 		const Spectrum* restrict integrand, const Spectrum* restrict postfixRadiance,
@@ -253,7 +253,7 @@ OPENCL_FORCE_INLINE bool RespirReservoir_AddVertex(
 		Radiance_Copy(film, postfixRadiance, reservoir->sample.rc.irradiance);
 		if (pathDepth == reservoir->sample.rc.pathDepth) {
 			// cache reconnection vertex info
-			VSTORE3F(incidentDir, reservoir->sample.rc.incidentDir);
+			VSTORE3F(incidentDir, &reservoir->sample.rc.incidentDir.x);
 		}
 		return true;
 	}
@@ -262,7 +262,7 @@ OPENCL_FORCE_INLINE bool RespirReservoir_AddVertex(
 
 OPENCL_FORCE_INLINE bool RespirReservoir_AddNEEVertex(
 		// incidentDir is the vector from the previous vertex to this one
-		RespirReservoir* restrict reservoir, const float3 incidentDir
+		RespirReservoir* restrict reservoir, const float3 incidentDir,
 		// integrand is the path contribution up to and including this vertex
 		// postfixRadiance is the radiance emitted from the vertex
 		const Spectrum* restrict integrand, const Spectrum* restrict postfixRadiance,
@@ -287,7 +287,7 @@ OPENCL_FORCE_INLINE bool RespirReservoir_AddNEEVertex(
 
 OPENCL_FORCE_INLINE bool RespirReservoir_AddEscapeVertex(
 		// incidentDir is the vector from the previous vertex to this one
-		RespirReservoir* restrict reservoir, const float3 incidentDir
+		RespirReservoir* restrict reservoir, const float3 incidentDir,
 		// integrand is the path contribution up to and including this vertex
 		// postfixRadiance is the radiance emitted from the vertex
 		const Spectrum* restrict integrand, const Spectrum* restrict postfixRadiance,
