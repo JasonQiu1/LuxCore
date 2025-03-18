@@ -215,6 +215,11 @@ OPENCL_FORCE_INLINE bool RespirReservoir_Merge(RespirReservoir* restrict outRese
 	}
 
 	outReservoir->weight += weight;
+	if (get_global_id(0) == DEBUG_GID) {
+		printf("Merging integrand (%f) with weight %f out of total weight %f.\n", 
+				Radiance_Filter(film, inRadiance), weight, outReservoir->weight
+		)
+	}
 	if (Rnd_FloatValue(seed) * outReservoir->weight <= weight) {
 		outReservoir->sample = inReservoir->sample;
 		Radiance_Copy(film, inRadiance, outReservoir->sample.integrand);
@@ -238,10 +243,10 @@ OPENCL_FORCE_INLINE bool RespirReservoir_AddNEEVertex(
 	if (get_global_id(0) == DEBUG_GID) {
 		printf("Initial path resampling: Resampling with rr prob %f at depth %d\n", rrProbProd, pathDepth);
 	}
-	reservoir->sample.lightPdf = lightPdf;
 	// Resample for path integrand
 	if (RespirReservoir_Add(reservoir, integrand, rrProbProd, seed, film)) {
 		reservoir->sample.pathDepth = pathDepth;
+		reservoir->sample.lightPdf = lightPdf;
 		if (get_global_id(0) == DEBUG_GID) {
 			printf("Initial path resampling: Selected new vertex at depth: %d\n", pathDepth);
 		}

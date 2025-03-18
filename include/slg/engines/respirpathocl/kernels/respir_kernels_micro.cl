@@ -211,7 +211,8 @@ __kernel void SpatialReuse_MK_SHIFT(
     const RespirReservoir* dst = &tasksState[shiftInOutData->shiftDstGid].reservoir;
     const RcVertex* rc = &src->sample.rc;
 
-    if (rc->pathDepth == -1) {
+    if (rc->pathDepth == -1 
+        || rc->pathDepth > src->sample.pathDepth) {
         // No reconnection vertex, invalid shift
         Respir_HandleInvalidShift(shiftInOutData, out, &pathStates[gid]);
         return;
@@ -309,6 +310,9 @@ __kernel void SpatialReuse_MK_SHIFT(
     }
 
     const float dstPdf2 = dstRcIncidentPdf;
+    if (rc->pathDepth == src->sample.pathDepth) {
+        dstPdf2 = src->sample.lightPdf
+    }
     // TODO: if rcVertex is the last vertex and was sampled via NEE, then dstPdf2 = src->sample.lightPdf
 
     // Store shifted integrand
