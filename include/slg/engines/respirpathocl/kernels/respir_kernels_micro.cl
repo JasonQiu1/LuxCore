@@ -325,7 +325,7 @@ __kernel void SpatialReuse_MK_SHIFT(
             MATERIALS_PARAM);
 
         dstRcIncidentBsdfValue = BSDF_EvaluateWithEyeDir(rcBsdf,
-            -dstToRc
+            -dstToRc,
             VLOAD3F(&rc->incidentDir.x), 
             &event, &dstRcIncidentPdf
             MATERIALS_PARAM);
