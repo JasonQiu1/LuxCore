@@ -887,7 +887,7 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 		
 		const float3 toRc = VLOAD3F(&bsdf->hitPoint.p.x) - VLOAD3F(&reservoir->sample.prefixBsdf.hitPoint.p.x);
 		const float distanceSquared = dot(toRc, toRc);
-		const float cosAngle = dot(VLOAD3F(&bsdf->hitPoint.fixedDir.x), BSDF_GetLandingGeometryN(bsdf));
+		const float cosAngle = abs(dot(VLOAD3F(&bsdf->hitPoint.fixedDir.x), BSDF_GetLandingGeometryN(bsdf)));
 		// check roughness and distance connectability requirements
 		// assume glossiness range is [0.f,1.f], and 1-glossiness is the roughness
 		// distance threshold of 2-5% world size recommended by GRIS paper
