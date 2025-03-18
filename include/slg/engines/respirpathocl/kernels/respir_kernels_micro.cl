@@ -733,6 +733,10 @@ __kernel void SpatialReuse_MK_FINISH_REUSE(
         reservoir->sample.integrand,
         sampleResult->radiancePerPixelNormalized);
 
+    if (gid == DEBUG_GID) {
+        printf("Finish iteration with integrand: %f\n", Radiance_Filter(reservoir->sample.integrand));
+    }
+
     if (reservoir->sample.rc.pathDepth == -1 
         || reservoir->sample.rc.pathDepth > reservoir->sample.pathDepth) {
         return;
@@ -742,6 +746,9 @@ __kernel void SpatialReuse_MK_FINISH_REUSE(
         sampleResult->radiancePerPixelNormalized,
         reservoir->weight,
         sampleResult->radiancePerPixelNormalized);
+    if (gid == DEBUG_GID) {
+        printf("\tIntegrand after GRIS: %f\n", Radiance_Filter(reservoir->sample.integrand));
+    }
 
     // maintain integrity of pathtracer by using time from before spatial reuse
     ray->time = spatialReuseData->preSpatialReuseTime;
