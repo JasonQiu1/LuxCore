@@ -206,10 +206,18 @@ OPENCL_FORCE_INLINE float UniformConePdf(const float costhetamax) {
 }
 
 OPENCL_FORCE_INLINE float PowerHeuristic(const float fPdf, const float gPdf) {
+#if defined(RENDER_ENGINE_RESPIRPATHOCL)
+	return BalanceHeuristic(fPdf, gPdf);
+#endif
+	
 	const float f = fPdf;
 	const float g = gPdf;
 
 	return (f * f) / (f * f + g * g);
+}
+
+OPENCL_FORCE_INLINE float BalanceHeuristic(const float fPdf, const float gPdf) {
+	return fPdf / (fPdf + gPdf);
 }
 
 OPENCL_FORCE_INLINE float PdfWtoA(const float pdfW, const float dist, const float cosThere) {
