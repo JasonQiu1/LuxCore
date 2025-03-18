@@ -559,7 +559,7 @@ __kernel void SpatialReuse_MK_FINISH_RESAMPLE(
     if (get_global_id(0) == DEBUG_GID) {
         printf("Shift neighbor->central\n");
         printf("\tIntegrand: %f\n", Radiance_Filter(film, shiftedIntegrand));
-        printf("\tJacobian: %f\n", out->sample.rc.jacobian);
+        printf("\tJacobian: %f\n", shiftedJacobian);
     }
 
     // Make a copy of neighbor so that I can update it with some info before merging.
