@@ -368,8 +368,6 @@ void RespirPathOCLRenderThread::InitKernels() {
 }
 
 void RespirPathOCLRenderThread::InitGPUTaskStateBuffer(const u_int taskCount) {
-	PathOCLOpenCLRenderThread::InitGPUTaskStateBuffer(taskCount);
-	return;
 	intersectionDevice->AllocBufferRW(&tasksStateBuff, nullptr, sizeof(slg::ocl::respir::RespirGPUTaskState) * taskCount, "ReSPIR GPUTaskState");
 }
 
