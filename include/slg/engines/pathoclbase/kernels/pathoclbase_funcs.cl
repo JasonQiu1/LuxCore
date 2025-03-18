@@ -251,10 +251,12 @@ OPENCL_FORCE_INLINE void DirectHitFiniteLight(__constant const Film* restrict fi
 			LIGHTS_PARAM);
 
 	if (!Spectrum_IsBlack(emittedRadiance)) {
+		float lightPickProb = 1.0f;
+		float directPdfW = 1.0f;
 		// Add emitted radiance
 		float weight = 1.f;
 		if (!(pathInfo->lastBSDFEvent & SPECULAR)) {
-			const float lightPickProb = LightStrategy_SampleLightPdf(lightsDistribution,
+			lightPickProb = LightStrategy_SampleLightPdf(lightsDistribution,
 					dlscAllEntries,
 					dlscDistributions, dlscBVHNodes,
 					dlscRadius2, dlscNormalCosAngle,
@@ -268,31 +270,31 @@ OPENCL_FORCE_INLINE void DirectHitFiniteLight(__constant const Film* restrict fi
 				return;
 #endif
 			
-			const float directPdfW = PdfAtoW(directPdfA, distance,
+			directPdfW = PdfAtoW(directPdfA, distance,
 					fabs(dot(VLOAD3F(&bsdf->hitPoint.fixedDir.x), VLOAD3F(&bsdf->hitPoint.shadeN.x))));
 
 			// MIS between BSDF sampling and direct light sampling
 			//
 			// Note: mats[bsdf->materialIndex].avgPassThroughTransparency = lightSource->GetAvgPassThroughTransparency()
 			weight = PowerHeuristic(pathInfo->lastBSDFPdfW * Light_GetAvgPassThroughTransparency(light LIGHTS_PARAM), directPdfW * lightPickProb);
-#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-			// Add BSDF sample into the reservoir.
-			SampleResult postfix;
-			SampleResult_Init(&postfix);
-			float3 throughput = VLOAD3F(taskState->currentThroughput.c);
-			SampleResult_AddEmission(film, &postfix, BSDF_GetLightID(bsdf
-					MATERIALS_PARAM), throughput, weight * emittedRadiance);
-			
-			// We use depth - 1 here so that we can remove the weight from the reconnection vertex 
-			// no longer being MIS sampled by NEE
-			RespirReservoir_AddEscapeVertex(&taskState->reservoir, VLOAD3F(&bsdf->hitPoint.fixedDir.x),
-					sampleResult->radiancePerPixelNormalized, postfix.radiancePerPixelNormalized,
-					weight, taskState->rrProbProd, directPdfW * lightPickProb,
-					pathInfo->depth.depth - 1, &taskState->seedReservoirSampling, film);
-#endif
 		}
 		SampleResult_AddEmission(film, sampleResult, BSDF_GetLightID(bsdf
 				MATERIALS_PARAM), VLOAD3F(taskState->throughput.c), weight * emittedRadiance);
+#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
+		// Add BSDF sample into the reservoir.
+		SampleResult postfix;
+		SampleResult_Init(&postfix);
+		float3 throughput = VLOAD3F(taskState->currentThroughput.c);
+		SampleResult_AddEmission(film, &postfix, BSDF_GetLightID(bsdf
+				MATERIALS_PARAM), throughput, weight * emittedRadiance);
+		
+		// We use depth - 1 here so that we can remove the weight from the reconnection vertex 
+		// no longer being MIS sampled by NEE
+		RespirReservoir_AddEscapeVertex(&taskState->reservoir, VLOAD3F(&bsdf->hitPoint.fixedDir.x),
+				sampleResult->radiancePerPixelNormalized, postfix.radiancePerPixelNormalized,
+				weight, taskState->rrProbProd, directPdfW * lightPickProb,
+				pathInfo->depth.depth - 1, &taskState->seedReservoirSampling, film);
+#endif
 	}
 }
 
