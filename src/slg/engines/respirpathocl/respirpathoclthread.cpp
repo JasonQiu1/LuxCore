@@ -255,12 +255,12 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 			const double timeKernelStart = WallClockTime();
 
 			// Get next sample if this is not the first iteration of this loop.
-	        // intersectionDevice->EnqueueKernel(advancePathsKernel_MK_NEXT_SAMPLE,
-			//     HardwareDeviceRange(taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
+	        intersectionDevice->EnqueueKernel(advancePathsKernel_MK_NEXT_SAMPLE,
+			    HardwareDeviceRange(taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
 
-            // // Generate camera rays for each pixel in this frame.
-            // intersectionDevice->EnqueueKernel(advancePathsKernel_MK_GENERATE_CAMERA_RAY,
-			//     HardwareDeviceRange(taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
+            // Generate camera rays for each pixel in this frame.
+            intersectionDevice->EnqueueKernel(advancePathsKernel_MK_GENERATE_CAMERA_RAY,
+			    HardwareDeviceRange(taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
 
             // Perform initial path resampling to get canonical samples for each pixel this frame.
             bool isInitialPathResamplingDone = false;
@@ -277,7 +277,7 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
                     intersectionDevice->EnqueueTraceRayBuffer(raysBuff, hitsBuff, taskCount);
 
                     // Advance to next path state
-                    PathOCLOpenCLRenderThread::EnqueueAdvancePathsKernel();
+                    EnqueueAdvancePathsKernel();
                 }
 
 				//SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Finished queuing advance paths kernels");
@@ -366,10 +366,10 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 
             // Splat pixels.
 			SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Splatting pixels.");
-			// intersectionDevice->EnqueueKernel(spatialReuseKernel_MK_SET_SPLAT,
-            //         HardwareDeviceRange(taskCount), HardwareDeviceRange(spatialReuseWorkGroupSize));
-            // intersectionDevice->EnqueueKernel(advancePathsKernel_MK_SPLAT_SAMPLE,
-			//     HardwareDeviceRange(taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
+			intersectionDevice->EnqueueKernel(spatialReuseKernel_MK_SET_SPLAT,
+                    HardwareDeviceRange(taskCount), HardwareDeviceRange(spatialReuseWorkGroupSize));
+            intersectionDevice->EnqueueKernel(advancePathsKernel_MK_SPLAT_SAMPLE,
+			    HardwareDeviceRange(taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
 			
 			const double timeKernelEnd = WallClockTime();
 			totalKernelTime += timeKernelEnd - timeKernelStart;
