@@ -265,6 +265,7 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 
 	bool checkDirectLightHit = true;
 
+#if !defined(RENDER_ENGINE_RESPIRPATHOCL) 
 	//----------------------------------------------------------------------
 	// Check if it is a baked material
 	//----------------------------------------------------------------------
@@ -296,6 +297,7 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 	checkDirectLightHit = checkDirectLightHit &&
 			((!taskConfig->pathTracer.pgic.indirectEnabled && !taskConfig->pathTracer.pgic.causticEnabled) ||
 			PhotonGICache_IsDirectLightHitVisible(taskConfig, pathInfo, taskState->photonGICausticCacheUsed));
+#endif
 
 	// Check if it is a light source (note: I can hit only triangle area light sources)
 	if (BSDF_IsLightSource(bsdf) && checkDirectLightHit) {
@@ -1041,10 +1043,12 @@ __kernel void AdvancePaths_MK_SPLAT_SAMPLE(
 		VSTORE3F(BLACK, sampleResult->albedo.c);
 	}
 
+#if !defined(RENDER_ENGINE_RESPIRPATHOCL)
 	if (taskConfig->pathTracer.pgic.indirectEnabled &&
 			(taskConfig->pathTracer.pgic.debugType == PGIC_DEBUG_SHOWINDIRECTPATHMIX) &&
 			!taskState->photonGIShowIndirectPathMixUsed)
 		VSTORE3F(MAKE_FLOAT3(1.f, 0.f, 0.f), sampleResult->radiancePerPixelNormalized[0].c);
+#endif
 
 	//--------------------------------------------------------------------------
 	// Variance clamping
