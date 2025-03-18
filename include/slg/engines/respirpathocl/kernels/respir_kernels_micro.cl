@@ -664,6 +664,10 @@ __kernel void SpatialReuse_MK_FINISH_REUSE(
     //--------------------------------------------------------------------------
 
     // Copy final sample's radiance from reservoir to sampleResultsBuff[gid] to be splatted like normal
+    Radiance_Scale(film,
+            reservoir->sample.integrand,
+            reservoir->weight,
+            reservoir->sample.integrand);
     Radiance_Copy(film,
             reservoir->sample.integrand,
             sampleResult->radiancePerPixelNormalized);
