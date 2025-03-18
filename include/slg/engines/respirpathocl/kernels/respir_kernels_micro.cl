@@ -294,6 +294,10 @@ __kernel void SpatialReuse_MK_SHIFT(
         return;
     }
 
+    if (get_global_id(0) == DEBUG_GID) {
+        printf("Correct difference in prefix scatter pdfs, jacobian: %f\n", out->sample.rc.jacobian);
+    }
+
     // Correct jacobian for bsdf scattering value from prefix vertex to reconnection to incident dir
     // Use cached BSDF info from src/base path
     const float srcRcIncidentPdf = rc->incidentPdf;
@@ -307,6 +311,10 @@ __kernel void SpatialReuse_MK_SHIFT(
     if (Respir_IsInvalidJacobian(out->sample.rc.jacobian) || Spectrum_IsBlack(dstRcIncidentBsdfValue)) {
         Respir_HandleInvalidShift(shiftInOutData, out, &pathStates[gid]);
         return;
+    }
+
+    if (get_global_id(0) == DEBUG_GID) {
+        printf("Correct difference in rc scatter pdfs, jacobian: %f\n", out->sample.rc.jacobian);
     }
 
     float dstPdf2 = dstRcIncidentPdf;
@@ -547,6 +555,12 @@ __kernel void SpatialReuse_MK_FINISH_RESAMPLE(
     const float shiftedJacobian = shifted->sample.rc.jacobian;
     Spectrum shiftedIntegrand[FILM_MAX_RADIANCE_GROUP_COUNT];
     Radiance_Copy(film, shifted->sample.integrand, shiftedIntegrand);
+
+    if (get_global_id(0) == DEBUG_GID) {
+        printf("Shift neighbor->central\n");
+        printf("\tIntegrand: %f\n", Radiance_Filter(film, shiftedIntegrand));
+        printf("\tJacobian: %f\n", out->sample.rc.jacobian);
+    }
 
     // Make a copy of neighbor so that I can update it with some info before merging.
     *shifted = *neighbor;
