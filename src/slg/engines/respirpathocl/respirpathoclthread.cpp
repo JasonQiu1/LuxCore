@@ -377,6 +377,7 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 			//------------------------------------------------------------------
 
             numFrames++;
+			threadFilms[0]->film->SetSampleCount(numFrames, numFrames, 0.0);
 
 			// Check halt conditions
 			if (engine->film->GetConvergence() == 1.f || numFrames >= haltSpp)
