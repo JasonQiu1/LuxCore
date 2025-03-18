@@ -291,13 +291,13 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 	//--------------------------------------------------------------------------
 
 	checkDirectLightHit = checkDirectLightHit &&
-			// Avoid to render caustic path if hybridBackForwardEnable
-			(!taskConfig->pathTracer.hybridBackForward.enabled || !EyePathInfo_IsCausticPath(pathInfo));
-
-	checkDirectLightHit = checkDirectLightHit &&
 			((!taskConfig->pathTracer.pgic.indirectEnabled && !taskConfig->pathTracer.pgic.causticEnabled) ||
 			PhotonGICache_IsDirectLightHitVisible(taskConfig, pathInfo, taskState->photonGICausticCacheUsed));
 #endif
+	checkDirectLightHit = checkDirectLightHit &&
+		// Avoid to render caustic path if hybridBackForwardEnable
+		(!taskConfig->pathTracer.hybridBackForward.enabled || !EyePathInfo_IsCausticPath(pathInfo));
+
 
 	// Check if it is a light source (note: I can hit only triangle area light sources)
 	if (BSDF_IsLightSource(bsdf) && checkDirectLightHit) {
