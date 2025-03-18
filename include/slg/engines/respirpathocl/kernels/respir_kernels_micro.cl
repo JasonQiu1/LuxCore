@@ -237,7 +237,7 @@ __kernel void SpatialReuse_MK_SHIFT(
     dstToRc /= dstDistance;
 
     // absolute value of Cos(angle from surface normal of rc point to prefix point) 
-    const float3 rcGeometricN = HitPoint_GetGeometryN(rc->bsdf.hitPoint);
+    const float3 rcGeometricN = HitPoint_GetGeometryN(&rc->bsdf.hitPoint);
     const float dstCosW = abs(dot(dstToRc, rcGeometricN));
 
     // Cached jacobian is src: (sqr distance) / (cos angle)
