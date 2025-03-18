@@ -202,11 +202,11 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 
 		// Initialize random number generator seeds
 		intersectionDevice->EnqueueKernel(initSeedKernel,
-				HardwareDeviceRange(engine->taskCount), HardwareDeviceRange(initWorkGroupSize));
+				HardwareDeviceRange(taskCount), HardwareDeviceRange(initWorkGroupSize));
 
 		// Initialize the tasks buffer
 		intersectionDevice->EnqueueKernel(initKernel,
-				HardwareDeviceRange(engine->taskCount), HardwareDeviceRange(initWorkGroupSize));
+				HardwareDeviceRange(taskCount), HardwareDeviceRange(initWorkGroupSize));
 
 		// Check if I have to load the start film
 		if (engine->hasStartFilm && (threadIndex == 0))
@@ -304,7 +304,7 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 				SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Spatial reuse is enabled, performing " << numSpatialReuseIterations << " iterations");
 				// Initialize variables and find spatial neighbors
 				intersectionDevice->EnqueueKernel(spatialReuseKernel_MK_INIT,
-						HardwareDeviceRange(engine->taskCount), HardwareDeviceRange(spatialReuseWorkGroupSize));
+						HardwareDeviceRange(taskCount), HardwareDeviceRange(spatialReuseWorkGroupSize));
 				// Ensure all paths are synced before continuing
 				intersectionDevice->FinishQueue();
 			} else {
@@ -360,13 +360,13 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 			if (numSpatialReuseIterations > 0) {
 				SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Spatial reuse passes are complete, finishing reuse.");
 				intersectionDevice->EnqueueKernel(spatialReuseKernel_MK_FINISH_REUSE,
-                    HardwareDeviceRange(engine->taskCount), HardwareDeviceRange(spatialReuseWorkGroupSize));
+                    HardwareDeviceRange(taskCount), HardwareDeviceRange(spatialReuseWorkGroupSize));
 			}
 
             // Splat pixels.
 			SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Splatting pixels.");
 			intersectionDevice->EnqueueKernel(spatialReuseKernel_MK_SET_SPLAT,
-                    HardwareDeviceRange(engine->taskCount), HardwareDeviceRange(spatialReuseWorkGroupSize));
+                    HardwareDeviceRange(taskCount), HardwareDeviceRange(spatialReuseWorkGroupSize));
             intersectionDevice->EnqueueKernel(advancePathsKernel_MK_SPLAT_SAMPLE,
 			    HardwareDeviceRange(taskCount), HardwareDeviceRange(advancePathsWorkGroupSize));
 			
