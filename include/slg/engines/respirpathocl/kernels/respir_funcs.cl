@@ -218,7 +218,7 @@ OPENCL_FORCE_INLINE bool RespirReservoir_Merge(RespirReservoir* restrict outRese
 	if (get_global_id(0) == DEBUG_GID) {
 		printf("Merging integrand (%f) with weight %f out of total weight %f.\n", 
 				Radiance_Filter(film, inRadiance), weight, outReservoir->weight
-		)
+		);
 	}
 	if (Rnd_FloatValue(seed) * outReservoir->weight <= weight) {
 		outReservoir->sample = inReservoir->sample;

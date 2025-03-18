@@ -309,11 +309,10 @@ __kernel void SpatialReuse_MK_SHIFT(
         return;
     }
 
-    const float dstPdf2 = dstRcIncidentPdf;
+    float dstPdf2 = dstRcIncidentPdf;
     if (rc->pathDepth == src->sample.pathDepth) {
-        dstPdf2 = src->sample.lightPdf
+        dstPdf2 = src->sample.lightPdf;
     }
-    // TODO: if rcVertex is the last vertex and was sampled via NEE, then dstPdf2 = src->sample.lightPdf
 
     // Store shifted integrand
     Radiance_ScaleGroup(film, rc->irradiance,
