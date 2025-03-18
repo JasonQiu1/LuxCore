@@ -189,7 +189,7 @@ string RespirPathOCLRenderThread::GetKernelSources() {
 			slg::ocl::KernelSource_pathinfo_types <<
 			slg::ocl::KernelSource_pathtracer_types <<
 			// PathOCL types
-			slg::ocl::KernelSource_pathoclbase_datatypes <<
+			slg::ocl::KernelSource_pathoclbase_datatypes;
 			// Respir types
 			// slg::ocl::KernelSource_respir_types;
 
