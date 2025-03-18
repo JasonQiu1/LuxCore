@@ -288,11 +288,10 @@ __kernel void SpatialReuse_MK_SHIFT(
     // Use cached BSDF info from src/base path
     const float3 srcPoint = VLOAD3F(&src->sample.prefixBsdf.hitPoint.p.x);
     const BSDF* srcBsdf = &src->sample.prefixBsdf;
-    const float srcPdf = rc->prefixToRcPdf;
-    const float3 srcToRc = normalize(rcPoint - srcPoint);
+    float srcPdf = rc->prefixToRcPdf;
     BSDFEvent event;
     const float3 srcBsdfValue = BSDF_Evaluate(srcBsdf,
-            srcToRc, &event, &srcPdf
+            normalize(rcPoint - srcPoint), &event, &srcPdf
             MATERIALS_PARAM);
 
     const BSDF* dstBsdf = &dst->sample.prefixBsdf;
