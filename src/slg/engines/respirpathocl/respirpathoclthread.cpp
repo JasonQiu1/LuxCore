@@ -363,10 +363,6 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
                     HardwareDeviceRange(engine->taskCount), HardwareDeviceRange(spatialReuseWorkGroupSize));
 			}
 
-			// Check halt conditions
-			if (engine->film->GetConvergence() == 1.f)
-				break;
-
             // Splat pixels.
 			SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Splatting pixels.");
 			intersectionDevice->EnqueueKernel(spatialReuseKernel_MK_SET_SPLAT,
