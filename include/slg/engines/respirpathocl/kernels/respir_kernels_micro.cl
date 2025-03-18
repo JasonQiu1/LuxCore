@@ -248,6 +248,8 @@ __kernel void SpatialReuse_MK_SHIFT(
     out->sample.rc.jacobian = rc->jacobian * (dstCosW / dstDistanceSquared);
 
     if (get_global_id(0) == DEBUG_GID) {
+        const float3 srcPoint = VLOAD3F(&src->sample.prefixBsdf.hitPoint.p.x);
+        printf("Src prefix point: (%f, %f, %f)\n", srcPoint.x, srcPoint.y, srcPoint.z);
         printf("Dst prefix point: (%f, %f, %f)\n", dstPoint.x, dstPoint.y, dstPoint.z);
         printf("Src rc vertex point: (%f, %f, %f)\n", rcPoint.x, rcPoint.y, rcPoint.z);
         printf("Src rc geometric normal: (%f, %f, %f)\n", rcGeometricN.x, rcGeometricN.y, rcGeometricN.z);
