@@ -248,6 +248,7 @@ __kernel void SpatialReuse_MK_SHIFT(
     out->sample.rc.jacobian = rc->jacobian * (dstCosW / dstDistanceSquared);
 
     if (get_global_id(0) == DEBUG_GID) {
+        const float3 srcPoint = VLOAD3F(&src->sample.prefixBsdf.hitPoint.p.x);
         printf("Src prefix point: (%f, %f, %f)\n", srcPoint.x, srcPoint.y, srcPoint.z);
         printf("Dst prefix point: (%f, %f, %f)\n", dstPoint.x, dstPoint.y, dstPoint.z);
         printf("Src rc vertex point: (%f, %f, %f)\n", rcPoint.x, rcPoint.y, rcPoint.z);
@@ -288,9 +289,10 @@ __kernel void SpatialReuse_MK_SHIFT(
     const float3 srcPoint = VLOAD3F(&src->sample.prefixBsdf.hitPoint.p.x);
     const BSDF* srcBsdf = &src->sample.prefixBsdf;
     const float srcPdf = rc->prefixToRcPdf;
+    const float3 srcToRc = normalize(rcPoint - srcPoint);
     BSDFEvent event;
     const float3 srcBsdfValue = BSDF_Evaluate(srcBsdf,
-            normalize(rcPoint - srcPoint), &event, &srcPdf
+            srcToRc, &event, &srcPdf
             MATERIALS_PARAM);
 
     const BSDF* dstBsdf = &dst->sample.prefixBsdf;
