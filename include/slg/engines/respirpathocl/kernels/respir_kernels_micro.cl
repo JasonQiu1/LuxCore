@@ -24,7 +24,7 @@
 
 #define DEBUG_PRINTF_SR_KERNEL_NAME 1
 #ifndef DEBUG_GID
-#define DEBUG_GID 251901
+#define DEBUG_GID 159982
 #endif
 
 //------------------------------------------------------------------------------
