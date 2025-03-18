@@ -623,7 +623,7 @@ __kernel void SpatialReuse_MK_FINISH_ITERATION(
     */
 
     // Copy spatial reuse reservoir to central reservoir.
-    central = srReservoir;
+    *central = *srReservoir;
 
     // Prime neighbor search
     spatialReuseData->numNeighborsLeft = numSpatialNeighbors;
