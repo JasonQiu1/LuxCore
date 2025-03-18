@@ -559,8 +559,15 @@ __kernel void SpatialReuse_MK_FINISH_RESAMPLE(
     /*
     //	Resample the shifted reservoir into the spatial reuse reservoir.
     */
+
+    // Use shifted as a copy of neighbor reservoir, but with the shifted integrand
+    const float shiftedJacobian = shifted->sample.rc.jacobian;
+    Spectrum shiftedIntegrand[FILM_MAX_RADIANCE_GROUP_COUNT] = shifted->sample.integrand;
+    *shifted = *neighbor;
+    shifted->sample.integrand = shiftedIntegrand;
+    
     RespirReservoir_Merge(&spatialReuseData->spatialReuseReservoir, 
-        shifted->sample.integrand, shifted->sample.rc.jacobian, neighbor,
+        shifted->sample.integrand, shiftedJacobian, shifted,
         neighborWeight, &task->seed, film);
 
     pathStates[gid] = (PathState) SR_MK_NEXT_NEIGHBOR;
