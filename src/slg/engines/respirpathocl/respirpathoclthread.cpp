@@ -125,6 +125,7 @@ void RespirPathOCLRenderThread::Stop() {
 	intersectionDevice->FreeBuffer(&pgicCausticPhotonsBVHNodesBuff);
 
 	// OpenCL task related buffers
+	intersectionDevice->FreeBuffer(&pathStatesBuff);
 	intersectionDevice->FreeBuffer(&raysBuff);
 	intersectionDevice->FreeBuffer(&hitsBuff);
 	intersectionDevice->FreeBuffer(&taskConfigBuff);
