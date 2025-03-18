@@ -59,6 +59,12 @@ __kernel void SpatialReuse_MK_INIT(
 
     reservoir->M = 1;
 
+    // Finalize initial path resampling RIS: calculate unbiased contribution weight of final sample
+    const float integrand = Radiance_Filter(film, reservoir->sample.integrand);
+    if (reservoir->weight != 0) {
+        reservoir->weight /= integrand;
+    }
+
     // no reconnection vertex, no invertible shift mapping
     // CAN shift FROM other domains, CANNOT shift TO other domains
     if (reservoir->sample.rc.pathDepth == -1 
@@ -76,12 +82,6 @@ __kernel void SpatialReuse_MK_INIT(
     /*
     // Set up for first spatial reuse iteration.
     */
-
-    // Finalize initial path resampling RIS: calculate unbiased contribution weight of final sample
-    const float integrand = Radiance_Filter(film, reservoir->sample.integrand);
-    if (reservoir->weight != 0) {
-        reservoir->weight = reservoir->weight / integrand;
-    }
 
     // Prime neighbor search
     spatialReuseData->numNeighborsLeft = numSpatialNeighbors;
