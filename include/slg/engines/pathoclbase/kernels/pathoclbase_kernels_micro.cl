@@ -554,7 +554,7 @@ __kernel void AdvancePaths_MK_RT_DL(
 				// Add NEE-illuminated (with cheater BSDF) sample into the reservoir.
 				SampleResult postfix;
 				SampleResult_Init(&postfix);
-				float3 throughput = VLOAD3F(taskState->currentThroughput.c);
+				float3 throughput = WHITE;
 				if (pathInfo->depth.depth == 1) {
 					// reconnection vertex
 					throughput /= VLOAD3F(taskState->lastDirectLightBsdfEval.c);
