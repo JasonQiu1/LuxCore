@@ -231,10 +231,19 @@ __kernel void SpatialReuse_MK_SHIFT(
 
     // absolute value of Cos(angle from surface normal of rc point to prefix point) 
     const float3 rcGeometricN = HitPoint_GetGeometryN(&rc->bsdf.hitPoint);
-    const float dstCosW = abs(dot(dstToRc, rcGeometricN));
+    const float dstCosW = abs(dot(-dstToRc, rcGeometricN));
+
+    // DEBUG: Instead of using rc->jacobian cached, just recalculate for correctness for now
+    const float3 srcPoint = VLOAD3F(&src->sample.prefixBsdf.hitPoint.p.x);
+    float3 srcToRc = rcPoint - srcPoint;
+    const float srcToRcDistanceSquared = dot(srcToRc, srcToRc);
+    const float srcToRcDistance = sqrt(srcToRcDistanceSquared);
+    srcToRc /= srcToRcDistance;
+
+    const float srcCosW = abs(dot(-srcToRc, rcGeometricN));
 
     // Cached jacobian is src: (sqr distance) / (cos angle)
-    out->sample.rc.jacobian = rc->jacobian * (dstCosW / dstDistanceSquared);
+    out->sample.rc.jacobian = (srcToRcDistanceSquared / srcCosW) * (dstCosW / dstDistanceSquared);
 
     if (get_global_id(0) == DEBUG_GID) {
         const float3 srcPoint = VLOAD3F(&src->sample.prefixBsdf.hitPoint.p.x);
@@ -275,7 +284,7 @@ __kernel void SpatialReuse_MK_SHIFT(
 
     // Correct jacobian for scattering pdf from prefix vertex towards reconnection
     // Use cached BSDF info from src/base path
-    const float3 srcPoint = VLOAD3F(&src->sample.prefixBsdf.hitPoint.p.x);
+    // DEBUG: Just reevaluate for correctness
     const BSDF* srcBsdf = &src->sample.prefixBsdf;
     float srcPdf = rc->prefixToRcPdf;
     BSDFEvent event;
