@@ -248,7 +248,6 @@ __kernel void SpatialReuse_MK_SHIFT(
     out->sample.rc.jacobian = rc->jacobian * (dstCosW / dstDistanceSquared);
 
     if (get_global_id(0) == DEBUG_GID) {
-        const float3 srcPoint = VLOAD3F(&src->sample.prefixBsdf.hitPoint.p.x);
         printf("Src prefix point: (%f, %f, %f)\n", srcPoint.x, srcPoint.y, srcPoint.z);
         printf("Dst prefix point: (%f, %f, %f)\n", dstPoint.x, dstPoint.y, dstPoint.z);
         printf("Src rc vertex point: (%f, %f, %f)\n", rcPoint.x, rcPoint.y, rcPoint.z);
@@ -286,10 +285,16 @@ __kernel void SpatialReuse_MK_SHIFT(
 
     // Correct jacobian for scattering pdf from prefix vertex towards reconnection
     // Use cached BSDF info from src/base path
+    const float3 srcPoint = VLOAD3F(&src->sample.prefixBsdf.hitPoint.p.x);
+    const BSDF* srcBsdf = &src->sample.prefixBsdf;
     const float srcPdf = rc->prefixToRcPdf;
+    BSDFEvent event;
+    const float3 srcBsdfValue = BSDF_Evaluate(srcBsdf,
+            normalize(rcPoint - srcPoint), &event, &srcPdf
+            MATERIALS_PARAM);
+
     const BSDF* dstBsdf = &dst->sample.prefixBsdf;
     float dstPdf = 1.0f;
-    BSDFEvent event;
     const float3 dstBsdfValue = BSDF_Evaluate(dstBsdf,
             dstToRc, &event, &dstPdf
             MATERIALS_PARAM);
