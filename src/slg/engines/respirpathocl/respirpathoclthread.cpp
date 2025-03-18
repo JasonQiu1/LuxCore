@@ -350,8 +350,8 @@ void RespirPathOCLRenderThread::RenderThreadImpl() {
 				SLG_LOG("[PathOCLRespirOCLRenderThread::" << threadIndex << "] Number of iterations for visibility checks: " << visibilityIterations);
 				
 				// Finish the iteration
-				intersectionDevice->EnqueueKernel(spatialReuseKernel_MK_FINISH_ITERATION,
-					HardwareDeviceRange(taskCount), HardwareDeviceRange(spatialReuseWorkGroupSize));
+				// intersectionDevice->EnqueueKernel(spatialReuseKernel_MK_FINISH_ITERATION,
+				// 	HardwareDeviceRange(taskCount), HardwareDeviceRange(spatialReuseWorkGroupSize));
 
 				// Ensure all paths are synced before continuing
 				intersectionDevice->FinishQueue();
