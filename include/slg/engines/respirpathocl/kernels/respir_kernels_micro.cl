@@ -59,12 +59,6 @@ __kernel void SpatialReuse_MK_INIT(
 
     reservoir->M = 1;
 
-    // Finalize initial path resampling RIS: calculate unbiased contribution weight of final sample
-    const float integrand = Radiance_Filter(film, reservoir->sample.integrand);
-    if (reservoir->weight != 0) {
-        reservoir->weight /= integrand;
-    }
-
     // no reconnection vertex, no invertible shift mapping
     // CAN shift FROM other domains, CANNOT shift TO other domains
     if (reservoir->sample.rc.pathDepth == -1 
@@ -74,6 +68,12 @@ __kernel void SpatialReuse_MK_INIT(
         // keep pathstate to SYNC so that resampling and visibility kernels do not run
         // keep pixelIndexMap to be -1 so this pixel isn't resampled from
         return;
+    }
+
+    // Finalize initial path resampling RIS: calculate unbiased contribution weight of final sample
+    const float integrand = Radiance_Filter(film, reservoir->sample.integrand);
+    if (reservoir->weight != 0) {
+        reservoir->weight /= integrand;
     }
 
     // Save ray time state
@@ -727,7 +727,7 @@ __kernel void SpatialReuse_MK_FINISH_REUSE(
     // Start of variables setup
     //--------------------------------------------------------------------------
     SpatialReuseData* spatialReuseData = &spatialReuseDatas[gid];
-    RespirReservoir* reservoir = &tasksState[gid].reservoir;
+    const RespirReservoir* reservoir = &tasksState[gid].reservoir;
     Ray *ray = &rays[gid];
     SampleResult *sampleResult = &sampleResultsBuff[gid];
     const Film* restrict film = &taskConfig->film;
@@ -736,18 +736,19 @@ __kernel void SpatialReuse_MK_FINISH_REUSE(
     //--------------------------------------------------------------------------
 
     // Copy final sample's radiance from reservoir to sampleResultsBuff[gid] to be splatted like normal
-    Radiance_Scale(film,
-            reservoir->sample.integrand,
-            reservoir->weight,
-            reservoir->sample.integrand);
     Radiance_Copy(film,
-            reservoir->sample.integrand,
-            sampleResult->radiancePerPixelNormalized);
+        reservoir->sample.integrand,
+        sampleResult->radiancePerPixelNormalized);
 
     if (reservoir->sample.rc.pathDepth == -1 
         || reservoir->sample.rc.pathDepth > reservoir->sample.pathDepth) {
         return;
     }
+
+    Radiance_Scale(film,
+        sampleResult->radiancePerPixelNormalized,
+        reservoir->weight,
+        sampleResult->radiancePerPixelNormalized);
 
     // maintain integrity of pathtracer by using time from before spatial reuse
     ray->time = spatialReuseData->preSpatialReuseTime;
