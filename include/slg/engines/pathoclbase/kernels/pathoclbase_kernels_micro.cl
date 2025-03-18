@@ -556,6 +556,7 @@ __kernel void AdvancePaths_MK_RT_DL(
 				SampleResult_Init(&postfix);
 				float3 throughput = VLOAD3F(taskState->currentThroughput.c);
 				if (pathInfo->depth.depth == 1) {
+					// reconnection vertex
 					throughput /= taskState->lastDirectLightBsdfEval;
 				}
 				// Store postfix radiance with only current vertex throughput
@@ -932,7 +933,7 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 
 		VSTORE3F(throughputFactor * VLOAD3F(taskState->throughput.c), taskState->throughput.c);
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-		VSTORE3F(throughputFactor, taskState->currentThroughput.c);
+		VSTORE3F(WHITE * bsdfSample, taskState->currentThroughput.c);
 		VSTORE3F(bsdfSample * VLOAD3F(taskState->pathPdf.c), taskState->pathPdf.c);
 		taskState->rrProbProd *= rrProb;
 #endif
