@@ -334,7 +334,7 @@ __kernel void SpatialReuse_MK_SHIFT(
     );
 
     if (get_global_id(0) == DEBUG_GID) {
-        printf("Correct difference in rc scatter pdfs, jacobian: %f\n", out->sample.rc.jacobian);
+        printf("Correct difference in rc scatter bsdfs, jacobian: %f\n", out->sample.rc.jacobian);
     }
 
     // TODO: might not need this if we're not using multi-lobed materials
@@ -342,6 +342,9 @@ __kernel void SpatialReuse_MK_SHIFT(
         Radiance_Scale(film, out->sample.integrand,
             PowerHeuristic(dstPdf, src->sample.lightPdf), // supposed to be dstPdf evaluated on all lobes at dst prefix vertex
             out->sample.integrand);
+        if (get_global_id(0) == DEBUG_GID) {
+            printf("Correct mis weights for NEE paths ending with rc vertex, jacobian: %f\n", out->sample.rc.jacobian);
+        }
     }
 
     if (isRcVertexFinal) {
@@ -355,10 +358,17 @@ __kernel void SpatialReuse_MK_SHIFT(
         Radiance_Scale(film, out->sample.integrand,
             misWeight, 
             out->sample.integrand);
+
+        if (get_global_id(0) == DEBUG_GID) {
+            printf("Correct mis weights for paths ending with rc vertex, jacobian: %f\n", out->sample.rc.jacobian);
+        }
     }
 
     if ((isRcVertexFinal && !isRcVertexNEE) || (!isRcVertexFinal && !isRcVertexEscapedVertex)) {
         out->sample.rc.jacobian *= dstRcIncidentPdf / srcRcIncidentPdf;
+        if (get_global_id(0) == DEBUG_GID) {
+            printf("Correct difference in rc scatter pdfs for paths, jacobian: %f\n", out->sample.rc.jacobian);
+        }
     }
 
     if (Respir_IsInvalidJacobian(out->sample.rc.jacobian) || Radiance_IsBlack(film, out->sample.integrand)) {
