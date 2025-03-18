@@ -66,13 +66,8 @@ OPENCL_FORCE_INLINE void InitSampleResult(
 	const float uSubPixelX = filmX - pixelX;
 	const float uSubPixelY = filmY - pixelY;
 
-#if defined(RENDER_ENGINE_RESPIRPATHOCL)
-	sampleResult->pixelX = gid % filmWidth;
-	sampleResult->pixelY = gid / filmWidth;
-#else
 	sampleResult->pixelX = pixelX;
 	sampleResult->pixelY = pixelY;
-#endif
 
 	// Sample according the pixel filter distribution
 	float distX, distY;
@@ -162,10 +157,6 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 	Seed initSeed;
 	Rnd_InitFloat(seedValue, &initSeed);
 	taskState->seedPassThroughEvent = initSeed;
-
-#if defined(RENDER_ENGINE_RESPIRPATHOCL)
-	Respir_Init(taskState);
-#endif
 }
 
 //------------------------------------------------------------------------------
@@ -412,9 +403,6 @@ OPENCL_FORCE_INLINE bool DirectLight_BSDFSampling(
 			!bsdf->hitPoint.throughShadowTransparency;
 
 	const float weight = misEnabled ? PowerHeuristic(directLightSamplingPdfW, bsdfPdfW) : 1.f;
-#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-	taskState->lastDirectLightPdf = weight * factor;
-#endif
 
 	const float3 lightRadiance = VLOAD3F(info->lightRadiance.c);
 	VSTORE3F(bsdfEval * (weight * factor) * lightRadiance, info->lightRadiance.c);
@@ -541,11 +529,6 @@ __kernel void Init(
 		// Mark the ray like like one to NOT trace
 		rays[gid].flags = RAY_FLAGS_MASKED;
 	}
-
-#if defined(RENDER_ENGINE_RESPIRPATHOCL)
-	// Initialize reservoir sampling seed
-	Rnd_InitFloat(Rnd_FloatValue(&task->seed), &taskState->seedReservoirSampling);
-#endif
 
 	// Save the seed
 	task->seed = seedValue;

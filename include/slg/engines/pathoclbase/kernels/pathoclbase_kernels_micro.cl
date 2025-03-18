@@ -86,9 +86,6 @@ __kernel void AdvancePaths_MK_RT_NEXT_VERTEX(
 			);
 	taskState->throughShadowTransparency = throughShadowTransparency;
 	VSTORE3F(connectionThroughput * VLOAD3F(taskState->throughput.c), taskState->throughput.c);
-#if defined(RENDER_ENGINE_RESPIRPATHOCL)
-	VSTORE3F(connectionThroughput * VLOAD3F(taskState->pathPdf.c), taskState->pathPdf.c);
-#endif
 
 	// If continueToTrace, there is nothing to do, just keep the same state
 	if (!continueToTrace) {
@@ -265,7 +262,6 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 
 	bool checkDirectLightHit = true;
 
-#if !defined(RENDER_ENGINE_RESPIRPATHOCL) 
 	//----------------------------------------------------------------------
 	// Check if it is a baked material
 	//----------------------------------------------------------------------
@@ -293,7 +289,7 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 	checkDirectLightHit = checkDirectLightHit &&
 			((!taskConfig->pathTracer.pgic.indirectEnabled && !taskConfig->pathTracer.pgic.causticEnabled) ||
 			PhotonGICache_IsDirectLightHitVisible(taskConfig, pathInfo, taskState->photonGICausticCacheUsed));
-#endif
+
 	checkDirectLightHit = checkDirectLightHit &&
 		// Avoid to render caustic path if hybridBackForwardEnable
 		(!taskConfig->pathTracer.hybridBackForward.enabled || !EyePathInfo_IsCausticPath(pathInfo));
@@ -316,7 +312,7 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 	//----------------------------------------------------------------------
 	// Check if I can use the photon cache
 	//----------------------------------------------------------------------
-#if !defined(RENDER_ENGINE_RESPIRPATHOCL)
+
 	if (taskConfig->pathTracer.pgic.indirectEnabled || taskConfig->pathTracer.pgic.causticEnabled) {
 		const bool isPhotonGIEnabled = PhotonGICache_IsPhotonGIEnabled(bsdf,
 				taskConfig->pathTracer.pgic.glossinessUsageThreshold
@@ -435,7 +431,6 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 			}
 		}
 	}
-#endif
 
 	//----------------------------------------------------------------------
 	// Check if this is the last path vertex (but not also the first)
@@ -548,22 +543,6 @@ __kernel void AdvancePaths_MK_RT_DL(
 					VSTORE3F(irradiance, sampleResult->irradiance.c);
 				}
 
-#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-				const EyePathInfo* pathInfo = &eyePathInfos[gid];
-				// Add NEE-illuminated (with cheater BSDF) sample into the reservoir.
-				SampleResult postfix;
-				SampleResult_Init(&postfix);
-				SampleResult_AddDirectLight(&taskConfig->film,
-					sampleResult, taskDirectLight->illumInfo.lightID,
-					BSDF_GetEventTypes(bsdf
-						MATERIALS_PARAM),
-					VLOAD3F(taskState->throughput.c), lightRadiance,
-					1.f);
-				RespirReservoir_AddNEEVertex(&taskState->reservoir, 
-						sampleResult->radiancePerPixelNormalized, postfix.radiancePerPixelNormalized,
-						taskState->lastDirectLightPdf, taskState->rrProbProd, taskDirectLight->illumInfo.pickPdf,
-						pathInfo->depth.depth, &taskState->seedReservoirSampling, &taskConfig->film);
-#endif
 			}
 
 			taskDirectLight->directLightResult = ILLUMINATED;
@@ -848,58 +827,6 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 		sampleResult->firstPathVertexEvent = bsdfEvent;
 	}
 
-#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-	__constant const Film* restrict film = &taskConfig->film;
-	RespirReservoir* reservoir = &taskState->reservoir;
-	RcVertex* rc = &taskState->reservoir.sample.rc;
-	// reconnection shift always chooses primary vertex as prefix vertex
-	if (pathInfo->depth.depth == 0) { 
-		// We've just hit the primary vertex
-		// The BSDF info above is the scattering info to the secondary vertex
-		if (get_global_id(0) == DEBUG_GID) {
-			printf("Initial path resampling: Cached prefix vertex info.\n");
-		}
-		reservoir->sample.prefixBsdf = *bsdf;
-		reservoir->sample.hitTime = ray->time;
-		reservoir->sample.rc.prefixToRcPdf = bsdfPdfW;
-	}
-	
-	// Secondary vertex, reconnection vertex
-	// reconnection shift always chooses secondary vertex as rc vertex
-	// Store incident direction, pdf, and bsdf value
-	if (pathInfo->depth.depth == 1) {
-		// We've just hit the secondary vertex
-		// The BSDF info above is the scattering info to the tertiary vertex
-		if (get_global_id(0) == DEBUG_GID) {
-			printf("Initial path resampling: Cached reconnection vertex info.\n");
-		}
-		VSTORE3F(sampledDir, &rc->incidentDir.x);
-		rc->incidentPdf = bsdfPdfW;
-		VSTORE3F(bsdfSample, rc->incidentBsdfValue.c);
-		
-		const float3 toRc = VLOAD3F(&bsdf->hitPoint.p.x) - VLOAD3F(&reservoir->sample.prefixBsdf.hitPoint.p.x);
-		const float distanceSquared = dot(toRc, toRc);
-		const float cosAngle = dot(VLOAD3F(&bsdf->hitPoint.fixedDir.x), BSDF_GetLandingGeometryN(bsdf));
-		// check roughness and distance connectability requirements
-		// assume glossiness range is [0.f,1.f], and 1-glossiness is the roughness
-		// distance threshold of 2-5% world size recommended by GRIS paper
-		const float maxGlossiness = 0.2;
-		const float minDistance = worldRadius * 2.0f * 0.025f;
-		if (sqrt(distanceSquared) >= minDistance
-			&& BSDF_GetGlossiness(&reservoir->sample.prefixBsdf MATERIALS_PARAM) <= maxGlossiness
-			&& BSDF_GetGlossiness(bsdf MATERIALS_PARAM) <= maxGlossiness) {
-				// cache partial jacobian here (squared distance / cos angle from rc norm)
-				reservoir->sample.rc.jacobian = distanceSquared / cosAngle;
-				reservoir->sample.rc.pathDepth = pathInfo->depth.depth;
-				reservoir->sample.rc.bsdf = *bsdf;
-		} else {
-			if (get_global_id(0) == DEBUG_GID) {
-			printf("Initial path resampling: Rejected reconnection vertex based on glossiness or distance.\n");
-			}
-		}	
-	}
-#endif
-
 	EyePathInfo_AddVertex(pathInfo, bsdf, bsdfEvent, bsdfPdfW,
 			taskConfig->pathTracer.hybridBackForward.glossinessThreshold
 			MATERIALS_PARAM);
@@ -924,10 +851,7 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 		throughputFactor *= bsdfSample;
 
 		VSTORE3F(throughputFactor * VLOAD3F(taskState->throughput.c), taskState->throughput.c);
-#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-		VSTORE3F(bsdfSample * VLOAD3F(taskState->pathPdf.c), taskState->pathPdf.c);
-		taskState->rrProbProd *= rrProb;
-#endif
+
 		// This is valid for irradiance AOV only if it is not a SPECULAR material and
 		// first path vertex. Set or update sampleResult.irradiancePathThroughput
 		if (sampleResult->firstPathVertex) {
@@ -1043,12 +967,10 @@ __kernel void AdvancePaths_MK_SPLAT_SAMPLE(
 		VSTORE3F(BLACK, sampleResult->albedo.c);
 	}
 
-#if !defined(RENDER_ENGINE_RESPIRPATHOCL)
 	if (taskConfig->pathTracer.pgic.indirectEnabled &&
 			(taskConfig->pathTracer.pgic.debugType == PGIC_DEBUG_SHOWINDIRECTPATHMIX) &&
 			!taskState->photonGIShowIndirectPathMixUsed)
 		VSTORE3F(MAKE_FLOAT3(1.f, 0.f, 0.f), sampleResult->radiancePerPixelNormalized[0].c);
-#endif
 
 	//--------------------------------------------------------------------------
 	// Variance clamping
