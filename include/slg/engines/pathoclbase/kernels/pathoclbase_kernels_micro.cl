@@ -931,7 +931,7 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 		throughputFactor /= rrProb;
 		throughputFactor *= bsdfSample;
 
-		VSTORE3F(throughputFactor * rrProb * VLOAD3F(taskState->throughput.c), taskState->throughput.c);
+		VSTORE3F(throughputFactor * VLOAD3F(taskState->throughput.c), taskState->throughput.c);
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
 		VSTORE3F(WHITE * bsdfSample, taskState->currentThroughput.c);
 		VSTORE3F(bsdfSample * VLOAD3F(taskState->pathPdf.c), taskState->pathPdf.c);
