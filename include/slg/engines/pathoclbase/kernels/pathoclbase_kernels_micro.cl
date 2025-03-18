@@ -903,9 +903,7 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 		float3 throughputFactor = WHITE;
 
 		// RR increases path contribution
-#if !defined(RENDER_ENGINE_RESPIRPATHOCL) 
 		throughputFactor /= rrProb;
-#endif
 		throughputFactor *= bsdfSample;
 
 		VSTORE3F(throughputFactor * VLOAD3F(taskState->throughput.c), taskState->throughput.c);
@@ -921,11 +919,7 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 						MATERIALS_PARAM) & SPECULAR))
 				VSTORE3F(TO_FLOAT3(M_1_PI_F * fabs(dot(
 						VLOAD3F(&bsdf->hitPoint.shadeN.x),
-						sampledDir)) 
-#if !defined(RENDER_ENGINE_RESPIRPATHOCL) 
-						/ rrProb
-#endif
-					),
+						sampledDir)) / rrProb),
 						sampleResult->irradiancePathThroughput.c);
 			else
 				VSTORE3F(BLACK, sampleResult->irradiancePathThroughput.c);
