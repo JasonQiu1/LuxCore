@@ -353,6 +353,9 @@ OPENCL_FORCE_INLINE void Respir_HandleInvalidShift(ShiftInOutData* shiftData,
 	out->sample.rc.jacobian = 0.0f;
 	Radiance_Clear(out->sample.integrand);
 	*pathState = (PathState) shiftData->afterShiftState;
+	if (get_global_id(0) == DEBUG_GID) {
+		printf("Shift failed.\n");
+	}
 	return;
 }
 
