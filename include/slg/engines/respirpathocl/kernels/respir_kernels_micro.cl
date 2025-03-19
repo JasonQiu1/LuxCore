@@ -404,7 +404,7 @@ __kernel void SpatialReuse_MK_SHIFT(
     // shadow ray
     directLightVolInfos[gid] = eyePathInfos[gid].volume;
 
-    const float3 shadowRayOrigin = BSDF_GetRayOrigin(&dstBsdf, dstToRc);
+    const float3 shadowRayOrigin = BSDF_GetRayOrigin(dstBsdf, dstToRc);
     float3 shadowRayDir = rcPoint + (rcGeometricN * MachineEpsilon_E_Float3(rcPoint) * (rcBsdf->hitPoint.intoObject ? 1.f : -1.f))
             - shadowRayOrigin;
     const float shadowRayDirDistanceSquared = dot(shadowRayDir, shadowRayDir);
