@@ -200,7 +200,7 @@ __kernel void SpatialReuse_MK_SHIFT(
     const RespirReservoir* dst = &tasksState[shiftInOutData->shiftDstGid].reservoir;
     const RcVertex* rc = &src->sample.rc;
 
-    if (rc->pathDepth == -1 || rc->pathDepth > src->sample.pathDepth) {
+    if (rc->pathDepth <= -1 || rc->pathDepth > src->sample.pathDepth) {
         // No reconnection vertex, invalid shift
         Respir_HandleInvalidShift(shiftInOutData, out, &pathStates[gid]);
         return;
@@ -756,11 +756,6 @@ __kernel void SpatialReuse_MK_FINISH_REUSE(
 
     if (gid == DEBUG_GID) {
         printf("Finish iteration with integrand: %f\n", Radiance_Filter(film, reservoir->sample.integrand));
-    }
-
-    if (reservoir->sample.rc.pathDepth == -1 
-        || reservoir->sample.rc.pathDepth > reservoir->sample.pathDepth) {
-        return;
     }
 
     Radiance_Scale(film,

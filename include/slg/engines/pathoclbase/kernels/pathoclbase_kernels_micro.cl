@@ -547,31 +547,31 @@ __kernel void AdvancePaths_MK_RT_DL(
 								VLOAD3F(&rays[gid].d.x)))) *
 							VLOAD3F(taskDirectLight->illumInfo.lightIrradiance.c);
 					VSTORE3F(irradiance, sampleResult->irradiance.c);
-				}
 
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-				const EyePathInfo* pathInfo = &eyePathInfos[gid];
-				// Add NEE-illuminated (with cheater BSDF) sample into the reservoir.
-				SampleResult postfix;
-				SampleResult_Init(&postfix);
-				float3 throughput = VLOAD3F(taskState->currentThroughput.c);
-				if (pathInfo->depth.depth == 1) {
-					// reconnection vertex
-					throughput /= VLOAD3F(taskState->lastDirectLightBsdfEval.c);
-				}
-				// Store postfix radiance with only current vertex throughput
-				SampleResult_AddDirectLight(&taskConfig->film,
-					&postfix, taskDirectLight->illumInfo.lightID,
-					BSDF_GetEventTypes(bsdf MATERIALS_PARAM),
-					throughput, lightRadiance,
-					1.f);
-				
-				RespirReservoir_AddNEEVertex(&taskState->reservoir, VLOAD3F(&bsdf->hitPoint.fixedDir.x),
-					sampleResult->radiancePerPixelNormalized, postfix.radiancePerPixelNormalized,
-					taskState->lastDirectLightMisWeight, taskState->rrProbProd, 
-					taskDirectLight->illumInfo.directPdfW * taskDirectLight->illumInfo.pickPdf,
-					pathInfo->depth.depth, &taskState->seedReservoirSampling, &taskConfig->film);
+					const EyePathInfo* pathInfo = &eyePathInfos[gid];
+					// Add NEE-illuminated (with cheater BSDF) sample into the reservoir.
+					SampleResult postfix;
+					SampleResult_Init(&postfix);
+					float3 throughput = VLOAD3F(taskState->currentThroughput.c);
+					if (pathInfo->depth.depth == 1) {
+						// reconnection vertex
+						throughput /= VLOAD3F(taskState->lastDirectLightBsdfEval.c);
+					}
+					// Store postfix radiance with only current vertex throughput
+					SampleResult_AddDirectLight(&taskConfig->film,
+						&postfix, taskDirectLight->illumInfo.lightID,
+						BSDF_GetEventTypes(bsdf MATERIALS_PARAM),
+						throughput, lightRadiance,
+						1.f);
+					
+					RespirReservoir_AddNEEVertex(&taskState->reservoir, VLOAD3F(&bsdf->hitPoint.fixedDir.x),
+						sampleResult->radiancePerPixelNormalized, postfix.radiancePerPixelNormalized,
+						taskState->lastDirectLightMisWeight, taskState->rrProbProd, 
+						taskDirectLight->illumInfo.directPdfW * taskDirectLight->illumInfo.pickPdf,
+						pathInfo->depth.depth, &taskState->seedReservoirSampling, &taskConfig->film);
 #endif
+				}
 			}
 
 			taskDirectLight->directLightResult = ILLUMINATED;
@@ -860,26 +860,28 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 	__constant const Film* restrict film = &taskConfig->film;
 	RespirReservoir* reservoir = &taskState->reservoir;
 	RcVertex* rc = &taskState->reservoir.sample.rc;
-	// reconnection shift always chooses primary vertex as prefix vertex
-	if (pathInfo->depth.depth == 0) { 
-		// We've just hit the primary vertex
-		// The BSDF info above is the scattering info to the secondary vertex
-		if (get_global_id(0) == DEBUG_GID) {
-			printf("Initial path resampling: Cached prefix vertex info.\n");
+	// make sure both prefix and rcvertex are not specular vertices
+	if (!(bsdfEvent & SPECULAR)) {
+		// reconnection shift always chooses primary vertex as prefix vertex
+		if (pathInfo->depth.depth == 0) { 
+			// We've just hit the primary vertex
+			// The BSDF info above is the scattering info to the secondary vertex
+			if (get_global_id(0) == DEBUG_GID) {
+				printf("Initial path resampling: Cached prefix vertex info.\n");
+			}
+			reservoir->sample.prefixBsdf = *bsdf;
+			reservoir->sample.hitTime = ray->time;
+			reservoir->sample.rc.prefixToRcPdf = bsdfPdfW;
+			reservoir->sample.rc.pathDepth = -2;
+		// Secondary vertex, reconnection vertex
+		// reconnection shift always chooses secondary vertex as rc vertex
+		// Store incident direction, pdf, and bsdf value
+		} else if (pathInfo->depth.depth == 1 && reservoir->sample.rc.pathDepth == -2) {
+			// We've just hit the secondary vertex
+			// The BSDF info above is the scattering info to the tertiary vertex
+			RespirReservoir_SetRcVertex(reservoir, pathInfo->depth.depth, bsdf, sampledDir, bsdfPdfW, bsdfSample, worldRadius 
+				MATERIALS_PARAM);
 		}
-		reservoir->sample.prefixBsdf = *bsdf;
-		reservoir->sample.hitTime = ray->time;
-		reservoir->sample.rc.prefixToRcPdf = bsdfPdfW;
-	}
-	
-	// Secondary vertex, reconnection vertex
-	// reconnection shift always chooses secondary vertex as rc vertex
-	// Store incident direction, pdf, and bsdf value
-	if (pathInfo->depth.depth == 1) {
-		// We've just hit the secondary vertex
-		// The BSDF info above is the scattering info to the tertiary vertex
-		RespirReservoir_SetRcVertex(reservoir, pathInfo->depth.depth, bsdf, sampledDir, bsdfPdfW, bsdfSample, worldRadius 
-			MATERIALS_PARAM);
 	}
 #endif
 
