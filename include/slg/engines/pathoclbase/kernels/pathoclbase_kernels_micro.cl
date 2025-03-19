@@ -551,23 +551,33 @@ __kernel void AdvancePaths_MK_RT_DL(
 
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
 				const EyePathInfo* pathInfo = &eyePathInfos[gid];
+				// Sample radiance and irradiance from this light vertex alone.
+				SampleResult radiance;
+				SampleResult_Init(&radiance);
+				SampleResult_AddDirectLight(&taskConfig->film,
+					&radiance, taskDirectLight->illumInfo.lightID,
+					BSDF_GetEventTypes(bsdf
+						MATERIALS_PARAM),
+					VLOAD3F(taskState->throughput.c), lightRadiance,
+					1.f);
+
 				// Add NEE-illuminated (with cheater BSDF) sample into the reservoir.
-				SampleResult postfix;
-				SampleResult_Init(&postfix);
+				SampleResult irradiance;
+				SampleResult_Init(&irradiance);
 				float3 throughput = VLOAD3F(taskState->currentThroughput.c);
 				if (pathInfo->depth.depth == 1) {
 					// reconnection vertex
 					throughput /= VLOAD3F(taskState->lastDirectLightBsdfEval.c);
 				}
-				// Store postfix radiance with only current vertex throughput
+				// Store irradiance radiance with only current vertex throughput
 				SampleResult_AddDirectLight(&taskConfig->film,
-					&postfix, taskDirectLight->illumInfo.lightID,
+					&irradiance, taskDirectLight->illumInfo.lightID,
 					BSDF_GetEventTypes(bsdf MATERIALS_PARAM),
 					throughput, lightRadiance,
 					1.f);
 				
 				RespirReservoir_AddNEEVertex(&taskState->reservoir, VLOAD3F(&bsdf->hitPoint.fixedDir.x),
-					sampleResult->radiancePerPixelNormalized, postfix.radiancePerPixelNormalized,
+					radiance.radiancePerPixelNormalized, irradiance.radiancePerPixelNormalized,
 					taskState->lastDirectLightMisWeight, taskState->rrProbProd, 
 					taskDirectLight->illumInfo.directPdfW * taskDirectLight->illumInfo.pickPdf,
 					pathInfo->depth.depth, &taskState->seedReservoirSampling, &taskConfig->film);
