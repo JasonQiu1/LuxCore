@@ -642,10 +642,6 @@ __kernel void SpatialReuse_MK_FINISH_RESAMPLE(
     /*
     //	Resample the shifted reservoir into the spatial reuse reservoir.
     */
-
-    // Set shifted integrand back before merging neighbor with spatial reuse data.
-    Radiance_Copy(film, shiftedIntegrand, shifted->sample.integrand);
-
     RespirReservoir_Merge(&spatialReuseData->spatialReuseReservoir, 
         shifted->sample.integrand, shiftedJacobian, shifted,
         neighborWeight, &task->seed, film);
