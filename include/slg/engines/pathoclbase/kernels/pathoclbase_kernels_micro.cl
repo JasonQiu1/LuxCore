@@ -881,6 +881,8 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 			// The BSDF info above is the scattering info to the tertiary vertex
 			RespirReservoir_SetRcVertex(reservoir, pathInfo->depth.depth, bsdf, sampledDir, bsdfPdfW, bsdfSample, worldRadius 
 				MATERIALS_PARAM);
+			// store BSDF incident direction in case overriden by NEE this run
+			VSTORE3F(sampledDir, &taskState->rcIncidentDir.x);
 		}
 	}
 #endif

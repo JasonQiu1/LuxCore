@@ -290,7 +290,8 @@ OPENCL_FORCE_INLINE void DirectHitFiniteLight(__constant const Film* restrict fi
 		
 		// We use depth - 1 here so that we can remove the weight from the reconnection vertex 
 		// no longer being MIS sampled by NEE
-		RespirReservoir_AddEscapeVertex(&taskState->reservoir, VLOAD3F(&bsdf->hitPoint.fixedDir.x),
+		// the incident direction from RC vertex may have been overriden by NEE, set back to BSDF incident direction
+		RespirReservoir_AddEscapeVertex(&taskState->reservoir, VLOAD3F(&taskState->rcIncidentDir.x),
 				sampleResult->radiancePerPixelNormalized, postfix.radiancePerPixelNormalized,
 				weight, taskState->rrProbProd, directPdfW * lightPickProb,
 				pathInfo->depth.depth - 1, &taskState->seedReservoirSampling, film);

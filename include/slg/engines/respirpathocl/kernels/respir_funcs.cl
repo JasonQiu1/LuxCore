@@ -158,6 +158,7 @@ OPENCL_FORCE_INLINE void Respir_Init(GPUTaskState* restrict taskState) {
 	taskState->rrProbProd = 1.0f;
 	taskState->lastDirectLightMisWeight = 1.0f;
 	VSTORE3F(WHITE, taskState->lastDirectLightBsdfEval.c);
+	VSTORE3F(BLACK, taskState->rcIncidentDir);
 }
 
 /*
@@ -240,11 +241,12 @@ OPENCL_FORCE_INLINE bool RespirReservoir_AddVertex(
 		// pathPdf is cumulative product of all bsdfPdfW and connectionThroughput
 		// rrProbProd is the cumulative product of the russian roulette probability so far
 		const float misWeight, const float rrProbProd, const float lightPdf,
-		const int pathDepth, Seed* restrict seed, __constant const Film* restrict film)
+		const int pathDepth, Seed* restrict seed, __constant const Film* restrict film, const bool isNee)
 {
 	// Resample for path integrand
 	// Can't choose primary vertices
 	if (pathDepth >= 1 && RespirReservoir_Add(reservoir, integrand, rrProbProd, seed, film)) {
+		reservoir->sample.isLastVertexNee = isNee;
 		reservoir->sample.pathDepth = pathDepth;
 		reservoir->sample.lightPdf = lightPdf;
 		if (get_global_id(0) == DEBUG_GID) {
@@ -276,9 +278,8 @@ OPENCL_FORCE_INLINE bool RespirReservoir_AddNEEVertex(
 	if (get_global_id(0) == DEBUG_GID) {
 		printf("Initial path resampling (NEE): Resampling with rr prob %f at depth %d\n", rrProbProd, pathDepth);
 	}
-	bool selected = RespirReservoir_AddVertex(reservoir, incidentDir, integrand, postfixRadiance, misWeight, rrProbProd, lightPdf, pathDepth, seed, film);
+	bool selected = RespirReservoir_AddVertex(reservoir, incidentDir, integrand, postfixRadiance, misWeight, rrProbProd, lightPdf, pathDepth, seed, film, true);
 	if (selected && pathDepth == reservoir->sample.rc.pathDepth) {
-		reservoir->sample.isLastVertexNee = true;
 		Radiance_Scale(film, reservoir->sample.rc.irradiance, 
 			lightPdf / misWeight, reservoir->sample.rc.irradiance);
 	}
@@ -301,9 +302,8 @@ OPENCL_FORCE_INLINE bool RespirReservoir_AddEscapeVertex(
 	if (get_global_id(0) == DEBUG_GID) {
 		printf("Initial path resampling (BSDF/Escape): Resampling with rr prob %f at depth %d\n", rrProbProd, pathDepth);
 	}
-	bool selected = RespirReservoir_AddVertex(reservoir, incidentDir, integrand, postfixRadiance, misWeight, rrProbProd, lightPdf, pathDepth, seed, film);
+	bool selected = RespirReservoir_AddVertex(reservoir, incidentDir, integrand, postfixRadiance, misWeight, rrProbProd, lightPdf, pathDepth, seed, film, false);
 	if (selected && pathDepth == reservoir->sample.rc.pathDepth) {
-		reservoir->sample.isLastVertexNee = false;
 		Radiance_Scale(film, reservoir->sample.rc.irradiance, 
 			1.0f / misWeight, reservoir->sample.rc.irradiance);
 	}
