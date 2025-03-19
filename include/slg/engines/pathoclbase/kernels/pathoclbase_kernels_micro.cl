@@ -547,31 +547,31 @@ __kernel void AdvancePaths_MK_RT_DL(
 								VLOAD3F(&rays[gid].d.x)))) *
 							VLOAD3F(taskDirectLight->illumInfo.lightIrradiance.c);
 					VSTORE3F(irradiance, sampleResult->irradiance.c);
+				}
 
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-					const EyePathInfo* pathInfo = &eyePathInfos[gid];
-					// Add NEE-illuminated (with cheater BSDF) sample into the reservoir.
-					SampleResult postfix;
-					SampleResult_Init(&postfix);
-					float3 throughput = VLOAD3F(taskState->currentThroughput.c);
-					if (pathInfo->depth.depth == 1) {
-						// reconnection vertex
-						throughput /= VLOAD3F(taskState->lastDirectLightBsdfEval.c);
-					}
-					// Store postfix radiance with only current vertex throughput
-					SampleResult_AddDirectLight(&taskConfig->film,
-						&postfix, taskDirectLight->illumInfo.lightID,
-						BSDF_GetEventTypes(bsdf MATERIALS_PARAM),
-						throughput, lightRadiance,
-						1.f);
-					
-					RespirReservoir_AddNEEVertex(&taskState->reservoir, VLOAD3F(&bsdf->hitPoint.fixedDir.x),
-						sampleResult->radiancePerPixelNormalized, postfix.radiancePerPixelNormalized,
-						taskState->lastDirectLightMisWeight, taskState->rrProbProd, 
-						taskDirectLight->illumInfo.directPdfW * taskDirectLight->illumInfo.pickPdf,
-						pathInfo->depth.depth, &taskState->seedReservoirSampling, &taskConfig->film);
-#endif
+				const EyePathInfo* pathInfo = &eyePathInfos[gid];
+				// Add NEE-illuminated (with cheater BSDF) sample into the reservoir.
+				SampleResult postfix;
+				SampleResult_Init(&postfix);
+				float3 throughput = VLOAD3F(taskState->currentThroughput.c);
+				if (pathInfo->depth.depth == 1) {
+					// reconnection vertex
+					throughput /= VLOAD3F(taskState->lastDirectLightBsdfEval.c);
 				}
+				// Store postfix radiance with only current vertex throughput
+				SampleResult_AddDirectLight(&taskConfig->film,
+					&postfix, taskDirectLight->illumInfo.lightID,
+					BSDF_GetEventTypes(bsdf MATERIALS_PARAM),
+					throughput, lightRadiance,
+					1.f);
+				
+				RespirReservoir_AddNEEVertex(&taskState->reservoir, VLOAD3F(&bsdf->hitPoint.fixedDir.x),
+					sampleResult->radiancePerPixelNormalized, postfix.radiancePerPixelNormalized,
+					taskState->lastDirectLightMisWeight, taskState->rrProbProd, 
+					taskDirectLight->illumInfo.directPdfW * taskDirectLight->illumInfo.pickPdf,
+					pathInfo->depth.depth, &taskState->seedReservoirSampling, &taskConfig->film);
+#endif
 			}
 
 			taskDirectLight->directLightResult = ILLUMINATED;
