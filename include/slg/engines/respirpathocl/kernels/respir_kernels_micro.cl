@@ -707,7 +707,12 @@ __kernel void SpatialReuse_MK_FINISH_ITERATION(
     */
 
     // Copy spatial reuse reservoir to central reservoir.
+    // Except for prefixBsdf and hittime info
+    const BSDF prefixBsdf = central->sample.prefixBsdf;
+    const float prefixHitTime = central->sample.hitTime;
     *central = *srReservoir;
+    central->sample.prefixBsdf = prefixBsdf;
+    central->sample.hitTime = prefixHitTime;
 
     // Prime neighbor search
     spatialReuseData->numNeighborsLeft = numSpatialNeighbors;
