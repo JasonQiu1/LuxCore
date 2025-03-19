@@ -542,8 +542,8 @@ __kernel void AdvancePaths_MK_RT_DL(
 				//
 				// Note: irradiance samples the light sources only here (i.e. no
 				// direct hit, no MIS, it would be useless)
-				if ((sampleResult->firstPathVertex) && !(BSDF_GetEventTypes(bsdf
-							MATERIALS_PARAM) & SPECULAR)) {
+				BSDFEvent event = BSDF_GetEventTypes(bsdf MATERIALS_PARAM);
+				if ((sampleResult->firstPathVertex) && !(event & SPECULAR)) {
 					const float3 irradiance = (M_1_PI_F * fabs(dot(
 								VLOAD3F(&bsdf->hitPoint.shadeN.x),
 								VLOAD3F(&rays[gid].d.x)))) *

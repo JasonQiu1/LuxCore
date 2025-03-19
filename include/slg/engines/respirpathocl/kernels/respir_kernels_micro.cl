@@ -47,7 +47,7 @@ __kernel void SpatialReuse_MK_INIT(
     //--------------------------------------------------------------------------
     // Start of variables setup
     //--------------------------------------------------------------------------
-    SampleResult *sampleResult = &sampleResultsBuff[gid];
+    const SampleResult *sampleResult = &sampleResultsBuff[gid];
     const Film* restrict film = &taskConfig->film;
     RespirReservoir* reservoir = &tasksState[gid].reservoir;
     SpatialReuseData* restrict spatialReuseData = &spatialReuseDatas[gid];
