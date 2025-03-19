@@ -872,11 +872,11 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 			reservoir->sample.prefixBsdf = *bsdf;
 			reservoir->sample.hitTime = ray->time;
 			reservoir->sample.rc.prefixToRcPdf = bsdfPdfW;
-			reservoir->sample.rc.pathDepth = -2;
+			reservoir->sample.rc.rcPathDepth = -2;
 		// Secondary vertex, reconnection vertex
 		// reconnection shift always chooses secondary vertex as rc vertex
 		// Store incident direction, pdf, and bsdf value
-		} else if (pathInfo->depth.depth == 1 && reservoir->sample.rc.pathDepth == -2) {
+		} else if (pathInfo->depth.depth == 1 && reservoir->sample.rc.rcPathDepth == -2) {
 			// We've just hit the secondary vertex
 			// The BSDF info above is the scattering info to the tertiary vertex
 			RespirReservoir_SetRcVertex(reservoir, pathInfo->depth.depth, bsdf, sampledDir, bsdfPdfW, bsdfSample, worldRadius 

@@ -81,7 +81,7 @@ __kernel void SpatialReuse_MK_INIT(
     spatialReuseData->canonicalMisWeight = 1.f;
 
     // Skip reuse if this pixel does not have a valid rc vertex
-    if (reservoir->sample.rc.pathDepth <= -1 || reservoir->sample.rc.pathDepth > reservoir->sample.pathDepth) {
+    if (reservoir->sample.rc.rcPathDepth <= -1 || reservoir->sample.rc.rcPathDepth > reservoir->sample.rc.pathDepth) {
         return;
     }
 
@@ -204,9 +204,9 @@ __kernel void SpatialReuse_MK_SHIFT(
     const RespirReservoir* dst = &tasksState[shiftInOutData->shiftDstGid].reservoir;
     const RcVertex* rc = &src->sample.rc;
 
-    bool isRcVertexFinal = src->sample.pathDepth == rc->pathDepth;
-    bool isRcVertexEscapedVertex = src->sample.pathDepth + 1 == rc->pathDepth && !src->sample.isLastVertexNee;
-    bool isRcVertexNEE = isRcVertexFinal && src->sample.isLastVertexNee;
+    bool isRcVertexFinal = src->sample.rc.pathDepth == rc->pathDepth;
+    bool isRcVertexEscapedVertex = src->sample.rc.pathDepth + 1 == rc->pathDepth && !src->sample.rc.isLastVertexNee;
+    bool isRcVertexNEE = isRcVertexFinal && src->sample.rc.isLastVertexNee;
 
     // Initialize image maps page pointer table
     INIT_IMAGEMAPS_PAGES
@@ -331,7 +331,7 @@ __kernel void SpatialReuse_MK_SHIFT(
         if (!isRcVertexNEE) {
             dstPdf2 = dstRcIncidentPdf;
         } else {
-            dstPdf2 = src->sample.lightPdf;
+            dstPdf2 = src->sample.rc.lightPdf;
         }
     }
     if (isRcVertexEscapedVertex) {
@@ -356,7 +356,7 @@ __kernel void SpatialReuse_MK_SHIFT(
     // TODO: might not need this if we're not using multi-lobed materials
     // if (isRcVertexEscapedVertex) {
     //     Radiance_Scale(film, out->sample.integrand,
-    //         PowerHeuristic(dstPdf, src->sample.lightPdf), // supposed to be dstPdf evaluated on all lobes at dst prefix vertex
+    //         PowerHeuristic(dstPdf, src->sample.rc.lightPdf), // supposed to be dstPdf evaluated on all lobes at dst prefix vertex
     //         out->sample.integrand);
     //     if (get_global_id(0) == DEBUG_GID) {
     //         printf("Correct mis weights for NEE paths ending with rc vertex, jacobian: %f\n", out->sample.rc.jacobian);
@@ -366,9 +366,9 @@ __kernel void SpatialReuse_MK_SHIFT(
     // if (isRcVertexFinal) {
     //     float misWeight = 1.0f;
     //     if (isRcVertexNEE) {
-    //         misWeight = PowerHeuristic(src->sample.lightPdf, dstRcIncidentPdf); // supposed to be dstPdf evaluated on all lobes at dst prefix vertex
+    //         misWeight = PowerHeuristic(src->sample.rc.lightPdf, dstRcIncidentPdf); // supposed to be dstPdf evaluated on all lobes at dst prefix vertex
     //     } else {
-    //         misWeight = PowerHeuristic(dstRcIncidentPdf, src->sample.lightPdf); // supposed to be dstPdf evaluated on all lobes at dst prefix vertex
+    //         misWeight = PowerHeuristic(dstRcIncidentPdf, src->sample.rc.lightPdf); // supposed to be dstPdf evaluated on all lobes at dst prefix vertex
     //     }
     //     // TODO: might not need this if we're not using multi-lobed materials
     //     Radiance_Scale(film, out->sample.integrand,
@@ -719,7 +719,7 @@ __kernel void SpatialReuse_MK_FINISH_ITERATION(
     spatialReuseData->canonicalMisWeight = 1.f;
 
     // Skip reuse if this pixel does not have a valid rc vertex
-    if (central->sample.rc.pathDepth <= -1 || central->sample.rc.pathDepth > central->sample.pathDepth) {
+    if (central->sample.rc.rcPathDepth <= -1 || central->sample.rc.rcPathDepth > central->sample.rc.pathDepth) {
         return;
     }
 

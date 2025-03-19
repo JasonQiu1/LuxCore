@@ -56,7 +56,10 @@ typedef struct {
 	Spectrum incidentBsdfValue; // cache bsdf value from rc vertex towards incident dir
 	float prefixToRcPdf; // cache pdf from prefix point towards this rc vertex 
 	float jacobian; // cache the prefix vertex part of the jacobian (squared distance to self rc vertex / cos angle to norm of rc vertex)
-	int pathDepth; // -1 (no rcVertex), 0 is primary hit, 1 is secondary hit, ...
+	int rcPathDepth; // -1 (no rcVertex), 0 is primary hit, 1 is secondary hit, ...
+	int pathDepth; // depth of the path sample
+	float lightPdf; // the NEE light pick probability of the sample
+	bool isLastVertexNee; // is the last vertex in the path sample NEE sampled?
 } RcVertex;
 
 // Stores reuse information about a selected ReSPIR sample. (spatial reuse only)
@@ -64,10 +67,7 @@ typedef struct {
 	Spectrum integrand[FILM_MAX_RADIANCE_GROUP_COUNT]; // the cached integrand of the path, updated each time a new sample is selected
 	BSDF prefixBsdf; // the BSDF point where the vertex before the rc vertex was hit
 	RcVertex rc; // the chosen rc vertex for this path
-	float lightPdf; // the NEE light pick probability of the sample
 	float hitTime; // time the prefix vertex was hit. we use this to shoot a visibility ray to the rc vertex
-	int pathDepth; // depth of the path sample
-	bool isLastVertexNee; // is the last vertex in the path sample NEE sampled?
 } RespirSample;
 
 // A streaming random-sampling reservoir for spatial reuse.

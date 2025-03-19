@@ -134,12 +134,14 @@ OPENCL_FORCE_INLINE void Radiance_Copy(__constant const Film* restrict film,
 OPENCL_FORCE_INLINE void RespirReservoir_Init(RespirReservoir* restrict reservoir) {
 	reservoir->weight = 0.0f;
 	reservoir->M = 0.0f;
+
 	Radiance_Clear(reservoir->sample.integrand);
 	VSTORE3F(BLACK, &reservoir->sample.prefixBsdf.hitPoint.p.x);
-	reservoir->sample.lightPdf = 0.0f;
 	reservoir->sample.hitTime = 0.0f;
-	reservoir->sample.pathDepth = -1;
-	reservoir->sample.isLastVertexNee = false;
+
+	reservoir->sample.rc.lightPdf = 0.0f;
+	reservoir->sample.rc.pathDepth = -1;
+	reservoir->sample.rc.isLastVertexNee = false;
 	Radiance_Clear(reservoir->sample.rc.irradiance);
 	VSTORE3F(BLACK, &reservoir->sample.rc.bsdf.hitPoint.p.x);
 	VSTORE3F(WHITE, &reservoir->sample.rc.incidentDir.x);
@@ -147,7 +149,7 @@ OPENCL_FORCE_INLINE void RespirReservoir_Init(RespirReservoir* restrict reservoi
 	reservoir->sample.rc.incidentPdf = 1.0f;
 	reservoir->sample.rc.prefixToRcPdf = 1.0f;
 	reservoir->sample.rc.jacobian = 1.0f;
-	reservoir->sample.rc.pathDepth = -1;
+	reservoir->sample.rc.rcPathDepth = -1;
 }
 
 OPENCL_FORCE_INLINE void Respir_Init(GPUTaskState* restrict taskState) {
@@ -223,7 +225,7 @@ OPENCL_FORCE_INLINE bool RespirReservoir_Merge(RespirReservoir* restrict outRese
 		);
 	}
 	if (Rnd_FloatValue(seed) * outReservoir->weight <= weight) {
-		outReservoir->sample = inReservoir->sample;
+		outReservoir->sample.rc = inReservoir->sample.rc;
 		Radiance_Copy(film, inRadiance, outReservoir->sample.integrand);
 		return true;
 	}
@@ -246,14 +248,14 @@ OPENCL_FORCE_INLINE bool RespirReservoir_AddVertex(
 	// Resample for path integrand
 	// Can't choose primary vertices
 	if (pathDepth >= 1 && RespirReservoir_Add(reservoir, integrand, rrProbProd, seed, film)) {
-		reservoir->sample.isLastVertexNee = isNee;
-		reservoir->sample.pathDepth = pathDepth;
-		reservoir->sample.lightPdf = lightPdf;
+		reservoir->sample.rc.isLastVertexNee = isNee;
+		reservoir->sample.rc.pathDepth = pathDepth;
+		reservoir->sample.rc.lightPdf = lightPdf;
 		if (get_global_id(0) == DEBUG_GID) {
 			printf("\tSelected new vertex at depth: %d\n", pathDepth);
 		}
 		Radiance_Copy(film, postfixRadiance, reservoir->sample.rc.irradiance);
-		if (pathDepth == reservoir->sample.rc.pathDepth) {
+		if (pathDepth == reservoir->sample.rc.rcPathDepth) {
 			// cache reconnection vertex info
 			VSTORE3F(incidentDir, &reservoir->sample.rc.incidentDir.x);
 		}
@@ -279,7 +281,7 @@ OPENCL_FORCE_INLINE bool RespirReservoir_AddNEEVertex(
 		printf("Initial path resampling (NEE): Resampling with rr prob %f at depth %d\n", rrProbProd, pathDepth);
 	}
 	bool selected = RespirReservoir_AddVertex(reservoir, incidentDir, integrand, postfixRadiance, misWeight, rrProbProd, lightPdf, pathDepth, seed, film, true);
-	if (selected && pathDepth == reservoir->sample.rc.pathDepth) {
+	if (selected && pathDepth == reservoir->sample.rc.rcPathDepth) {
 		Radiance_Scale(film, reservoir->sample.rc.irradiance, 
 			lightPdf / misWeight, reservoir->sample.rc.irradiance);
 	}
@@ -303,7 +305,7 @@ OPENCL_FORCE_INLINE bool RespirReservoir_AddEscapeVertex(
 		printf("Initial path resampling (BSDF/Escape): Resampling with rr prob %f at depth %d\n", rrProbProd, pathDepth);
 	}
 	bool selected = RespirReservoir_AddVertex(reservoir, incidentDir, integrand, postfixRadiance, misWeight, rrProbProd, lightPdf, pathDepth, seed, film, false);
-	if (selected && pathDepth == reservoir->sample.rc.pathDepth) {
+	if (selected && pathDepth == reservoir->sample.rc.rcPathDepth) {
 		Radiance_Scale(film, reservoir->sample.rc.irradiance, 
 			1.0f / misWeight, reservoir->sample.rc.irradiance);
 	}
@@ -336,7 +338,7 @@ OPENCL_FORCE_INLINE bool RespirReservoir_SetRcVertex(
 		&& BSDF_GetGlossiness(bsdf MATERIALS_PARAM) <= maxGlossiness) {
 		// cache partial jacobian here (squared distance / cos angle from rc norm)
 		reservoir->sample.rc.jacobian = distanceSquared / cosAngle;
-		reservoir->sample.rc.pathDepth = pathDepth;
+		reservoir->sample.rc.rcPathDepth = pathDepth;
 		reservoir->sample.rc.bsdf = *bsdf;
 		return true;
 	} 
