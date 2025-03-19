@@ -702,7 +702,7 @@ __kernel void SpatialReuse_MK_FINISH_ITERATION(
     }
 
     float srIntegrand = Radiance_Filter(film, srReservoir->sample.integrand);
-    if (srIntegrand <= 0.f || isnan(srIntegrand) || isinf(srIntegrand)) {
+    if (srIntegrand <= 0.f || isnan(srIntegrand) || isinf(srIntegrand) || srReservoir->weight <= 0.0f) {
         srIntegrand = 0.0f;
         srReservoir->weight = 0.0f;
     } else {
