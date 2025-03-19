@@ -158,7 +158,7 @@ OPENCL_FORCE_INLINE void Respir_Init(GPUTaskState* restrict taskState) {
 	taskState->rrProbProd = 1.0f;
 	taskState->lastDirectLightMisWeight = 1.0f;
 	VSTORE3F(WHITE, taskState->lastDirectLightBsdfEval.c);
-	VSTORE3F(BLACK, taskState->rcIncidentDir);
+	VSTORE3F(BLACK, &taskState->rcIncidentDir.x);
 }
 
 /*
