@@ -87,7 +87,7 @@ __kernel void AdvancePaths_MK_RT_NEXT_VERTEX(
 	taskState->throughShadowTransparency = throughShadowTransparency;
 	VSTORE3F(connectionThroughput * VLOAD3F(taskState->throughput.c), taskState->throughput.c);
 #if defined(RENDER_ENGINE_RESPIRPATHOCL)
-	// VSTORE3F(connectionThroughput * VLOAD3F(taskState->currentThroughput.c), taskState->currentThroughput.c);
+	VSTORE3F(connectionThroughput * VLOAD3F(taskState->currentThroughput.c), taskState->currentThroughput.c);
 	VSTORE3F(connectionThroughput * VLOAD3F(taskState->pathPdf.c), taskState->pathPdf.c);
 #endif
 
