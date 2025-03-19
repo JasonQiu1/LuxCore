@@ -278,9 +278,18 @@ OPENCL_FORCE_INLINE void DirectHitFiniteLight(__constant const Film* restrict fi
 			// Note: mats[bsdf->materialIndex].avgPassThroughTransparency = lightSource->GetAvgPassThroughTransparency()
 			weight = PowerHeuristic(pathInfo->lastBSDFPdfW * Light_GetAvgPassThroughTransparency(light LIGHTS_PARAM), directPdfW * lightPickProb);
 		}
+// We will use spatial reuse to add the resampled radiance back in
+#if !defined(RENDER_ENGINE_RESPIRPATHOCL) 
 		SampleResult_AddEmission(film, sampleResult, BSDF_GetLightID(bsdf
 				MATERIALS_PARAM), VLOAD3F(taskState->throughput.c), weight * emittedRadiance);
+#endif
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
+		if (pathInfo->depth.depth == 1) {
+			// add direct lighting to the sampleresult
+			SampleResult_AddEmission(film, sampleResult, BSDF_GetLightID(bsdf
+				MATERIALS_PARAM), VLOAD3F(taskState->throughput.c), weight * emittedRadiance);
+		}
+
 		// Sample radiance and irradiance from this light vertex alone.
 		SampleResult radiance;
 		SampleResult_Init(&radiance);

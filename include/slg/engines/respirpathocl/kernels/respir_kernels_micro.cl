@@ -758,21 +758,15 @@ __kernel void SpatialReuse_MK_FINISH_REUSE(
     // End of variables setup
     //--------------------------------------------------------------------------
 
-    // Copy final sample's radiance from reservoir to sampleResultsBuff[gid] to be splatted like normal
-    Radiance_Copy(film,
-        reservoir->sample.integrand,
-        sampleResult->radiancePerPixelNormalized);
-
-    if (gid == DEBUG_GID) {
-        printf("Finish iteration with integrand: %f\n", Radiance_Filter(film, reservoir->sample.integrand));
-    }
-
-    Radiance_Scale(film,
+    // Add final sample's radiance from reservoir to sampleResultsBuff[gid] to be splatted like normal
+    Radiance_AddWeighted(film,
         sampleResult->radiancePerPixelNormalized,
+        reservoir->sample.integrand,
         reservoir->weight,
         sampleResult->radiancePerPixelNormalized);
+
     if (gid == DEBUG_GID) {
-        printf("\tIntegrand after GRIS: %f\n", Radiance_Filter(film, sampleResult->radiancePerPixelNormalized));
+        printf("Finish iteration with integrand (after GRIS): %f\n", Radiance_Filter(film, reservoir->sample.integrand));
     }
 
     // maintain integrity of pathtracer by using time from before spatial reuse

@@ -527,13 +527,15 @@ __kernel void AdvancePaths_MK_RT_DL(
 
 			if (!BSDF_IsShadowCatcher(bsdf MATERIALS_PARAM)) {
 				const float3 lightRadiance = VLOAD3F(taskDirectLight->illumInfo.lightRadiance.c);
-
+// We will use spatial reuse to add the resampled radiance back in
+#if !defined(RENDER_ENGINE_RESPIRPATHOCL) 
 				SampleResult_AddDirectLight(&taskConfig->film,
 						sampleResult, taskDirectLight->illumInfo.lightID,
 						BSDF_GetEventTypes(bsdf
 							MATERIALS_PARAM),
 						VLOAD3F(taskState->throughput.c), lightRadiance,
 						1.f);
+#endif
 
 				// The first path vertex is not handled by AddDirectLight(). This is valid
 				// for irradiance AOV only if it is not a SPECULAR material.
@@ -551,6 +553,17 @@ __kernel void AdvancePaths_MK_RT_DL(
 
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
 				const EyePathInfo* pathInfo = &eyePathInfos[gid];
+
+				if (pathInfo->depth.depth == 0) {
+					// add direct lighting to the sampleresult
+					SampleResult_AddDirectLight(&taskConfig->film,
+						sampleResult, taskDirectLight->illumInfo.lightID,
+						BSDF_GetEventTypes(bsdf
+							MATERIALS_PARAM),
+						VLOAD3F(taskState->throughput.c), lightRadiance,
+						1.f);
+				}
+
 				// Sample radiance and irradiance from this light vertex alone.
 				SampleResult radiance;
 				SampleResult_Init(&radiance);

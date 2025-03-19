@@ -93,7 +93,7 @@ OPENCL_FORCE_INLINE void Radiance_Add(__constant const Film* restrict film,
     }
 }
 
-OPENCL_FORCE_INLINE void Radiance_Add_Weighted(__constant const Film* restrict film, 
+OPENCL_FORCE_INLINE void Radiance_AddWeighted(__constant const Film* restrict film, 
     const Spectrum* a, const Spectrum* b, const float weight, Spectrum* out) {
     for (uint i = 0; i < film->radianceGroupCount; i++) {
         VSTORE3F((VLOAD3F(a[i].c) + (VLOAD3F(b[i].c) * weight)), out[i].c);
