@@ -756,6 +756,7 @@ __kernel void SpatialReuse_MK_FINISH_REUSE(
 
     if (gid == DEBUG_GID) {
         printf("Finish iteration with integrand: %f\n", Radiance_Filter(film, reservoir->sample.integrand));
+        printf("Finish iteration with # valid neighbors: %d\n", spatialReuseData->numValidNeighbors);
     }
 
     Radiance_Scale(film,
