@@ -57,13 +57,8 @@ __kernel void SpatialReuse_MK_INIT(
     // End of variables setup
     //--------------------------------------------------------------------------
 
-    reservoir->M = 1;
-
-    // Init resampling reservoir and canonical MIS weight
-    RespirReservoir_Init(&spatialReuseData->spatialReuseReservoir);
-    spatialReuseData->canonicalMisWeight = 1.f;
-
     // Finalize initial path resampling RIS: calculate unbiased contribution weight of final sample
+    reservoir->M = 1;
     const float integrand = Radiance_Filter(film, reservoir->sample.integrand);
     if (reservoir->weight != 0) {
         reservoir->weight /= integrand;
@@ -80,11 +75,20 @@ __kernel void SpatialReuse_MK_INIT(
     spatialReuseData->numNeighborsLeft = numSpatialNeighbors;
     spatialReuseData->neighborGid = -1;
     spatialReuseData->numValidNeighbors = 0;
+
+    // Init resampling reservoir and canonical MIS weight
+    RespirReservoir_Init(&spatialReuseData->spatialReuseReservoir);
+    spatialReuseData->canonicalMisWeight = 1.f;
+
+    // Skip reuse if this pixel does not have a valid rc vertex
+    if (rc->pathDepth <= -1 || rc->pathDepth > src->sample.pathDepth) {
+        return;
+    }
+
     PixelIndexMap_Set(pixelIndexMap, filmWidth, 
             sampleResult->pixelX, sampleResult->pixelY, 
             gid);
 
-    // Prime pathstate
     pathStates[gid] = (PathState) SR_MK_NEXT_NEIGHBOR;
 }
 
@@ -199,12 +203,6 @@ __kernel void SpatialReuse_MK_SHIFT(
     const RespirReservoir* src = &tasksState[shiftInOutData->shiftSrcGid].reservoir;
     const RespirReservoir* dst = &tasksState[shiftInOutData->shiftDstGid].reservoir;
     const RcVertex* rc = &src->sample.rc;
-
-    if (rc->pathDepth <= -1 || rc->pathDepth > src->sample.pathDepth) {
-        // No reconnection vertex, invalid shift
-        Respir_HandleInvalidShift(shiftInOutData, out, &pathStates[gid]);
-        return;
-    }
 
     bool isRcVertexFinal = src->sample.pathDepth == rc->pathDepth;
     bool isRcVertexEscapedVertex = src->sample.pathDepth + 1 == rc->pathDepth && !src->sample.isLastVertexNee;
@@ -720,13 +718,19 @@ __kernel void SpatialReuse_MK_FINISH_ITERATION(
     spatialReuseData->numNeighborsLeft = numSpatialNeighbors;
     spatialReuseData->neighborGid = -1;
     spatialReuseData->numValidNeighbors = 0;
-    PixelIndexMap_Set(pixelIndexMap, filmWidth, 
-            sampleResult->pixelX, sampleResult->pixelY, 
-            gid);
 
     // Init resampling reservoir and canonical MIS weight
     RespirReservoir_Init(srReservoir);
     spatialReuseData->canonicalMisWeight = 1.f;
+
+    // Skip reuse if this pixel does not have a valid rc vertex
+    if (rc->pathDepth <= -1 || rc->pathDepth > src->sample.pathDepth) {
+        return;
+    }
+
+    PixelIndexMap_Set(pixelIndexMap, filmWidth, 
+            sampleResult->pixelX, sampleResult->pixelY, 
+            gid);
 
     pathStates[gid] = (PathState) SR_MK_NEXT_NEIGHBOR;
 }
