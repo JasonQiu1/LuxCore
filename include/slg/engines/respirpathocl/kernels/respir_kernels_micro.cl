@@ -354,31 +354,31 @@ __kernel void SpatialReuse_MK_SHIFT(
     }
 
     // TODO: might not need this if we're not using multi-lobed materials
-    // if (isRcVertexEscapedVertex) {
-    //     Radiance_Scale(film, out->sample.integrand,
-    //         PowerHeuristic(dstPdf, src->sample.rc.lightPdf), // supposed to be dstPdf evaluated on all lobes at dst prefix vertex
-    //         out->sample.integrand);
-    //     if (get_global_id(0) == DEBUG_GID) {
-    //         printf("Correct mis weights for NEE paths ending with rc vertex, jacobian: %f\n", out->sample.rc.jacobian);
-    //     }
-    // }
+    if (isRcVertexEscapedVertex) {
+        Radiance_Scale(film, out->sample.integrand,
+            PowerHeuristic(dstPdf, src->sample.rc.lightPdf), // supposed to be dstPdf evaluated on all lobes at dst prefix vertex
+            out->sample.integrand);
+        if (get_global_id(0) == DEBUG_GID) {
+            printf("Correct mis weights for NEE paths ending with rc vertex, jacobian: %f\n", out->sample.rc.jacobian);
+        }
+    }
 
-    // if (isRcVertexFinal) {
-    //     float misWeight = 1.0f;
-    //     if (isRcVertexNEE) {
-    //         misWeight = PowerHeuristic(src->sample.rc.lightPdf, dstRcIncidentPdf); // supposed to be dstPdf evaluated on all lobes at dst prefix vertex
-    //     } else {
-    //         misWeight = PowerHeuristic(dstRcIncidentPdf, src->sample.rc.lightPdf); // supposed to be dstPdf evaluated on all lobes at dst prefix vertex
-    //     }
-    //     // TODO: might not need this if we're not using multi-lobed materials
-    //     Radiance_Scale(film, out->sample.integrand,
-    //         misWeight, 
-    //         out->sample.integrand);
+    if (isRcVertexFinal) {
+        float misWeight = 1.0f;
+        if (isRcVertexNEE) {
+            misWeight = PowerHeuristic(src->sample.rc.lightPdf, dstRcIncidentPdf); // supposed to be dstPdf evaluated on all lobes at dst prefix vertex
+        } else {
+            misWeight = PowerHeuristic(dstRcIncidentPdf, src->sample.rc.lightPdf); // supposed to be dstPdf evaluated on all lobes at dst prefix vertex
+        }
+        // TODO: might not need this if we're not using multi-lobed materials
+        Radiance_Scale(film, out->sample.integrand,
+            misWeight, 
+            out->sample.integrand);
 
-    //     if (get_global_id(0) == DEBUG_GID) {
-    //         printf("Correct mis weights for paths ending with rc vertex, jacobian: %f\n", out->sample.rc.jacobian);
-    //     }
-    // }
+        if (get_global_id(0) == DEBUG_GID) {
+            printf("Correct mis weights for paths ending with rc vertex, jacobian: %f\n", out->sample.rc.jacobian);
+        }
+    }
 
     if ((isRcVertexFinal && !isRcVertexNEE) || (!isRcVertexFinal && !isRcVertexEscapedVertex)) {
         out->sample.rc.jacobian *= dstRcIncidentPdf / srcRcIncidentPdf;
