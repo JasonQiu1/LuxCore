@@ -724,7 +724,7 @@ __kernel void SpatialReuse_MK_FINISH_ITERATION(
     spatialReuseData->canonicalMisWeight = 1.f;
 
     // Skip reuse if this pixel does not have a valid rc vertex
-    if (reservoir->sample.rc.pathDepth <= -1 || reservoir->sample.rc.pathDepth > reservoir->sample.pathDepth) {
+    if (central->sample.rc.pathDepth <= -1 || central->sample.rc.pathDepth > central->sample.pathDepth) {
         return;
     }
 
