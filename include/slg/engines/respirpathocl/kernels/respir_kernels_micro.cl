@@ -643,7 +643,7 @@ __kernel void SpatialReuse_MK_FINISH_RESAMPLE(
     //	Resample the shifted reservoir into the spatial reuse reservoir.
     */
     RespirReservoir_Merge(&spatialReuseData->spatialReuseReservoir, 
-        shifted->sample.integrand, shiftedJacobian, shifted,
+        shiftedIntegrand, shiftedJacobian, shifted,
         neighborWeight, &task->seed, film);
 
     pathStates[gid] = (PathState) SR_MK_NEXT_NEIGHBOR;
