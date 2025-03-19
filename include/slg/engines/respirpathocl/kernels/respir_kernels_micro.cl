@@ -696,6 +696,11 @@ __kernel void SpatialReuse_MK_FINISH_ITERATION(
     /*
     // 	Finalize GRIS by calculating unbiased contribution weight.
     */
+
+    if (gid == DEBUG_GID) {
+        printf("Finish reuse with # valid neighbors: %d\n", spatialReuseData->numValidNeighbors);
+    }
+
     float srIntegrand = Radiance_Filter(film, srReservoir->sample.integrand);
     if (srIntegrand <= 0.f || isnan(srIntegrand) || isinf(srIntegrand)) {
         srIntegrand = 0.0f;
@@ -756,7 +761,6 @@ __kernel void SpatialReuse_MK_FINISH_REUSE(
 
     if (gid == DEBUG_GID) {
         printf("Finish iteration with integrand: %f\n", Radiance_Filter(film, reservoir->sample.integrand));
-        printf("Finish iteration with # valid neighbors: %d\n", spatialReuseData->numValidNeighbors);
     }
 
     Radiance_Scale(film,
