@@ -372,8 +372,8 @@ OPENCL_FORCE_INLINE bool Respir_IsInvalidJacobian(const float jacobianDeterminan
 // PRECONDITION: numNeighborsLeft > 0
 // TODO: upgrade to n-rooks sampling around pixel and customizable spatial radius and number of spatial neighbors
 OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(SpatialReuseData* restrict srData, 
-		const int pixelX, const int pixelY, const int i, const int spatialRadius, const int spatialDiameter
-		const int* restrict pixelIndexMap, const uint filmWidth, const uint filmHeight) 
+		const int pixelX, const int pixelY, const int i, const int spatialRadius, const int spatialDiameter,
+		const int* restrict pixelIndexMap, const uint filmWidth, const uint filmHeight)
 {	
 	srData->neighborGid = -1;
 
@@ -388,7 +388,6 @@ OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(SpatialReuseData* restrict
 		srData->neighborGid = PixelIndexMap_Get(pixelIndexMap, filmWidth, searchX, searchY);
 		// check that the neighbor is actually being worked on by a gputask
 		if (srData->neighborGid != -1) {
-			srData->numValidNeighbors++;
 			// Successfully found valid neighbor
 			if (get_global_id(0) == DEBUG_GID) {
 				printf("Pixel (%d, %d), resampling valid neighbor (for now): (%d, %d).\n", sampleResult->pixelX, sampleResult->pixelY, searchX, searchY);
