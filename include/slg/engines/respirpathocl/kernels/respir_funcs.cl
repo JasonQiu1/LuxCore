@@ -390,7 +390,7 @@ OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(SpatialReuseData* restrict
 		if (srData->neighborGid != -1) {
 			// Successfully found valid neighbor
 			if (get_global_id(0) == DEBUG_GID) {
-				printf("Pixel (%d, %d), resampling valid neighbor (for now): (%d, %d).\n", sampleResult->pixelX, sampleResult->pixelY, searchX, searchY);
+				printf("Pixel (%d, %d), resampling valid neighbor (for now): (%d, %d).\n", pixelX, pixelY, searchX, searchY);
 			}
 			return true;
 		}
