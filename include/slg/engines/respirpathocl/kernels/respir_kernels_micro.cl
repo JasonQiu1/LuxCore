@@ -129,7 +129,7 @@ __kernel void SpatialReuse_MK_NEXT_NEIGHBOR(
 #if defined(RESPIRPATHOCL_DENSE_NEIGHBORS)
             numSpatialNeighbors - spatialReuseData->numNeighborsLeft, 1 + (spatialRadius * 2)
 #else
-            tasks[gid].seed
+            &tasks[gid].seed
 #endif
         )) {
             // Found valid neighbor
@@ -519,7 +519,6 @@ __kernel void SpatialReuse_MK_RESAMPLE(
     //--------------------------------------------------------------------------
     // Start of variables setup
     //--------------------------------------------------------------------------
-    GPUTask* restrict task = &tasks[gid];
     const Film* restrict film = &taskConfig->film;
     SpatialReuseData* spatialReuseData = &spatialReuseDatas[gid];
     ShiftInOutData* shiftInOutData = &shiftInOutDatas[gid];

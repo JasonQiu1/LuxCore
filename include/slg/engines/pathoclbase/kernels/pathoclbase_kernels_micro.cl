@@ -881,9 +881,7 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 	}
 
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-	__constant const Film* restrict film = &taskConfig->film;
 	RespirReservoir* reservoir = &taskState->reservoir;
-	RcVertex* rc = &taskState->reservoir.sample.rc;
 	// make sure both prefix and rcvertex are not specular vertices
 	if (!(bsdfEvent & SPECULAR)) {
 		// reconnection shift always chooses primary vertex as prefix vertex
@@ -1003,7 +1001,6 @@ __kernel void AdvancePaths_MK_SPLAT_SAMPLE(
 
 	// Read the path state
 	__global GPUTask *task = &tasks[gid];
-	__global GPUTaskState *taskState = &tasksState[gid];
 	PathState pathState = pathStates[gid];
 	if (pathState != MK_SPLAT_SAMPLE)
 		return;
@@ -1105,7 +1102,6 @@ __kernel void AdvancePaths_MK_NEXT_SAMPLE(
 
 	// Read the path state
 	__global GPUTask *task = &tasks[gid];
-	__global GPUTaskState *taskState = &tasksState[gid];
 	PathState pathState = pathStates[gid];
 	if (pathState != MK_NEXT_SAMPLE)
 		return;
