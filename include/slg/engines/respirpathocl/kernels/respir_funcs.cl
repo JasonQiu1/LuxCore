@@ -378,7 +378,7 @@ OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(SpatialReuseData* restrict
 #if defined(RESPIRPATHOCL_DENSE_NEIGHBORS)
 		const int i, const int spatialDiameter
 #else
-		Seed* seed
+		Seed* restrict seed
 #endif
 ) {	
 	srData->neighborGid = -1;
