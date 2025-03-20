@@ -1055,7 +1055,7 @@ __kernel void AdvancePaths_MK_SPLAT_SAMPLE(
 #if !defined(RENDER_ENGINE_RESPIRPATHOCL)
 	if (taskConfig->pathTracer.pgic.indirectEnabled &&
 			(taskConfig->pathTracer.pgic.debugType == PGIC_DEBUG_SHOWINDIRECTPATHMIX) &&
-			!taskState->photonGIShowIndirectPathMixUsed)
+			!tasksState[gid].photonGIShowIndirectPathMixUsed)
 		VSTORE3F(MAKE_FLOAT3(1.f, 0.f, 0.f), sampleResult->radiancePerPixelNormalized[0].c);
 #endif
 
