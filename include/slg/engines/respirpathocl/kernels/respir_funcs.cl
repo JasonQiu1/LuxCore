@@ -327,6 +327,7 @@ OPENCL_FORCE_INLINE bool RespirReservoir_SetRcVertex(
 	
 	const float3 toRc = VLOAD3F(&bsdf->hitPoint.p.x) - VLOAD3F(&reservoir->sample.prefixBsdf.hitPoint.p.x);
 	const float distanceSquared = dot(toRc, toRc);
+	// make sure both originate from bsdf. bsdf fixed dir
 	const float cosAngle = abs(dot(VLOAD3F(&bsdf->hitPoint.fixedDir.x), BSDF_GetLandingGeometryN(bsdf)));
 	// check roughness and distance connectability requirements
 	// assume glossiness range is [0.f,1.f], and 1-glossiness is the roughness

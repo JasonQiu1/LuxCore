@@ -284,7 +284,7 @@ OPENCL_FORCE_INLINE void DirectHitFiniteLight(__constant const Film* restrict fi
 				MATERIALS_PARAM), VLOAD3F(taskState->throughput.c), weight * emittedRadiance);
 #endif
 #if defined(RENDER_ENGINE_RESPIRPATHOCL) 
-		if (pathInfo->depth.depth <= 1) {
+		if (pathInfo->depth.depth = 1) {
 			// add direct lighting to the sampleresult
 			SampleResult_AddEmission(film, sampleResult, BSDF_GetLightID(bsdf
 				MATERIALS_PARAM), VLOAD3F(taskState->throughput.c), weight * emittedRadiance);

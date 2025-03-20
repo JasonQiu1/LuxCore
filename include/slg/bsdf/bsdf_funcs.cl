@@ -181,6 +181,7 @@ OPENCL_FORCE_INLINE float BSDF_ShadowTerminatorAvoidanceFactor(const float3 Ni, 
 	return -G3 + G2 + G;
 }
 
+// both eyedir and lightdir should originate from the bsdf hit point
 OPENCL_FORCE_INLINE float3 BSDF_EvaluateWithEyeDir(__global const BSDF *bsdf,
 	const float3 eyeDir, const float3 generatedDir, BSDFEvent *event, float *directPdfW
 	MATERIALS_PARAM_DECL) {

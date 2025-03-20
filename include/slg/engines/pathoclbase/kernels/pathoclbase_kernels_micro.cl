@@ -589,7 +589,8 @@ __kernel void AdvancePaths_MK_RT_DL(
 					throughput, lightRadiance,
 					1.f);
 				
-				RespirReservoir_AddNEEVertex(&taskState->reservoir, VLOAD3F(&bsdf->hitPoint.fixedDir.x),
+				// pointing from (possibly rc) vertex to NEE light
+				RespirReservoir_AddNEEVertex(&taskState->reservoir, VLOAD3F(&rays[gid].d.x),
 					radiance.radiancePerPixelNormalized, irradiance.radiancePerPixelNormalized,
 					taskState->lastDirectLightMisWeight, taskState->rrProbProd, 
 					taskDirectLight->illumInfo.directPdfW * taskDirectLight->illumInfo.pickPdf,
