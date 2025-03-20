@@ -372,28 +372,27 @@ OPENCL_FORCE_INLINE bool Respir_IsInvalidJacobian(const float jacobianDeterminan
 // PRECONDITION: numNeighborsLeft > 0
 // TODO: upgrade to n-rooks sampling around pixel and customizable spatial radius and number of spatial neighbors
 OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(SpatialReuseData* restrict srData, 
-		const SampleResult* restrict sampleResult, const int spatialRadius,
-		const int* restrict pixelIndexMap, const uint filmWidth, const uint filmHeight, Seed* restrict seed) 
+		const int pixelX, const int pixelY, const int i, const int spatialRadius, const int spatialDiameter
+		const int* restrict pixelIndexMap, const uint filmWidth, const uint filmHeight) 
 {	
 	srData->neighborGid = -1;
 
-	// randomly choose a pixel in the radius (inclusive) not including self
-	int searchX = sampleResult->pixelX + (int) copysign(floor(Rnd_FloatValue(seed) * spatialRadius) + 1.0f, Rnd_FloatValue(seed) - 0.5f);
-	int searchY = sampleResult->pixelY + (int) copysign(floor(Rnd_FloatValue(seed) * spatialRadius) + 1.0f, Rnd_FloatValue(seed) - 0.5f);
+	// search in a small window starting from top left
+	int searchX = pixelX + (-spatialRadius + i % spatialDiameter);
+	int searchY = pixelY + (-spatialRadius + i / spatialDiameter);
 	srData->numNeighborsLeft--;
 
-	if (get_global_id(0) == DEBUG_GID) {
-		printf("Pixel (%d, %d), resampling (%d, %d).\n", sampleResult->pixelX, sampleResult->pixelY, searchX, searchY);
-	}
-
 	if (searchX >= 0 && searchX < filmWidth && searchY >= 0 && searchY < filmHeight // check in bounds
-		&& (searchX != sampleResult->pixelX || searchY != sampleResult->pixelY)) // check not the pixel itself
+		&& (searchX != pixelX || searchY != pixelY)) // don't resample the pixel itself
 	{ 
 		srData->neighborGid = PixelIndexMap_Get(pixelIndexMap, filmWidth, searchX, searchY);
 		// check that the neighbor is actually being worked on by a gputask
 		if (srData->neighborGid != -1) {
 			srData->numValidNeighbors++;
 			// Successfully found valid neighbor
+			if (get_global_id(0) == DEBUG_GID) {
+				printf("Pixel (%d, %d), resampling valid neighbor (for now): (%d, %d).\n", sampleResult->pixelX, sampleResult->pixelY, searchX, searchY);
+			}
 			return true;
 		}
 	}

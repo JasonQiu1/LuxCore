@@ -122,7 +122,6 @@ __kernel void SpatialReuse_MK_NEXT_NEIGHBOR(
     //--------------------------------------------------------------------------
     // Start of variables setup
     //--------------------------------------------------------------------------
-    GPUTask* restrict task = &tasks[gid];
     const SampleResult* restrict sampleResult = &sampleResultsBuff[gid];
     SpatialReuseData* restrict spatialReuseData = &spatialReuseDatas[gid];
     ShiftInOutData* restrict shiftInOutData = &shiftInOutDatas[gid];
@@ -140,8 +139,9 @@ __kernel void SpatialReuse_MK_NEXT_NEIGHBOR(
 
         // Generate a candidate neighbor gid
         if (Respir_UpdateNextNeighborGid(
-            spatialReuseData, sampleResult, 
-            spatialRadius, pixelIndexMap, filmWidth, filmHeight, &task->seed))
+            spatialReuseData, sampleResult->pixelX, sampleResult->pixelY, 
+            numSpatialNeighbors - spatialReuseData->numNeighborsLeft,
+            spatialRadius, 1 + (spatialRadius * 2), pixelIndexMap, filmWidth, filmHeight))
         {
             // Found valid neighbor
             break;
