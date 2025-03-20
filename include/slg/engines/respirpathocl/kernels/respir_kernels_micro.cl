@@ -336,7 +336,7 @@ __kernel void SpatialReuse_MK_SHIFT(
     );
 
     if (get_global_id(0) == DEBUG_GID) {
-        printf("Correct difference in rc scatter bsdfs, factor: %f\n", (dstBsdfValue / dstPdf) * (dstRcIncidentBsdfValue / dstPdf2));
+        printf("Correct difference in rc scatter bsdfs, grayscale factor: %f\n", Spectrum_Filter((dstBsdfValue / dstPdf) * (dstRcIncidentBsdfValue / dstPdf2)));
     }
 
     // TODO: might not need this if we're not using multi-lobed materials
