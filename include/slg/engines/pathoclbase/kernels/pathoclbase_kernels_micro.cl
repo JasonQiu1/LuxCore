@@ -888,9 +888,11 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 		if (pathInfo->depth.depth == 0) { 
 			// We've just hit the primary vertex
 			// The BSDF info above is the scattering info to the secondary vertex
+#if defined(DEBUG_RESPIRPATHOCL)
 			if (get_global_id(0) == DEBUG_GID) {
 				printf("Initial path resampling: Cached prefix vertex info.\n");
 			}
+#endif
 			reservoir->sample.prefixBsdf = *bsdf;
 			reservoir->sample.hitTime = ray->time;
 			reservoir->sample.rc.prefixToRcPdf = bsdfPdfW;

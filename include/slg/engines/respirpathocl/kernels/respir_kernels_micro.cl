@@ -22,7 +22,7 @@
 // SpatialReuse (Micro-Kernels)
 //------------------------------------------------------------------------------
 
-#define DEBUG_PRINTF_SR_KERNEL_NAME 1
+//#define DEBUG_PRINTF_SR_KERNEL_NAME 1
 #ifndef DEBUG_GID
 #define DEBUG_GID 159982
 #endif
@@ -233,6 +233,7 @@ __kernel void SpatialReuse_MK_SHIFT(
     // Cached jacobian is src: (sqr distance) / (cos angle)
     out->sample.rc.jacobian = (srcToRcDistanceSquared / srcCosW) * (dstCosW / dstDistanceSquared);
 
+#if defined(DEBUG_RESPIRPATHOCL)
     if (get_global_id(0) == DEBUG_GID) {
         const float3 srcPoint = VLOAD3F(&src->sample.prefixBsdf.hitPoint.p.x);
         printf("Src prefix point: (%f, %f, %f)\n", srcPoint.x, srcPoint.y, srcPoint.z);
@@ -241,6 +242,7 @@ __kernel void SpatialReuse_MK_SHIFT(
         printf("Src rc geometric normal: (%f, %f, %f)\n", rcGeometricN.x, rcGeometricN.y, rcGeometricN.z);
         printf("Initial jacobian determinant: %f\n", out->sample.rc.jacobian);
     }
+#endif
 
     // Check if shifted jacobian is valid
     if (Respir_IsInvalidJacobian(out->sample.rc.jacobian)) 
@@ -291,9 +293,11 @@ __kernel void SpatialReuse_MK_SHIFT(
         return;
     }
 
+#if defined(DEBUG_RESPIRPATHOCL)
     if (get_global_id(0) == DEBUG_GID) {
         printf("Correct difference in prefix scatter pdfs, new jacobian: %f\n", out->sample.rc.jacobian);
     }
+#endif
 
     // Correct jacobian for bsdf scattering value from prefix vertex to reconnection to incident dir
     // Use cached BSDF info from src/base path
@@ -339,18 +343,22 @@ __kernel void SpatialReuse_MK_SHIFT(
         out->sample.integrand
     );
 
+#if defined(DEBUG_RESPIRPATHOCL)
     if (get_global_id(0) == DEBUG_GID) {
         printf("Correct difference in rc scatter bsdfs, grayscale factor: %f\n", Spectrum_Filter((dstBsdfValue / dstPdf) * (dstRcIncidentBsdfValue / dstPdf2)));
     }
+#endif
 
     // TODO: might not need this if we're not using multi-lobed materials
     if (isRcVertexEscapedVertex) {
         Radiance_Scale(film, out->sample.integrand,
             PowerHeuristic(dstPdf, src->sample.rc.lightPdf), // supposed to be dstPdf evaluated on all lobes at dst prefix vertex
             out->sample.integrand);
+#if defined(DEBUG_RESPIRPATHOCL)
         if (get_global_id(0) == DEBUG_GID) {
             printf("Correct mis weights for NEE paths ending with rc vertex, factor: %f\n", PowerHeuristic(dstPdf, src->sample.rc.lightPdf));
         }
+#endif
     }
 
     if (isRcVertexFinal) {
@@ -364,17 +372,20 @@ __kernel void SpatialReuse_MK_SHIFT(
         Radiance_Scale(film, out->sample.integrand,
             misWeight, 
             out->sample.integrand);
-
+#if defined(DEBUG_RESPIRPATHOCL)
         if (get_global_id(0) == DEBUG_GID) {
             printf("Correct mis weights for paths ending with rc vertex, factor: %f\n", misWeight);
         }
+#endif
     }
 
     if ((isRcVertexFinal && !isRcVertexNEE) || (!isRcVertexFinal && !isRcVertexEscapedVertex)) {
         out->sample.rc.jacobian *= dstRcIncidentPdf / srcRcIncidentPdf;
+#if defined(DEBUG_RESPIRPATHOCL)
         if (get_global_id(0) == DEBUG_GID) {
             printf("Correct difference in rc scatter pdfs for paths, new jacobian: %f\n", out->sample.rc.jacobian);
         }
+#endif
     }
 
     if (Respir_IsInvalidJacobian(out->sample.rc.jacobian) || Radiance_IsBlack(film, out->sample.integrand)) {
@@ -603,11 +614,13 @@ __kernel void SpatialReuse_MK_FINISH_RESAMPLE(
     Spectrum shiftedIntegrand[FILM_MAX_RADIANCE_GROUP_COUNT];
     Radiance_Copy(film, shifted->sample.integrand, shiftedIntegrand);
 
+#if defined(DEBUG_RESPIRPATHOCL)
     if (get_global_id(0) == DEBUG_GID) {
         printf("Shift neighbor->central\n");
         printf("\tIntegrand: %f\n", Radiance_Filter(film, shiftedIntegrand));
         printf("\tJacobian: %f\n", shiftedJacobian);
     }
+#endif
 
     // Make a copy of neighbor so that I can update it with some info before merging.
     *shifted = *neighbor;
@@ -679,9 +692,11 @@ __kernel void SpatialReuse_MK_FINISH_ITERATION(
     // 	Finalize GRIS by calculating unbiased contribution weight.
     */
 
+#if defined(DEBUG_RESPIRPATHOCL)
     if (gid == DEBUG_GID) {
         printf("Finish reuse with # valid neighbors: %d\n", spatialReuseData->numValidNeighbors);
     }
+#endif
 
     float srIntegrand = Radiance_Filter(film, srReservoir->sample.integrand);
     if (srIntegrand <= 0.f || isnan(srIntegrand) || isinf(srIntegrand) || srReservoir->weight <= 0.0f) {
@@ -740,9 +755,11 @@ __kernel void SpatialReuse_MK_FINISH_REUSE(
         reservoir->weight,
         sampleResult->radiancePerPixelNormalized);
 
+#if defined(DEBUG_RESPIRPATHOCL)
     if (gid == DEBUG_GID) {
         printf("Finish iteration with integrand (after GRIS): %f\n", Radiance_Filter(film, reservoir->sample.integrand));
     }
+#endif
 
     // maintain integrity of pathtracer by using time from before spatial reuse
     ray->time = spatialReuseData->preSpatialReuseTime;

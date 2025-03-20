@@ -191,10 +191,11 @@ OPENCL_FORCE_INLINE bool RespirReservoir_Add(RespirReservoir* restrict reservoir
 	}
 
 	reservoir->weight += weight;
-
+#if defined(DEBUG_RESPIRPATHOCL)
 	if (get_global_id(0) == DEBUG_GID) {
 		printf("Initial path resampling: Resampling with weight %f against sum weight %f\n", weight, reservoir->weight);
 	}
+#endif
 
 	if (Rnd_FloatValue(seed) * reservoir->weight <= weight) {
 		Radiance_Copy(film, pathRadiance, reservoir->sample.integrand);
@@ -219,11 +220,13 @@ OPENCL_FORCE_INLINE bool RespirReservoir_Merge(RespirReservoir* restrict outRese
 	}
 
 	outReservoir->weight += weight;
+#if defined(DEBUG_RESPIRPATHOCL)
 	if (get_global_id(0) == DEBUG_GID) {
 		printf("Merging integrand (%f) with weight %f out of total weight %f.\n", 
 				Radiance_Filter(film, inRadiance), weight, outReservoir->weight
 		);
 	}
+#endif
 	if (Rnd_FloatValue(seed) * outReservoir->weight <= weight) {
 		outReservoir->sample.rc = inReservoir->sample.rc;
 		Radiance_Copy(film, inRadiance, outReservoir->sample.integrand);
@@ -251,9 +254,11 @@ OPENCL_FORCE_INLINE bool RespirReservoir_AddVertex(
 		reservoir->sample.rc.isLastVertexNee = isNee;
 		reservoir->sample.rc.pathDepth = pathDepth;
 		reservoir->sample.rc.lightPdf = lightPdf;
+#if defined(DEBUG_RESPIRPATHOCL)
 		if (get_global_id(0) == DEBUG_GID) {
 			printf("\tSelected new vertex at depth: %d\n", pathDepth);
 		}
+#endif
 		Radiance_Copy(film, postfixRadiance, reservoir->sample.rc.irradiance);
 		if (pathDepth == reservoir->sample.rc.rcPathDepth) {
 			// cache reconnection vertex info
@@ -277,9 +282,11 @@ OPENCL_FORCE_INLINE bool RespirReservoir_AddNEEVertex(
 		const float misWeight, const float rrProbProd, const float lightPdf,
 		const int pathDepth, Seed* restrict seed, __constant const Film* restrict film)
 {
+#if defined(DEBUG_RESPIRPATHOCL)
 	if (get_global_id(0) == DEBUG_GID) {
 		printf("Initial path resampling (NEE): Resampling with rr prob %f at depth %d\n", rrProbProd, pathDepth);
 	}
+#endif
 	bool selected = RespirReservoir_AddVertex(reservoir, incidentDir, integrand, postfixRadiance, misWeight, rrProbProd, lightPdf, pathDepth, seed, film, true);
 	if (selected && pathDepth == reservoir->sample.rc.rcPathDepth) {
 		Radiance_Scale(film, reservoir->sample.rc.irradiance, 
@@ -301,9 +308,11 @@ OPENCL_FORCE_INLINE bool RespirReservoir_AddEscapeVertex(
 		const float misWeight, const float rrProbProd, const float lightPdf,
 		const int pathDepth, Seed* restrict seed, __constant const Film* restrict film)
 {
+#if defined(DEBUG_RESPIRPATHOCL)
 	if (get_global_id(0) == DEBUG_GID) {
 		printf("Initial path resampling (BSDF/Escape): Resampling with rr prob %f at depth %d\n", rrProbProd, pathDepth);
 	}
+#endif
 	bool selected = RespirReservoir_AddVertex(reservoir, incidentDir, integrand, postfixRadiance, misWeight, rrProbProd, lightPdf, pathDepth, seed, film, false);
 	if (selected && pathDepth == reservoir->sample.rc.rcPathDepth) {
 		Radiance_Scale(film, reservoir->sample.rc.irradiance, 
@@ -318,9 +327,11 @@ OPENCL_FORCE_INLINE bool RespirReservoir_SetRcVertex(
 	const float incidentPdf, const float3 incidentBsdfValue, const float worldRadius
 	MATERIALS_PARAM_DECL
 ) {
+#if defined(DEBUG_RESPIRPATHOCL)
 	if (get_global_id(0) == DEBUG_GID) {
 		printf("Initial path resampling: Cached reconnection vertex info.\n");
 	}
+#endif
 	VSTORE3F(incidentDir, &reservoir->sample.rc.incidentDir.x);
 	reservoir->sample.rc.incidentPdf = incidentPdf;
 	VSTORE3F(incidentBsdfValue, reservoir->sample.rc.incidentBsdfValue.c);
@@ -343,10 +354,11 @@ OPENCL_FORCE_INLINE bool RespirReservoir_SetRcVertex(
 		reservoir->sample.rc.bsdf = *bsdf;
 		return true;
 	} 
-	
+#if defined(DEBUG_RESPIRPATHOCL)
 	if (get_global_id(0) == DEBUG_GID) {
 		printf("Initial path resampling: Rejected reconnection vertex based on glossiness or distance.\n");
 	}
+#endif
 	return false;
 }
 
@@ -356,9 +368,11 @@ OPENCL_FORCE_INLINE void Respir_HandleInvalidShift(ShiftInOutData* shiftData,
 	out->sample.rc.jacobian = 0.0f;
 	Radiance_Clear(out->sample.integrand);
 	*pathState = (PathState) shiftData->afterShiftState;
+#if defined(DEBUG_RESPIRPATHOCL)
 	if (get_global_id(0) == DEBUG_GID) {
 		printf("Shift failed.\n");
 	}
+#endif
 	return;
 }
 
@@ -401,9 +415,11 @@ OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(SpatialReuseData* restrict
 		// check that the neighbor is actually being worked on by a gputask
 		if (srData->neighborGid != -1) {
 			// Successfully found valid neighbor
+#if defined(DEBUG_RESPIRPATHOCL)
 			if (get_global_id(0) == DEBUG_GID) {
 				printf("Pixel (%d, %d), resampling valid neighbor (for now): (%d, %d).\n", pixelX, pixelY, searchX, searchY);
 			}
+#endif
 			return true;
 		}
 	}
