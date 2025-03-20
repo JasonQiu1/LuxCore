@@ -109,7 +109,7 @@ protected:
 	void MergeThreadFilms();
 	virtual void UpdateFilmLockLess();
 	virtual void UpdateCounters();
-	void UpdateTaskCount();
+	virtual void UpdateTaskCount();
 
 	u_int GetTotalEyeSPP() const;
 	

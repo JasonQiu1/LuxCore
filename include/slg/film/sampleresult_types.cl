@@ -28,7 +28,10 @@ typedef struct {
 	unsigned int pixelX, pixelY;
 	float filmX, filmY;
 
+	// accumulates the final radiance for this sample by summing at each bounce (path contribution / pathPdf)
 	Spectrum radiancePerPixelNormalized[FILM_MAX_RADIANCE_GROUP_COUNT];
+	// accumulates just the path contribution at each bounce
+	Spectrum radiancePerPixelUnnormalized[FILM_MAX_RADIANCE_GROUP_COUNT];
 	float alpha;
 	float depth;
 	Point position;

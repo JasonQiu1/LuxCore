@@ -22,6 +22,11 @@
 //  PARAM_RAY_EPSILON_MIN
 //  PARAM_RAY_EPSILON_MAX
 
+// #define DEBUG
+#ifndef DEBUG_GID
+#define DEBUG_GID 159982
+#endif
+
 /*void MangleMemory(__global unsigned char *ptr, const size_t size) {
 	Seed seed;
 	Rnd_Init(7 + get_global_id(0), &seed);
@@ -44,7 +49,7 @@ OPENCL_FORCE_INLINE void InitSampleResult(
 	const size_t gid = get_global_id(0);
 	__global SampleResult *sampleResult = &sampleResultsBuff[gid];
 
-	SampleResult_Init(&taskConfig->film, sampleResult);
+	SampleResult_Init(sampleResult);
 
 	float filmX = Sampler_GetSample(taskConfig, IDX_SCREEN_X SAMPLER_PARAM);
 	float filmY = Sampler_GetSample(taskConfig, IDX_SCREEN_Y SAMPLER_PARAM);
@@ -61,16 +66,21 @@ OPENCL_FORCE_INLINE void InitSampleResult(
 	const float uSubPixelX = filmX - pixelX;
 	const float uSubPixelY = filmY - pixelY;
 
+#if defined(RENDER_ENGINE_RESPIRPATHOCL)
+	sampleResult->pixelX = gid % filmWidth;
+	sampleResult->pixelY = gid / filmWidth;
+#else
 	sampleResult->pixelX = pixelX;
 	sampleResult->pixelY = pixelY;
+#endif
 
 	// Sample according the pixel filter distribution
 	float distX, distY;
 	FilterDistribution_SampleContinuous(&taskConfig->pixelFilter, pixelFilterDistribution,
 			uSubPixelX, uSubPixelY, &distX, &distY);
 
-	sampleResult->filmX = pixelX + .5f + distX;
-	sampleResult->filmY = pixelY + .5f + distY;
+	sampleResult->filmX = sampleResult->pixelX + .5f + distX;
+	sampleResult->filmY = sampleResult->pixelY + .5f + distY;
 
 	sampleResult->directShadowMask = 1.f;
 	sampleResult->indirectShadowMask = 1.f;
@@ -79,6 +89,8 @@ OPENCL_FORCE_INLINE void InitSampleResult(
 }
 
 OPENCL_FORCE_INLINE void GenerateEyePath(
+		PathState* pathState,
+		__global GPUTask *task, 
 		__constant const GPUTaskConfiguration* restrict taskConfig,
 		__global GPUTaskDirectLight *taskDirectLight,
 		__global GPUTaskState *taskState,
@@ -132,7 +144,7 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 #endif
 
 	// Initialize the path state
-	taskState->state = MK_RT_NEXT_VERTEX;
+	*pathState = MK_RT_NEXT_VERTEX;
 	VSTORE3F(WHITE, taskState->throughput.c);
 	taskState->albedoToDo = true;
 	VSTORE3F(BLACK, sampleResult->albedo.c);  // Just in case albedoToDo is never true
@@ -146,10 +158,14 @@ OPENCL_FORCE_INLINE void GenerateEyePath(
 	// Initialize the pass-through event seed
 	//
 	// Note: using the IDX_PASSTHROUGH of path depth 0
-	const float passThroughEvent = Sampler_GetSample(taskConfig, IDX_BSDF_OFFSET + IDX_PASSTHROUGH SAMPLER_PARAM);
-	Seed seedPassThroughEvent;
-	Rnd_InitFloat(passThroughEvent, &seedPassThroughEvent);
-	taskState->seedPassThroughEvent = seedPassThroughEvent;
+	float seedValue = Sampler_GetSample(taskConfig, IDX_BSDF_OFFSET + IDX_PASSTHROUGH SAMPLER_PARAM);
+	Seed initSeed;
+	Rnd_InitFloat(seedValue, &initSeed);
+	taskState->seedPassThroughEvent = initSeed;
+
+#if defined(RENDER_ENGINE_RESPIRPATHOCL)
+	Respir_Init(taskState);
+#endif
 }
 
 //------------------------------------------------------------------------------
@@ -173,7 +189,7 @@ OPENCL_FORCE_INLINE bool CheckDirectHitVisibilityFlags(__global const LightSourc
 }
 
 OPENCL_FORCE_INLINE void DirectHitInfiniteLight(__constant const Film* restrict film,
-		__global EyePathInfo *pathInfo, __global const Spectrum* restrict pathThroughput,
+		__global EyePathInfo *pathInfo, __global GPUTaskState* restrict taskState,
 		const __global Ray *ray, __global const BSDF *bsdf, __global SampleResult *sampleResult
 		LIGHTS_PARAM_DECL) {
 	// If the material is shadow transparent, Direct Light sampling
@@ -181,7 +197,7 @@ OPENCL_FORCE_INLINE void DirectHitInfiniteLight(__constant const Film* restrict 
 	if (bsdf && bsdf->hitPoint.throughShadowTransparency)
 		return;
 
-	const float3 throughput = VLOAD3F(pathThroughput->c);
+	const float3 throughput = VLOAD3F(taskState->throughput.c);
 
 	for (uint i = 0; i < envLightCount; ++i) {
 		__global const LightSource* restrict light = &lights[envLightIndices[i]];
@@ -210,17 +226,16 @@ OPENCL_FORCE_INLINE void DirectHitInfiniteLight(__constant const Film* restrict 
 				weight = PowerHeuristic(pathInfo->lastBSDFPdfW, directPdfW * lightPickProb);
 			} else
 				weight = 1.f;
-			
+
 			SampleResult_AddEmission(film, sampleResult, light->lightID, throughput, weight * envRadiance);
 		}
 	}
 }
 
 OPENCL_FORCE_INLINE void DirectHitFiniteLight(__constant const Film* restrict film,
-		__global EyePathInfo *pathInfo,
-		__global const Spectrum* restrict pathThroughput, const __global Ray *ray,
-		const float distance, __global const BSDF *bsdf,
-		__global SampleResult *sampleResult
+		__global EyePathInfo *pathInfo, __global GPUTaskState* restrict taskState,
+		const __global Ray *ray, const float distance, __global const BSDF *bsdf,
+		__global SampleResult *sampleResult, const float worldRadius
 		LIGHTS_PARAM_DECL) {
 	__global const LightSource* restrict light = &lights[bsdf->triangleLightSourceIndex];
 
@@ -236,10 +251,12 @@ OPENCL_FORCE_INLINE void DirectHitFiniteLight(__constant const Film* restrict fi
 			LIGHTS_PARAM);
 
 	if (!Spectrum_IsBlack(emittedRadiance)) {
+		float lightPickProb = 1.0f;
+		float directPdfW = 1.0f;
 		// Add emitted radiance
 		float weight = 1.f;
 		if (!(pathInfo->lastBSDFEvent & SPECULAR)) {
-			const float lightPickProb = LightStrategy_SampleLightPdf(lightsDistribution,
+			lightPickProb = LightStrategy_SampleLightPdf(lightsDistribution,
 					dlscAllEntries,
 					dlscDistributions, dlscBVHNodes,
 					dlscRadius2, dlscNormalCosAngle,
@@ -253,7 +270,7 @@ OPENCL_FORCE_INLINE void DirectHitFiniteLight(__constant const Film* restrict fi
 				return;
 #endif
 			
-			const float directPdfW = PdfAtoW(directPdfA, distance,
+			directPdfW = PdfAtoW(directPdfA, distance,
 					fabs(dot(VLOAD3F(&bsdf->hitPoint.fixedDir.x), VLOAD3F(&bsdf->hitPoint.shadeN.x))));
 
 			// MIS between BSDF sampling and direct light sampling
@@ -261,9 +278,39 @@ OPENCL_FORCE_INLINE void DirectHitFiniteLight(__constant const Film* restrict fi
 			// Note: mats[bsdf->materialIndex].avgPassThroughTransparency = lightSource->GetAvgPassThroughTransparency()
 			weight = PowerHeuristic(pathInfo->lastBSDFPdfW * Light_GetAvgPassThroughTransparency(light LIGHTS_PARAM), directPdfW * lightPickProb);
 		}
-
+// We will use spatial reuse to add the resampled radiance back in
+#if !defined(RENDER_ENGINE_RESPIRPATHOCL) 
 		SampleResult_AddEmission(film, sampleResult, BSDF_GetLightID(bsdf
-				MATERIALS_PARAM), VLOAD3F(pathThroughput->c), weight * emittedRadiance);
+				MATERIALS_PARAM), VLOAD3F(taskState->throughput.c), weight * emittedRadiance);
+#endif
+#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
+		if (pathInfo->depth.depth == 1) {
+			// add direct lighting to the sampleresult
+			SampleResult_AddEmission(film, sampleResult, BSDF_GetLightID(bsdf
+				MATERIALS_PARAM), VLOAD3F(taskState->throughput.c), weight * emittedRadiance);
+		}
+
+		// Sample radiance and irradiance from this light vertex alone.
+		SampleResult radiance;
+		SampleResult_Init(&radiance);
+		SampleResult_AddEmission(film, &radiance, BSDF_GetLightID(bsdf
+				MATERIALS_PARAM), VLOAD3F(taskState->throughput.c), weight * emittedRadiance);
+
+		// Add BSDF sample into the reservoir.
+		SampleResult irradiance;
+		SampleResult_Init(&irradiance);
+		float3 throughput = VLOAD3F(taskState->currentThroughput.c);
+		SampleResult_AddEmission(film, &irradiance, BSDF_GetLightID(bsdf
+				MATERIALS_PARAM), throughput, weight * emittedRadiance);
+		
+		// We use depth - 1 here so that we can remove the weight from the reconnection vertex 
+		// no longer being MIS sampled by NEE
+		// the incident direction from RC vertex may have been overriden by NEE, set back to BSDF incident direction
+		RespirReservoir_AddEscapeVertex(&taskState->reservoir, VLOAD3F(&taskState->rcIncidentDir.x),
+				radiance.radiancePerPixelNormalized, irradiance.radiancePerPixelNormalized,
+				weight, taskState->rrProbProd, directPdfW * lightPickProb,
+				pathInfo->depth.depth - 1, &taskState->seedReservoirSampling, film);
+#endif
 	}
 }
 
@@ -334,9 +381,10 @@ OPENCL_FORCE_INLINE bool DirectLight_BSDFSampling(
 		const bool lastPathVertex,
 		__global EyePathInfo *pathInfo,
 		__global PathDepthInfo *tmpDepthInfo,
-		__global const BSDF *bsdf,
+		__global GPUTaskState* restrict taskState,
 		const float3 shadowRayDir
 		LIGHTS_PARAM_DECL) {
+	__global const BSDF* bsdf = &taskState->bsdf;
 	// Sample the BSDF
 	BSDFEvent event;
 	float bsdfPdfW;
@@ -372,7 +420,7 @@ OPENCL_FORCE_INLINE bool DirectLight_BSDFSampling(
 	bsdfPdfW *= Light_GetAvgPassThroughTransparency(light
 			LIGHTS_PARAM);
 	
-	// MIS between direct light sampling and BSDF sampling
+	// MIS between direct light sampling adnd BSDF sampling
 	//
 	// Note: I have to avoiding MIS on the last path vertex
 
@@ -382,6 +430,10 @@ OPENCL_FORCE_INLINE bool DirectLight_BSDFSampling(
 			!bsdf->hitPoint.throughShadowTransparency;
 
 	const float weight = misEnabled ? PowerHeuristic(directLightSamplingPdfW, bsdfPdfW) : 1.f;
+#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
+	taskState->lastDirectLightMisWeight = weight;
+	VSTORE3F(bsdfEval, taskState->lastDirectLightBsdfEval.c);
+#endif
 
 	const float3 lightRadiance = VLOAD3F(info->lightRadiance.c);
 	VSTORE3F(bsdfEval * (weight * factor) * lightRadiance, info->lightRadiance.c);
@@ -389,130 +441,6 @@ OPENCL_FORCE_INLINE bool DirectLight_BSDFSampling(
 
 	return true;
 }
-
-//------------------------------------------------------------------------------
-// Kernel parameters
-//------------------------------------------------------------------------------
-
-#define KERNEL_ARGS_VOLUMES \
-		, __global PathVolumeInfo *directLightVolInfos
-
-#define KERNEL_ARGS_INFINITELIGHTS \
-		, const float worldCenterX \
-		, const float worldCenterY \
-		, const float worldCenterZ \
-		, const float worldRadius
-
-#define KERNEL_ARGS_NORMALS_BUFFER \
-		, __global const Normal* restrict vertNormals
-#define KERNEL_ARGS_TRINORMALS_BUFFER \
-		, __global const Normal* restrict triNormals
-#define KERNEL_ARGS_UVS_BUFFER \
-		, __global const UV* restrict vertUVs
-#define KERNEL_ARGS_COLS_BUFFER \
-		, __global const Spectrum* restrict vertCols
-#define KERNEL_ARGS_ALPHAS_BUFFER \
-		, __global const float* restrict vertAlphas
-#define KERNEL_ARGS_VERTEXAOVS_BUFFER \
-		, __global const float* restrict vertexAOVs
-#define KERNEL_ARGS_TRIAOVS_BUFFER \
-		, __global const float* restrict triAOVs
-
-#define KERNEL_ARGS_ENVLIGHTS \
-		, __global const uint* restrict envLightIndices \
-		, const uint envLightCount
-
-#define KERNEL_ARGS_INFINITELIGHT \
-		, __global const float* restrict envLightDistribution
-
-#define KERNEL_ARGS_IMAGEMAPS_PAGES \
-		, __global const ImageMap* restrict imageMapDescs \
-		, __global const float* restrict imageMapBuff0 \
-		, __global const float* restrict imageMapBuff1 \
-		, __global const float* restrict imageMapBuff2 \
-		, __global const float* restrict imageMapBuff3 \
-		, __global const float* restrict imageMapBuff4 \
-		, __global const float* restrict imageMapBuff5 \
-		, __global const float* restrict imageMapBuff6 \
-		, __global const float* restrict imageMapBuff7
-
-#define KERNEL_ARGS_FAST_PIXEL_FILTER \
-		, __global float *pixelFilterDistribution
-
-#define KERNEL_ARGS_PHOTONGI \
-		, __global const RadiancePhoton* restrict pgicRadiancePhotons \
-		, uint pgicLightGroupCounts \
-		, __global const Spectrum* restrict pgicRadiancePhotonsValues \
-		, __global const IndexBVHArrayNode* restrict pgicRadiancePhotonsBVHNodes \
-		, __global const Photon* restrict pgicCausticPhotons \
-		, __global const IndexBVHArrayNode* restrict pgicCausticPhotonsBVHNodes
-
-#define KERNEL_ARGS \
-		__constant const GPUTaskConfiguration* restrict taskConfig \
-		, __global GPUTask *tasks \
-		, __global GPUTaskDirectLight *tasksDirectLight \
-		, __global GPUTaskState *tasksState \
-		, __global GPUTaskStats *taskStats \
-		KERNEL_ARGS_FAST_PIXEL_FILTER \
-		, __global void *samplerSharedDataBuff \
-		, __global void *samplesBuff \
-		, __global float *samplesDataBuff \
-		, __global SampleResult *sampleResultsBuff \
-		, __global EyePathInfo *eyePathInfos \
-		KERNEL_ARGS_VOLUMES \
-		, __global Ray *rays \
-		, __global RayHit *rayHits \
-		/* Film parameters */ \
-		KERNEL_ARGS_FILM \
-		/* Scene parameters */ \
-		KERNEL_ARGS_INFINITELIGHTS \
-		, __global const Material* restrict mats \
-		, __global const MaterialEvalOp* restrict matEvalOps \
-		, __global float *matEvalStacks \
-		, const uint maxMaterialEvalStackSize \
-		, __global const Texture* restrict texs \
-		, __global const TextureEvalOp* restrict texEvalOps \
-		, __global float *texEvalStacks \
-		, const uint maxTextureEvalStackSize \
-		, __global const SceneObject* restrict sceneObjs \
-		, __global const ExtMesh* restrict meshDescs \
-		, __global const Point* restrict vertices \
-		KERNEL_ARGS_NORMALS_BUFFER \
-		KERNEL_ARGS_TRINORMALS_BUFFER \
-		KERNEL_ARGS_UVS_BUFFER \
-		KERNEL_ARGS_COLS_BUFFER \
-		KERNEL_ARGS_ALPHAS_BUFFER \
-		KERNEL_ARGS_VERTEXAOVS_BUFFER \
-		KERNEL_ARGS_TRIAOVS_BUFFER \
-		, __global const Triangle* restrict triangles \
-		, __global const InterpolatedTransform* restrict interpolatedTransforms \
-		, __global const Camera* restrict camera \
-		, __global const float* restrict cameraBokehDistribution \
-		/* Lights */ \
-		, __global const LightSource* restrict lights \
-		KERNEL_ARGS_ENVLIGHTS \
-		, __global const uint* restrict lightIndexOffsetByMeshIndex \
-		, __global const uint* restrict lightIndexByTriIndex \
-		KERNEL_ARGS_INFINITELIGHT \
-		, __global const float* restrict lightsDistribution \
-		, __global const float* restrict infiniteLightSourcesDistribution \
-		, __global const DLSCacheEntry* restrict dlscAllEntries \
-		, __global const float* restrict dlscDistributions \
-		, __global const IndexBVHArrayNode* restrict dlscBVHNodes \
-		, const float dlscRadius2 \
-		, const float dlscNormalCosAngle \
-		, __global const ELVCacheEntry* restrict elvcAllEntries \
-		, __global const float* restrict elvcDistributions \
-		, __global const uint* restrict elvcTileDistributionOffsets \
-		, __global const IndexBVHArrayNode* restrict elvcBVHNodes \
-		, const float elvcRadius2 \
-		, const float elvcNormalCosAngle \
-		, const uint elvcTilesXCount \
-		, const uint elvcTilesYCount \
-		/* Images */ \
-		KERNEL_ARGS_IMAGEMAPS_PAGES \
-		KERNEL_ARGS_PHOTONGI
-
 
 //------------------------------------------------------------------------------
 // To initialize image maps page pointer table
@@ -549,6 +477,7 @@ __kernel void InitSeed(__global GPUTask *tasks,
 
 __kernel void Init(
 		__constant const GPUTaskConfiguration* restrict taskConfig,
+		__global PathState* pathStates,
 		__global GPUTask *tasks,
 		__global GPUTaskDirectLight *tasksDirectLight,
 		__global GPUTaskState *tasksState,
@@ -572,7 +501,7 @@ __kernel void Init(
 	__global TilePathSamplerSharedData *samplerSharedData = (__global TilePathSamplerSharedData *)samplerSharedDataBuff;
 
 	if (gid >= filmWidth * filmHeight * Sqr(samplerSharedData->aaSamples)) {
-		taskState->state = MK_DONE;
+		*pathState = MK_DONE;
 		// Mark the ray like like one to NOT trace
 		rays[gid].flags = RAY_FLAGS_MASKED;
 
@@ -583,6 +512,7 @@ __kernel void Init(
 	// Initialize the task
 	__global GPUTask *task = &tasks[gid];
 	__global GPUTaskDirectLight *taskDirectLight = &tasksDirectLight[gid];
+	PathState* pathState = &pathStates[gid];
 
 	// Read the seed
 	Seed seedValue = task->seed;
@@ -607,7 +537,7 @@ __kernel void Init(
 #endif
 
 		// Generate the eye path
-		GenerateEyePath(taskConfig,
+		GenerateEyePath(pathState, task, taskConfig,
 				taskDirectLight, taskState,
 				camera,
 				cameraBokehDistribution,
@@ -623,13 +553,18 @@ __kernel void Init(
 				SAMPLER_PARAM);
 	} else {
 #if defined(RENDER_ENGINE_TILEPATHOCL) || defined(RENDER_ENGINE_RTPATHOCL)
-		taskState->state = MK_DONE;
+		*pathState = MK_DONE;
 #else
-		taskState->state = MK_GENERATE_CAMERA_RAY;
+		*pathState = MK_GENERATE_CAMERA_RAY;
 #endif
 		// Mark the ray like like one to NOT trace
 		rays[gid].flags = RAY_FLAGS_MASKED;
 	}
+
+#if defined(RENDER_ENGINE_RESPIRPATHOCL)
+	// Initialize reservoir sampling seed
+	Rnd_InitFloat(Rnd_FloatValue(&task->seed), &taskState->seedReservoirSampling);
+#endif
 
 	// Save the seed
 	task->seed = seedValue;

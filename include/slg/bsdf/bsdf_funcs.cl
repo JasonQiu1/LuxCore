@@ -181,12 +181,12 @@ OPENCL_FORCE_INLINE float BSDF_ShadowTerminatorAvoidanceFactor(const float3 Ni, 
 	return -G3 + G2 + G;
 }
 
-OPENCL_FORCE_INLINE float3 BSDF_Evaluate(__global const BSDF *bsdf,
-		const float3 generatedDir, BSDFEvent *event, float *directPdfW
-		MATERIALS_PARAM_DECL) {
+// both eyedir and lightdir should originate from the bsdf hit point
+OPENCL_FORCE_INLINE float3 BSDF_EvaluateWithEyeDir(__global const BSDF *bsdf,
+	const float3 eyeDir, const float3 generatedDir, BSDFEvent *event, float *directPdfW
+	MATERIALS_PARAM_DECL) {
 	//const Vector &eyeDir = fromLight ? generatedDir : hitPoint.fixedDir;
 	//const Vector &lightDir = fromLight ? hitPoint.fixedDir : generatedDir;
-	const float3 eyeDir = VLOAD3F(&bsdf->hitPoint.fixedDir.x);
 	const float3 lightDir = generatedDir;
 	const float3 geometryN = VLOAD3F(&bsdf->hitPoint.geometryN.x);
 	const float3 interpolatedN =  VLOAD3F(&bsdf->hitPoint.interpolatedN.x);
@@ -239,6 +239,15 @@ OPENCL_FORCE_INLINE float3 BSDF_Evaluate(__global const BSDF *bsdf,
 	}
 
 	return result;
+}
+
+OPENCL_FORCE_INLINE float3 BSDF_Evaluate(__global const BSDF *bsdf,
+		const float3 generatedDir, BSDFEvent *event, float *directPdfW
+		MATERIALS_PARAM_DECL) {
+	return BSDF_EvaluateWithEyeDir(bsdf, 
+			VLOAD3F(&bsdf->hitPoint.fixedDir.x), generatedDir, 
+			event, directPdfW
+			MATERIALS_PARAM);
 }
 
 OPENCL_FORCE_INLINE float3 BSDF_Sample(__global const BSDF *bsdf, const float u0, const float u1,

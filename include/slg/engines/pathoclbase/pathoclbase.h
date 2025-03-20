@@ -53,6 +53,7 @@ public:
 	static bool HasCachedKernels(const RenderConfig &renderConfig);
 
 	friend class PathOCLBaseOCLRenderThread;
+	friend class RespirPathOCLRenderThread;
 
 	size_t maxMemPageSize;
 	u_int taskCount;

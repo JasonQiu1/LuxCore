@@ -29,8 +29,7 @@ OPENCL_FORCE_INLINE void SampleResult_ClearRadiance(__global SampleResult *sampl
 	VSTORE3F(BLACK, sampleResult->radiancePerPixelNormalized[7].c);
 }
 
-OPENCL_FORCE_INLINE void SampleResult_Init(__constant const Film* restrict film,
-		__global SampleResult *sampleResult) {
+OPENCL_FORCE_INLINE void SampleResult_Init(__global SampleResult *sampleResult) {
 	// Initialize only Spectrum fields
 
 	SampleResult_ClearRadiance(sampleResult);
@@ -150,11 +149,11 @@ OPENCL_FORCE_INLINE float3 SampleResult_GetSpectrum(__constant const Film* restr
 }
 
 OPENCL_FORCE_INLINE float SampleResult_GetRadianceY(__constant const Film* restrict film,
-		__global SampleResult *sampleResult) {
-	float y = 0.f;
-	
-	for (uint i = 0; i < film->radianceGroupCount; ++i)
-		y += Spectrum_Y(VLOAD3F(sampleResult->radiancePerPixelNormalized[i].c));
+        __global SampleResult *sampleResult) {
+    float y = 0.f;
+        
+    for (uint i = 0; i < film->radianceGroupCount; ++i)
+        y += Spectrum_Y(VLOAD3F(sampleResult->radiancePerPixelNormalized[i].c));
 
-	return y;
+    return y;
 }

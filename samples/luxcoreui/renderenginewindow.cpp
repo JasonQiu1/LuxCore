@@ -36,8 +36,10 @@ using namespace luxcore;
 RenderEngineWindow::RenderEngineWindow(LuxCoreApp *a) : ObjectEditorWindow(a, "Render Engine") {
 	vector<string> typeList;
 
-	if (app->isGPURenderingAvailable())
+	if (app->isGPURenderingAvailable()) {
 		typeList.push_back("PATHOCL");
+		typeList.push_back("RESPIRPATHOCL");
+	}
 
 	typeList.push_back("LIGHTCPU");
 	typeList.push_back("PATHCPU");
@@ -520,7 +522,7 @@ bool RenderEngineWindow::DrawObjectGUI(Properties &props, bool &modifiedProps) {
 	// PATHOCL
 	//--------------------------------------------------------------------------
 
-	if (currentRenderEngineType == "PATHOCL") {
+	if (currentRenderEngineType == "PATHOCL" || currentRenderEngineType == "RESPIRPATHOCL") {
 		PathOCLGUI(props, modifiedProps);
 
 		if (ImGui::Button("Open Sampler editor"))

@@ -72,7 +72,7 @@ PathOCLRenderEngine::~PathOCLRenderEngine() {
 }
 
 PathOCLBaseOCLRenderThread *PathOCLRenderEngine::CreateOCLThread(const u_int index,
-    HardwareIntersectionDevice *device) {
+            HardwareIntersectionDevice *device) {
     return new PathOCLOpenCLRenderThread(index, device, this);
 }
 

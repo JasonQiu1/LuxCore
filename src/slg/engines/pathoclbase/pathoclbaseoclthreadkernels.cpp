@@ -58,7 +58,7 @@ void PathOCLBaseOCLRenderThread::CompileKernel(HardwareIntersectionDevice *devic
 	}
 }
 
-void PathOCLBaseOCLRenderThread::GetKernelParamters(
+void PathOCLBaseOCLRenderThread::GetKernelParameters(
 		vector<string> &params,
 		HardwareIntersectionDevice *intersectionDevice,
 		const string renderEngineType,
@@ -261,7 +261,7 @@ void PathOCLBaseOCLRenderThread::InitKernels() {
 	}
 
 	vector<string> kernelsParameters;
-	GetKernelParamters(kernelsParameters, intersectionDevice,
+	GetKernelParameters(kernelsParameters, intersectionDevice,
 			RenderEngine::RenderEngineType2String(renderEngine->GetType()),
 			MachineEpsilon::GetMin(), MachineEpsilon::GetMax());
 
@@ -357,6 +357,7 @@ void PathOCLBaseOCLRenderThread::SetInitKernelArgs(const u_int filmIndex) {
 	// initKernel kernel
 	argIndex = 0;
 	intersectionDevice->SetKernelArg(initKernel, argIndex++, taskConfigBuff);
+	intersectionDevice->SetKernelArg(initKernel, argIndex++, pathStatesBuff);
 	intersectionDevice->SetKernelArg(initKernel, argIndex++, tasksBuff);
 	intersectionDevice->SetKernelArg(initKernel, argIndex++, tasksDirectLightBuff);
 	intersectionDevice->SetKernelArg(initKernel, argIndex++, tasksStateBuff);
@@ -381,6 +382,7 @@ void PathOCLBaseOCLRenderThread::SetAdvancePathsKernelArgs(HardwareDeviceKernel 
 	CompiledScene *cscene = renderEngine->compiledScene;
 
 	u_int argIndex = 0;
+	intersectionDevice->SetKernelArg(advancePathsKernel, argIndex++, pathStatesBuff);
 	intersectionDevice->SetKernelArg(advancePathsKernel, argIndex++, taskConfigBuff);
 	intersectionDevice->SetKernelArg(advancePathsKernel, argIndex++, tasksBuff);
 	intersectionDevice->SetKernelArg(advancePathsKernel, argIndex++, tasksDirectLightBuff);
@@ -491,6 +493,7 @@ void PathOCLBaseOCLRenderThread::SetAllAdvancePathsKernelArgs(const u_int filmIn
 }
 
 void PathOCLBaseOCLRenderThread::SetKernelArgs() {
+	SLG_LOG("[PathOCLBaseRenderThread::" << threadIndex << "] Setting kernel arguments");
 	// Set OpenCL kernel arguments
 
 	// OpenCL kernel setArg() is the only non thread safe function in OpenCL 1.1 so
@@ -502,11 +505,16 @@ void PathOCLBaseOCLRenderThread::SetKernelArgs() {
 	// advancePathsKernels
 	//--------------------------------------------------------------------------
 
+	SLG_LOG("[PathOCLBaseRenderThread::" << threadIndex << "] Setting advance paths kernel arguments");
+
+
 	SetAllAdvancePathsKernelArgs(0);
 
 	//--------------------------------------------------------------------------
 	// initKernel
 	//--------------------------------------------------------------------------
+
+	SLG_LOG("[PathOCLBaseRenderThread::" << threadIndex << "] Setting init kernel arguments");
 
 	SetInitKernelArgs(0);
 }

@@ -29,6 +29,7 @@
 #include "slg/engines/oclrenderengine.h"
 #include "slg/engines/tilepathocl/tilepathocl.h"
 #include "slg/engines/rtpathocl/rtpathocl.h"
+#include "slg/engines/respirpathocl/respirpathocl.h"
 #include "slg/utils/filenameresolver.h"
 #include "luxcore/luxcore.h"
 #include "luxcore/luxcoreimpl.h"

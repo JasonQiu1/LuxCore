@@ -25,6 +25,7 @@
 #include "slg/engines/renderengineregistry.h"
 #include "slg/engines/rtpathcpu/rtpathcpu.h"
 #include "slg/engines/rtpathocl/rtpathocl.h"
+#include "slg/engines/respirpathocl/respirpathocl.h"
 #include "slg/engines/filesaver/filesaver.h"
 #include "slg/bsdf/bsdf.h"
 #include "slg/film/film.h"
@@ -317,6 +318,7 @@ OBJECTSTATICREGISTRY_STATICFIELDS(RenderEngineRegistry);
 
 #if !defined(LUXRAYS_DISABLE_OPENCL)
 OBJECTSTATICREGISTRY_REGISTER(RenderEngineRegistry, PathOCLRenderEngine);
+OBJECTSTATICREGISTRY_REGISTER(RenderEngineRegistry, RespirPathOCLRenderEngine);
 #endif
 OBJECTSTATICREGISTRY_REGISTER(RenderEngineRegistry, LightCPURenderEngine);
 OBJECTSTATICREGISTRY_REGISTER(RenderEngineRegistry, PathCPURenderEngine);

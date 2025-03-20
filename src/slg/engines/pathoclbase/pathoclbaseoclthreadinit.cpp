@@ -309,6 +309,14 @@ void PathOCLBaseOCLRenderThread::InitImageMaps() {
 	}
 }
 
+void PathOCLBaseOCLRenderThread::InitGPUTaskBuffer(const u_int taskCount) {
+	intersectionDevice->AllocBufferRW(&tasksBuff, nullptr, sizeof(slg::ocl::pathoclbase::GPUTask) * taskCount, "GPUTask");
+}
+
+void PathOCLBaseOCLRenderThread::InitGPUTaskStateBuffer(const u_int taskCount) {
+	intersectionDevice->AllocBufferRW(&tasksStateBuff, nullptr, sizeof(slg::ocl::pathoclbase::VanillaGPUTaskState) * taskCount, "Vanilla GPUTaskState");
+}
+
 void PathOCLBaseOCLRenderThread::InitGPUTaskBuffer() {
 	const u_int taskCount = renderEngine->taskCount;
 
@@ -322,7 +330,7 @@ void PathOCLBaseOCLRenderThread::InitGPUTaskBuffer() {
 	// Allocate tasksBuff
 	//--------------------------------------------------------------------------
 
-	intersectionDevice->AllocBufferRW(&tasksBuff, nullptr, sizeof(slg::ocl::pathoclbase::GPUTask) * taskCount, "GPUTask");
+	InitGPUTaskBuffer(taskCount);
 
 	//--------------------------------------------------------------------------
 	// Allocate tasksDirectLightBuff
@@ -334,7 +342,8 @@ void PathOCLBaseOCLRenderThread::InitGPUTaskBuffer() {
 	// Allocate tasksStateBuff
 	//--------------------------------------------------------------------------
 
-	intersectionDevice->AllocBufferRW(&tasksStateBuff, nullptr, sizeof(slg::ocl::pathoclbase::GPUTaskState) * taskCount, "GPUTaskState");
+	InitGPUTaskStateBuffer(taskCount);
+
 }
 
 void PathOCLBaseOCLRenderThread::InitSamplerSharedDataBuffer() {
@@ -362,6 +371,8 @@ void PathOCLBaseOCLRenderThread::InitSamplerSharedDataBuffer() {
 				size += sizeof(u_int) * renderEngine->pathTracer.eyeSampleSize * SOBOL_BITS;
 				break;
 			case RTPATHOCL:
+				break;
+			case RESPIRPATHOCL:
 				break;
 			default:
 				throw runtime_error("Unknown render engine in PathOCLBaseRenderThread::InitSamplerSharedDataBuffer(): " +
@@ -423,6 +434,8 @@ void PathOCLBaseOCLRenderThread::InitSamplerSharedDataBuffer() {
 				break;
 			}
 			case RTPATHOCL:
+				break;
+			case RESPIRPATHOCL:
 				break;
 			default:
 				throw runtime_error("Unknown render engine in PathOCLBaseRenderThread::InitSamplerSharedDataBuffer(): " +
@@ -556,7 +569,6 @@ void PathOCLBaseOCLRenderThread::InitRender() {
 	//--------------------------------------------------------------------------
 
 	InitPhotonGI();
-
 	//--------------------------------------------------------------------------
 	// GPUTaskStats
 	//--------------------------------------------------------------------------
@@ -568,6 +580,12 @@ void PathOCLBaseOCLRenderThread::InitRender() {
 	gpuTaskStats = new slg::ocl::pathoclbase::GPUTaskStats[taskCount];
 	for (u_int i = 0; i < taskCount; ++i)
 		gpuTaskStats[i].sampleCount = 0;
+
+	//--------------------------------------------------------------------------
+	// Allocate PathStates buffer
+	//--------------------------------------------------------------------------
+
+	intersectionDevice->AllocBufferRW(&pathStatesBuff, nullptr, sizeof(slg::ocl::pathoclbase::PathState) * taskCount, "PathState");
 
 	//--------------------------------------------------------------------------
 	// Allocate Ray/RayHit buffers

@@ -22,7 +22,8 @@
 // AdvancePaths (Micro-Kernels)
 //------------------------------------------------------------------------------
 
-//#define DEBUG_PRINTF_KERNEL_NAME 1
+// #define DEBUG_PRINTF_KERNEL_NAME 1
+// #define DEBUG_GID 37107
 
 //------------------------------------------------------------------------------
 // Evaluation of the Path finite state machine.
@@ -42,16 +43,14 @@ __kernel void AdvancePaths_MK_RT_NEXT_VERTEX(
 
 	// Read the path state
 	__global GPUTaskState *taskState = &tasksState[gid];
-	PathState pathState = taskState->state;
-#if defined(DEBUG_PRINTF_KERNEL_NAME)
-	if (gid == 0)
-		printf("Kernel: AdvancePaths_MK_RT_NEXT_VERTEX(state = %d)\n", pathState);
-	else
-		return;
-#endif
+	PathState pathState = pathStates[gid];
 	if (pathState != MK_RT_NEXT_VERTEX)
 		return;
 
+#if defined(DEBUG_PRINTF_KERNEL_NAME)
+	if (gid == DEBUG_GID)
+		printf("Kernel: AdvancePaths_MK_RT_NEXT_VERTEX(state = %d)\n", pathState);
+#endif
 	//--------------------------------------------------------------------------
 	// Start of variables setup
 	//--------------------------------------------------------------------------
@@ -87,11 +86,15 @@ __kernel void AdvancePaths_MK_RT_NEXT_VERTEX(
 			);
 	taskState->throughShadowTransparency = throughShadowTransparency;
 	VSTORE3F(connectionThroughput * VLOAD3F(taskState->throughput.c), taskState->throughput.c);
+#if defined(RENDER_ENGINE_RESPIRPATHOCL)
+	VSTORE3F(connectionThroughput * VLOAD3F(taskState->currentThroughput.c), taskState->currentThroughput.c);
+	VSTORE3F(connectionThroughput * VLOAD3F(taskState->pathPdf.c), taskState->pathPdf.c);
+#endif
 
 	// If continueToTrace, there is nothing to do, just keep the same state
 	if (!continueToTrace) {
 		if (rayHits[gid].meshIndex == NULL_INDEX)
-			taskState->state = MK_HIT_NOTHING;
+			pathStates[gid] = MK_HIT_NOTHING;
 		else {
 			const BSDFEvent eventTypes = BSDF_GetEventTypes(&taskState->bsdf
 					MATERIALS_PARAM);
@@ -99,7 +102,7 @@ __kernel void AdvancePaths_MK_RT_NEXT_VERTEX(
 			sampleResult->lastPathVertex = PathDepthInfo_IsLastPathVertex(&pathInfo->depth, 
 					&taskConfig->pathTracer.maxPathDepth, eventTypes);
 
-			taskState->state = MK_HIT_OBJECT;
+			pathStates[gid] = MK_HIT_OBJECT;
 		}
 	}
 }
@@ -118,16 +121,14 @@ __kernel void AdvancePaths_MK_HIT_NOTHING(
 
 	// Read the path state
 	__global GPUTaskState *taskState = &tasksState[gid];
-	PathState pathState = taskState->state;
-#if defined(DEBUG_PRINTF_KERNEL_NAME)
-	if (gid == 0)
-		printf("Kernel: AdvancePaths_MK_HIT_NOTHING(state = %d)\n", pathState);
-	else
-		return;
-#endif
+	PathState pathState = pathStates[gid];
 	if (pathState != MK_HIT_NOTHING)
 		return;
 
+#if defined(DEBUG_PRINTF_KERNEL_NAME)
+	if (gid == DEBUG_GID)
+		printf("Kernel: AdvancePaths_MK_HIT_NOTHING(state = %d)\n", pathState);
+#endif
 	//--------------------------------------------------------------------------
 	// Start of variables setup
 	//--------------------------------------------------------------------------
@@ -162,7 +163,7 @@ __kernel void AdvancePaths_MK_HIT_NOTHING(
 		DirectHitInfiniteLight(
 				&taskConfig->film,
 				pathInfo,
-				&taskState->throughput,
+				taskState,
 				&rays[gid],
 				sampleResult->firstPathVertex ? NULL : &taskState->bsdf,
 				sampleResult
@@ -191,7 +192,11 @@ __kernel void AdvancePaths_MK_HIT_NOTHING(
 		sampleResult->alpha = 0.f;
 	}
 
-	taskState->state = MK_SPLAT_SAMPLE;
+#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
+	pathStates[gid] = (PathState) SYNC;
+#else
+	pathStates[gid] = MK_SPLAT_SAMPLE;
+#endif
 }
 
 //------------------------------------------------------------------------------
@@ -208,16 +213,14 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 
 	// Read the path state
 	__global GPUTaskState *taskState = &tasksState[gid];
-	PathState pathState = taskState->state;
-#if defined(DEBUG_PRINTF_KERNEL_NAME)
-	if (gid == 0)
-		printf("Kernel: AdvancePaths_MK_HIT_OBJECT(state = %d)\n", pathState);
-	else
-		return;
-#endif
+	PathState pathState = pathStates[gid];
 	if (pathState != MK_HIT_OBJECT)
 		return;
 
+#if defined(DEBUG_PRINTF_KERNEL_NAME)
+	if (gid == DEBUG_GID)
+		printf("Kernel: AdvancePaths_MK_HIT_OBJECT(state = %d)\n", pathState);
+#endif
 	//--------------------------------------------------------------------------
 	// Start of variables setup
 	//--------------------------------------------------------------------------
@@ -261,6 +264,9 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 		sampleResult->isHoldout = isHoldout;
 	}
 
+	bool checkDirectLightHit = true;
+
+#if !defined(RENDER_ENGINE_RESPIRPATHOCL) 
 	//----------------------------------------------------------------------
 	// Check if it is a baked material
 	//----------------------------------------------------------------------
@@ -269,7 +275,7 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 		const float3 radiance = VLOAD3F(&taskState->throughput.c[0]) * BSDF_GetBakeMapValue(bsdf MATERIALS_PARAM);
 		VADD3F(sampleResult->radiancePerPixelNormalized[0].c, radiance);
 
-		taskState->state = MK_SPLAT_SAMPLE;
+		pathStates[gid] = MK_SPLAT_SAMPLE;
 		return;
 	} else if (BSDF_HasBakeMap(bsdf, LIGHTMAP MATERIALS_PARAM)) {
 		const float3 radiance = VLOAD3F(&taskState->throughput.c[0]) *
@@ -277,7 +283,7 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 				BSDF_GetBakeMapValue(bsdf MATERIALS_PARAM);
 		VADD3F(sampleResult->radiancePerPixelNormalized[0].c, radiance);
 
-		taskState->state = MK_SPLAT_SAMPLE;
+		pathStates[gid] = MK_SPLAT_SAMPLE;
 		return;
 	}
 
@@ -285,33 +291,33 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 	// Check if it is a light source and I have to add light emission
 	//--------------------------------------------------------------------------
 
-	bool checkDirectLightHit = true;
-
-	checkDirectLightHit = checkDirectLightHit &&
-			// Avoid to render caustic path if hybridBackForwardEnable
-			(!taskConfig->pathTracer.hybridBackForward.enabled || !EyePathInfo_IsCausticPath(pathInfo));
-
 	checkDirectLightHit = checkDirectLightHit &&
 			((!taskConfig->pathTracer.pgic.indirectEnabled && !taskConfig->pathTracer.pgic.causticEnabled) ||
 			PhotonGICache_IsDirectLightHitVisible(taskConfig, pathInfo, taskState->photonGICausticCacheUsed));
+#endif
+	checkDirectLightHit = checkDirectLightHit &&
+		// Avoid to render caustic path if hybridBackForwardEnable
+		(!taskConfig->pathTracer.hybridBackForward.enabled || !EyePathInfo_IsCausticPath(pathInfo));
+
 
 	// Check if it is a light source (note: I can hit only triangle area light sources)
 	if (BSDF_IsLightSource(bsdf) && checkDirectLightHit) {
 		DirectHitFiniteLight(
 				&taskConfig->film,
 				pathInfo,
-				&taskState->throughput,
+				taskState,
 				&rays[gid],
 				rayHits[gid].t,
 				bsdf,
-				sampleResult
+				sampleResult,
+				worldRadius
 				LIGHTS_PARAM);
 	}
 
 	//----------------------------------------------------------------------
 	// Check if I can use the photon cache
 	//----------------------------------------------------------------------
-
+#if !defined(RENDER_ENGINE_RESPIRPATHOCL)
 	if (taskConfig->pathTracer.pgic.indirectEnabled || taskConfig->pathTracer.pgic.causticEnabled) {
 		const bool isPhotonGIEnabled = PhotonGICache_IsPhotonGIEnabled(bsdf,
 				taskConfig->pathTracer.pgic.glossinessUsageThreshold
@@ -329,7 +335,7 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 							VADD3F(sampleResult->radiancePerPixelNormalized[i].c, VLOAD3F(radiance[i].c));
 					}
 				}
-				taskState->state = MK_SPLAT_SAMPLE;
+				pathStates[gid] = MK_SPLAT_SAMPLE;
 				return;
 			}
 			case PGIC_DEBUG_SHOWCAUSTIC: {
@@ -343,7 +349,7 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 							&sampleResult->radiancePerPixelNormalized[0]
 							MATERIALS_PARAM);
 				}
-				taskState->state = MK_SPLAT_SAMPLE;
+				pathStates[gid] = MK_SPLAT_SAMPLE;
 				return;
 			}
 			case PGIC_DEBUG_SHOWINDIRECTPATHMIX: {
@@ -364,7 +370,7 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 						VSTORE3F(MAKE_FLOAT3(0.f, 0.f, 1.f), sampleResult->radiancePerPixelNormalized[0].c);
 						taskState->photonGIShowIndirectPathMixUsed = true;
 
-						taskState->state = MK_SPLAT_SAMPLE;
+						pathStates[gid] = MK_SPLAT_SAMPLE;
 						return;
 					}
 
@@ -417,7 +423,7 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 							}
 
 							// I can terminate the path, all done
-							taskState->state = MK_SPLAT_SAMPLE;
+							pathStates[gid] = MK_SPLAT_SAMPLE;
 							return;
 						}
 					}
@@ -430,14 +436,22 @@ __kernel void AdvancePaths_MK_HIT_OBJECT(
 			}
 		}
 	}
+#endif
 
 	//----------------------------------------------------------------------
 	// Check if this is the last path vertex (but not also the first)
 	//
 	// I handle as a special case when the path vertex is both the first
 	// and the last: I do direct light sampling without MIS.
-	taskState->state = (sampleResult->lastPathVertex && !sampleResult->firstPathVertex) ?
-		MK_SPLAT_SAMPLE : MK_DL_ILLUMINATE;
+	if (sampleResult->lastPathVertex && !sampleResult->firstPathVertex) {
+#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
+		pathStates[gid] = (PathState) SYNC;
+#else
+		pathStates[gid] = MK_SPLAT_SAMPLE;
+#endif
+	} else {
+		pathStates[gid] = MK_DL_ILLUMINATE;
+	}
 }
 
 //------------------------------------------------------------------------------
@@ -455,16 +469,14 @@ __kernel void AdvancePaths_MK_RT_DL(
 	// Read the path state
 	__global GPUTask *task = &tasks[gid];
 	__global GPUTaskState *taskState = &tasksState[gid];
-	PathState pathState = taskState->state;
-#if defined(DEBUG_PRINTF_KERNEL_NAME)
-	if (gid == 0)
-		printf("Kernel: AdvancePaths_MK_RT_DL(state = %d)\n", pathState);
-	else
-		return;
-#endif
+	PathState pathState = pathStates[gid];
 	if (pathState != MK_RT_DL)
 		return;
 
+#if defined(DEBUG_PRINTF_KERNEL_NAME)
+	if (gid == DEBUG_GID)
+		printf("Kernel: AdvancePaths_MK_RT_DL(state = %d)\n", pathState);
+#endif
  	//--------------------------------------------------------------------------
 	// Start of variables setup
 	//--------------------------------------------------------------------------
@@ -515,40 +527,95 @@ __kernel void AdvancePaths_MK_RT_DL(
 
 			if (!BSDF_IsShadowCatcher(bsdf MATERIALS_PARAM)) {
 				const float3 lightRadiance = VLOAD3F(taskDirectLight->illumInfo.lightRadiance.c);
+// We will use spatial reuse to add the resampled radiance back in
+#if !defined(RENDER_ENGINE_RESPIRPATHOCL) 
 				SampleResult_AddDirectLight(&taskConfig->film,
 						sampleResult, taskDirectLight->illumInfo.lightID,
 						BSDF_GetEventTypes(bsdf
 							MATERIALS_PARAM),
 						VLOAD3F(taskState->throughput.c), lightRadiance,
 						1.f);
+#endif
 
 				// The first path vertex is not handled by AddDirectLight(). This is valid
 				// for irradiance AOV only if it is not a SPECULAR material.
 				//
 				// Note: irradiance samples the light sources only here (i.e. no
 				// direct hit, no MIS, it would be useless)
-				if ((sampleResult->firstPathVertex) && !(BSDF_GetEventTypes(bsdf
-							MATERIALS_PARAM) & SPECULAR)) {
+				BSDFEvent event = BSDF_GetEventTypes(bsdf MATERIALS_PARAM);
+				if ((sampleResult->firstPathVertex) && !(event & SPECULAR)) {
 					const float3 irradiance = (M_1_PI_F * fabs(dot(
 								VLOAD3F(&bsdf->hitPoint.shadeN.x),
 								VLOAD3F(&rays[gid].d.x)))) *
 							VLOAD3F(taskDirectLight->illumInfo.lightIrradiance.c);
 					VSTORE3F(irradiance, sampleResult->irradiance.c);
 				}
+
+#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
+				const EyePathInfo* pathInfo = &eyePathInfos[gid];
+
+				if (pathInfo->depth.depth == 0) {
+					// add direct lighting to the sampleresult
+					SampleResult_AddDirectLight(&taskConfig->film,
+						sampleResult, taskDirectLight->illumInfo.lightID,
+						BSDF_GetEventTypes(bsdf
+							MATERIALS_PARAM),
+						VLOAD3F(taskState->throughput.c), lightRadiance,
+						1.f);
+				}
+
+				// Sample radiance and irradiance from this light vertex alone.
+				SampleResult radiance;
+				SampleResult_Init(&radiance);
+				SampleResult_AddDirectLight(&taskConfig->film,
+					&radiance, taskDirectLight->illumInfo.lightID,
+					BSDF_GetEventTypes(bsdf
+						MATERIALS_PARAM),
+					VLOAD3F(taskState->throughput.c), lightRadiance,
+					1.f);
+
+				// Add NEE-illuminated (with cheater BSDF) sample into the reservoir.
+				SampleResult irradiance;
+				SampleResult_Init(&irradiance);
+				float3 throughput = VLOAD3F(taskState->currentThroughput.c);
+				if (pathInfo->depth.depth == 1) {
+					// reconnection vertex
+					throughput /= VLOAD3F(taskState->lastDirectLightBsdfEval.c);
+				}
+				// Store irradiance radiance with only current vertex throughput
+				SampleResult_AddDirectLight(&taskConfig->film,
+					&irradiance, taskDirectLight->illumInfo.lightID,
+					BSDF_GetEventTypes(bsdf MATERIALS_PARAM),
+					throughput, lightRadiance,
+					1.f);
+				
+				// pointing from (possibly rc) vertex to NEE light
+				RespirReservoir_AddNEEVertex(&taskState->reservoir, VLOAD3F(&rays[gid].d.x),
+					radiance.radiancePerPixelNormalized, irradiance.radiancePerPixelNormalized,
+					taskState->lastDirectLightMisWeight, taskState->rrProbProd, 
+					taskDirectLight->illumInfo.directPdfW * taskDirectLight->illumInfo.pickPdf,
+					pathInfo->depth.depth, &taskState->seedReservoirSampling, &taskConfig->film);
+#endif
 			}
 
 			taskDirectLight->directLightResult = ILLUMINATED;
 		} else
+			// Do not need to add shadowed vertices to the reservoir, since the weight will be zero anyways as the average radiance is 0.
 			taskDirectLight->directLightResult = SHADOWED;
 
 		// Check if this is the last path vertex
 		if (sampleResult->lastPathVertex)
+#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
+			pathState = (PathState) SYNC;
+#else
 			pathState = MK_SPLAT_SAMPLE;
-		else
+#endif
+		else {
 			pathState = MK_GENERATE_NEXT_VERTEX_RAY;
+		}
 
 		// Save the state
-		taskState->state = pathState;
+		pathStates[gid] = pathState;
 	}
 }
 
@@ -567,16 +634,14 @@ __kernel void AdvancePaths_MK_DL_ILLUMINATE(
 	// Read the path state
 	__global GPUTask *task = &tasks[gid];
 	__global GPUTaskState *taskState = &tasksState[gid];
-	PathState pathState = taskState->state;
-#if defined(DEBUG_PRINTF_KERNEL_NAME)
-	if (gid == 0)
-		printf("Kernel: AdvancePaths_MK_DL_ILLUMINATE(state = %d)\n", pathState);
-	else
-		return;
-#endif
+	PathState pathState = pathStates[gid];
 	if (pathState != MK_DL_ILLUMINATE)
 		return;
 
+		#if defined(DEBUG_PRINTF_KERNEL_NAME)
+		if (gid == DEBUG_GID)
+			printf("Kernel: AdvancePaths_MK_DL_ILLUMINATE(state = %d)\n", pathState);
+	#endif
  	//--------------------------------------------------------------------------
 	// Start of variables setup
 	//--------------------------------------------------------------------------
@@ -620,11 +685,19 @@ __kernel void AdvancePaths_MK_DL_ILLUMINATE(
 				&taskDirectLight->illumInfo
 				LIGHTS_PARAM)) {
 		// I have now to evaluate the BSDF
-		taskState->state = MK_DL_SAMPLE_BSDF;
+		pathStates[gid] = MK_DL_SAMPLE_BSDF;
 	} else {
 		// No shadow ray to trace, move to the next vertex ray
-		// however, I have to Check if this is the last path vertex
-		taskState->state = (sampleResult->lastPathVertex) ? MK_SPLAT_SAMPLE : MK_GENERATE_NEXT_VERTEX_RAY;
+		// however, I have to check if this is the last path vertex
+		if (sampleResult->lastPathVertex) {
+#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
+			pathStates[gid] = (PathState) SYNC;
+#else
+			pathStates[gid] = MK_SPLAT_SAMPLE;
+#endif
+		} else {
+			pathStates[gid] = MK_GENERATE_NEXT_VERTEX_RAY;
+		}
 	}
 
 	//--------------------------------------------------------------------------
@@ -647,16 +720,14 @@ __kernel void AdvancePaths_MK_DL_SAMPLE_BSDF(
 
 	// Read the path state
 	__global GPUTaskState *taskState = &tasksState[gid];
-	PathState pathState = taskState->state;
-#if defined(DEBUG_PRINTF_KERNEL_NAME)
-	if (gid == 0)
-		printf("Kernel: AdvancePaths_MK_DL_SAMPLE_BSDF(state = %d)\n", pathState);
-	else
-		return;
-#endif
+	PathState pathState = pathStates[gid];
 	if (pathState != MK_DL_SAMPLE_BSDF)
 		return;
 
+		#if defined(DEBUG_PRINTF_KERNEL_NAME)
+		if (gid == DEBUG_GID)
+			printf("Kernel: AdvancePaths_MK_DL_SAMPLE_BSDF(state = %d)\n", pathState);
+	#endif
  	//--------------------------------------------------------------------------
 	// Start of variables setup
 	//--------------------------------------------------------------------------
@@ -680,7 +751,7 @@ __kernel void AdvancePaths_MK_DL_SAMPLE_BSDF(
 			rays[gid].time, sampleResult->lastPathVertex,
 			pathInfo,
 			&task->tmpPathDepthInfo,
-			&taskState->bsdf,
+			taskState,
 			VLOAD3F(&rays[gid].d.x)
 			LIGHTS_PARAM)) {
 		__global GPUTask *task = &tasks[gid];
@@ -705,11 +776,19 @@ __kernel void AdvancePaths_MK_DL_SAMPLE_BSDF(
 		directLightVolInfos[gid] = pathInfo->volume;
 
 		// I have to trace the shadow ray
-		taskState->state = MK_RT_DL;
-	} else {
+		pathStates[gid] = MK_RT_DL;
+	} else { 
 		// No shadow ray to trace, move to the next vertex ray
 		// however, I have to check if this is the last path vertex
-		taskState->state = (sampleResult->lastPathVertex) ? MK_SPLAT_SAMPLE : MK_GENERATE_NEXT_VERTEX_RAY;
+		if (sampleResult->lastPathVertex) {
+#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
+			pathStates[gid] = (PathState) SYNC;
+#else
+			pathStates[gid] = MK_SPLAT_SAMPLE;
+#endif
+		} else {
+			pathStates[gid] = MK_GENERATE_NEXT_VERTEX_RAY;
+		}
 	}
 }
 
@@ -728,16 +807,14 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 	// Read the path state
 	__global GPUTask *task = &tasks[gid];
 	__global GPUTaskState *taskState = &tasksState[gid];
-	PathState pathState = taskState->state;
-#if defined(DEBUG_PRINTF_KERNEL_NAME)
-	if (gid == 0)
-		printf("Kernel: AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(state = %d)\n", pathState);
-	else
-		return;
-#endif
+	PathState pathState = pathStates[gid];
 	if (pathState != MK_GENERATE_NEXT_VERTEX_RAY)
 		return;
 
+		#if defined(DEBUG_PRINTF_KERNEL_NAME)
+		if (gid == DEBUG_GID)
+			printf("Kernel: AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(state = %d)\n", pathState);
+	#endif
  	//--------------------------------------------------------------------------
 	// Start of variables setup
 	//--------------------------------------------------------------------------
@@ -799,8 +876,40 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 		}
 	}
 
-	if (sampleResult->firstPathVertex)
+	if (sampleResult->firstPathVertex) {
 		sampleResult->firstPathVertexEvent = bsdfEvent;
+	}
+
+#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
+	RespirReservoir* reservoir = &taskState->reservoir;
+	// make sure both prefix and rcvertex are not specular vertices
+	if (!(bsdfEvent & SPECULAR)) {
+		// reconnection shift always chooses primary vertex as prefix vertex
+		if (pathInfo->depth.depth == 0) { 
+			// We've just hit the primary vertex
+			// The BSDF info above is the scattering info to the secondary vertex
+#if defined(DEBUG_RESPIRPATHOCL)
+			if (get_global_id(0) == DEBUG_GID) {
+				printf("Initial path resampling: Cached prefix vertex info.\n");
+			}
+#endif
+			reservoir->sample.prefixBsdf = *bsdf;
+			reservoir->sample.hitTime = ray->time;
+			reservoir->sample.rc.prefixToRcPdf = bsdfPdfW;
+			reservoir->sample.rc.rcPathDepth = -2;
+		// Secondary vertex, reconnection vertex
+		// reconnection shift always chooses secondary vertex as rc vertex
+		// Store incident direction, pdf, and bsdf value
+		} else if (pathInfo->depth.depth == 1 && reservoir->sample.rc.rcPathDepth == -2) {
+			// We've just hit the secondary vertex
+			// The BSDF info above is the scattering info to the tertiary vertex
+			RespirReservoir_SetRcVertex(reservoir, pathInfo->depth.depth, bsdf, sampledDir, bsdfPdfW, bsdfSample, worldRadius 
+				MATERIALS_PARAM);
+			// store BSDF incident direction in case overriden by NEE this run
+			VSTORE3F(sampledDir, &taskState->rcIncidentDir.x);
+		}
+	}
+#endif
 
 	EyePathInfo_AddVertex(pathInfo, bsdf, bsdfEvent, bsdfPdfW,
 			taskConfig->pathTracer.hybridBackForward.glossinessThreshold
@@ -826,7 +935,11 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 		throughputFactor *= bsdfSample;
 
 		VSTORE3F(throughputFactor * VLOAD3F(taskState->throughput.c), taskState->throughput.c);
-
+#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
+		VSTORE3F(WHITE * bsdfSample, taskState->currentThroughput.c);
+		VSTORE3F(bsdfSample * VLOAD3F(taskState->pathPdf.c), taskState->pathPdf.c);
+		taskState->rrProbProd *= rrProb;
+#endif
 		// This is valid for irradiance AOV only if it is not a SPECULAR material and
 		// first path vertex. Set or update sampleResult.irradiancePathThroughput
 		if (sampleResult->firstPathVertex) {
@@ -857,19 +970,24 @@ __kernel void AdvancePaths_MK_GENERATE_NEXT_VERTEX_RAY(
 		// Initialize the trough a shadow transparency flag used by Scene_Intersect()
 		taskState->throughShadowTransparency = false;
 
-
 		pathState = MK_RT_NEXT_VERTEX;
-	} else
+	} else {
+#if defined(RENDER_ENGINE_RESPIRPATHOCL) 
+		pathState = (PathState) SYNC;
+#else
 		pathState = MK_SPLAT_SAMPLE;
+#endif
+	}
 
 	// Save the state
-	taskState->state = pathState;
+	pathStates[gid] = pathState;
 
 	//--------------------------------------------------------------------------
 
 	// Save the seed
 	task->seed = seedValue;
 }
+
 
 //------------------------------------------------------------------------------
 // Evaluation of the Path finite state machine.
@@ -885,17 +1003,14 @@ __kernel void AdvancePaths_MK_SPLAT_SAMPLE(
 
 	// Read the path state
 	__global GPUTask *task = &tasks[gid];
-	__global GPUTaskState *taskState = &tasksState[gid];
-	PathState pathState = taskState->state;
-#if defined(DEBUG_PRINTF_KERNEL_NAME)
-	if (gid == 0)
-		printf("Kernel: AdvancePaths_MK_SPLAT_SAMPLE(state = %d)\n", pathState);
-	else
-		return;
-#endif
+	PathState pathState = pathStates[gid];
 	if (pathState != MK_SPLAT_SAMPLE)
 		return;
 
+		#if defined(DEBUG_PRINTF_KERNEL_NAME)
+		if (gid == DEBUG_GID)
+			printf("Kernel: AdvancePaths_MK_SPLAT_SAMPLE(state = %d)\n", pathState);
+	#endif
 	//--------------------------------------------------------------------------
 	// Start of variables setup
 	//--------------------------------------------------------------------------
@@ -939,10 +1054,12 @@ __kernel void AdvancePaths_MK_SPLAT_SAMPLE(
 		VSTORE3F(BLACK, sampleResult->albedo.c);
 	}
 
+#if !defined(RENDER_ENGINE_RESPIRPATHOCL)
 	if (taskConfig->pathTracer.pgic.indirectEnabled &&
 			(taskConfig->pathTracer.pgic.debugType == PGIC_DEBUG_SHOWINDIRECTPATHMIX) &&
-			!taskState->photonGIShowIndirectPathMixUsed)
+			!tasksState[gid].photonGIShowIndirectPathMixUsed)
 		VSTORE3F(MAKE_FLOAT3(1.f, 0.f, 0.f), sampleResult->radiancePerPixelNormalized[0].c);
+#endif
 
 	//--------------------------------------------------------------------------
 	// Variance clamping
@@ -965,7 +1082,7 @@ __kernel void AdvancePaths_MK_SPLAT_SAMPLE(
 	taskStats[gid].sampleCount += 1;
 
 	// Save the state
-	taskState->state = MK_NEXT_SAMPLE;
+	pathStates[gid] = MK_NEXT_SAMPLE;
 
 	//--------------------------------------------------------------------------
 
@@ -987,17 +1104,14 @@ __kernel void AdvancePaths_MK_NEXT_SAMPLE(
 
 	// Read the path state
 	__global GPUTask *task = &tasks[gid];
-	__global GPUTaskState *taskState = &tasksState[gid];
-	PathState pathState = taskState->state;
-#if defined(DEBUG_PRINTF_KERNEL_NAME)
-	if (gid == 0)
-		printf("Kernel: AdvancePaths_MK_NEXT_SAMPLE(state = %d)\n", pathState);
-	else
-		return;
-#endif
+	PathState pathState = pathStates[gid];
 	if (pathState != MK_NEXT_SAMPLE)
 		return;
 
+		#if defined(DEBUG_PRINTF_KERNEL_NAME)
+		if (gid == DEBUG_GID)
+			printf("Kernel: AdvancePaths_MK_NEXT_SAMPLE(state = %d)\n", pathState);
+	#endif
 	//--------------------------------------------------------------------------
 	// Start of variables setup
 	//--------------------------------------------------------------------------
@@ -1022,9 +1136,9 @@ __kernel void AdvancePaths_MK_NEXT_SAMPLE(
 
 	// Generate a new path and camera ray only it is not TILEPATHOCL
 #if !defined(RENDER_ENGINE_TILEPATHOCL) && !defined(RENDER_ENGINE_RTPATHOCL)
-	taskState->state = MK_GENERATE_CAMERA_RAY;
+	pathStates[gid] = MK_GENERATE_CAMERA_RAY;
 #else
-	taskState->state = MK_DONE;
+	pathStates[gid] = MK_DONE;
 	// Mark the ray like like one to NOT trace
 	rays[gid].flags = RAY_FLAGS_MASKED;
 #endif
@@ -1053,16 +1167,14 @@ __kernel void AdvancePaths_MK_GENERATE_CAMERA_RAY(
 	// Read the path state
 	__global GPUTask *task = &tasks[gid];
 	__global GPUTaskState *taskState = &tasksState[gid];
-	PathState pathState = taskState->state;
-#if defined(DEBUG_PRINTF_KERNEL_NAME)
-	if (gid == 0)
-		printf("Kernel: AdvancePaths_MK_GENERATE_CAMERA_RAY(state = %d)\n", pathState);
-	else
-		return;
-#endif
+	PathState pathState = pathStates[gid];
 	if (pathState != MK_GENERATE_CAMERA_RAY)
 		return;
 
+#if defined(DEBUG_PRINTF_KERNEL_NAME)
+		if (gid == DEBUG_GID)
+			printf("Kernel: AdvancePaths_MK_GENERATE_CAMERA_RAY(state = %d)\n", pathState);
+#endif
 	//--------------------------------------------------------------------------
 	// Start of variables setup
 	//--------------------------------------------------------------------------
@@ -1082,7 +1194,7 @@ __kernel void AdvancePaths_MK_GENERATE_CAMERA_RAY(
 	// Re-initialize the volume information
 	PathVolumeInfo_Init(&pathInfo->volume);
 
-	GenerateEyePath(taskConfig,
+	GenerateEyePath(&pathStates[gid], task, taskConfig,
 			&tasksDirectLight[gid], taskState,
 			camera,
 			cameraBokehDistribution,
@@ -1092,13 +1204,11 @@ __kernel void AdvancePaths_MK_GENERATE_CAMERA_RAY(
 			ray,
 			pathInfo
 			SAMPLER_PARAM);
-	// taskState->state is set to RT_NEXT_VERTEX inside GenerateEyePath()
+	// pathStates[gid] is set to RT_NEXT_VERTEX inside GenerateEyePath()
 
 	//--------------------------------------------------------------------------
 
 	// Save the seed
 	task->seed = seedValue;
-
 #endif
 }
-

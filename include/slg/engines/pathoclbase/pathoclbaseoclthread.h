@@ -80,6 +80,7 @@ protected:
 		void ClearFilm(luxrays::HardwareIntersectionDevice *intersectionDevice,
 			luxrays::HardwareDeviceKernel *filmClearKernel, const size_t filmClearWorkGroupSize);
 		void RecvFilm(luxrays::HardwareIntersectionDevice *intersectionDevice);
+		void RecvFilm(luxrays::HardwareIntersectionDevice *intersectionDevice, bool blocking);
 		void SendFilm(luxrays::HardwareIntersectionDevice *intersectionDevice);
 
 		Film *film;
@@ -151,8 +152,9 @@ protected:
 	void FreeThreadFilmsOCLBuffers();
 	void FreeThreadFilms();
 
-	void InitRender();
+	virtual void InitRender();
 
+    // Make kernel execution overridable
 	void InitFilm();
 	void InitCamera();
 	void InitGeometry();
@@ -162,27 +164,29 @@ protected:
 	void InitSceneObjects();
 	void InitLights();
 	void InitPhotonGI();
-	void InitKernels();
-	void InitGPUTaskBuffer();
+	virtual void InitKernels();
+	virtual void InitGPUTaskStateBuffer(const u_int taskCount);
+	virtual void InitGPUTaskBuffer(const u_int taskCount);
+	virtual void InitGPUTaskBuffer();
 	void InitSamplerSharedDataBuffer();
 	void InitSamplesBuffer();
 	void InitSampleDataBuffer();
 	void InitSampleResultsBuffer();
 
-	void SetInitKernelArgs(const u_int filmIndex);
-	void SetAdvancePathsKernelArgs(luxrays::HardwareDeviceKernel *advancePathsKernel, const u_int filmIndex);
-	void SetAllAdvancePathsKernelArgs(const u_int filmIndex);
-	void SetKernelArgs();
+	virtual void SetInitKernelArgs(const u_int filmIndex);
+	virtual void SetAdvancePathsKernelArgs(luxrays::HardwareDeviceKernel *advancePathsKernel, const u_int filmIndex);
+	virtual void SetAllAdvancePathsKernelArgs(const u_int filmIndex);
+	virtual void SetKernelArgs();
 
 	void CompileKernel(luxrays::HardwareIntersectionDevice *device,
 			luxrays::HardwareDeviceProgram *program,
 			luxrays::HardwareDeviceKernel **kernel,
 			size_t *workGroupSize, const std::string &name);
 
-	void EnqueueAdvancePathsKernel();
+	virtual void EnqueueAdvancePathsKernel();
 
 	static luxrays::oclKernelCache *AllocKernelCache(const std::string &type);
-	static void GetKernelParamters(std::vector<std::string> &params,
+	virtual void GetKernelParameters(std::vector<std::string> &params,
 			luxrays::HardwareIntersectionDevice *intersectionDevice,
 			const std::string renderEngineType,
 			const float epsilonMin, const float epsilonMax);
@@ -242,6 +246,7 @@ protected:
 	luxrays::HardwareDeviceBuffer *pgicCausticPhotonsBVHNodesBuff;
 
 	// OpenCL task related buffers
+	luxrays::HardwareDeviceBuffer *pathStatesBuff;
 	luxrays::HardwareDeviceBuffer *raysBuff;
 	luxrays::HardwareDeviceBuffer *hitsBuff;
 	luxrays::HardwareDeviceBuffer *taskConfigBuff;

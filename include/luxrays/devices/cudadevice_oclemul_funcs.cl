@@ -44,6 +44,23 @@ __forceinline__ size_t get_global_id(const uint dimIndex) {
 }
 
 //------------------------------------------------------------------------------
+// get_global_size()
+//------------------------------------------------------------------------------
+
+__forceinline__ size_t get_global_size(const uint dimIndex) {
+	switch (dimIndex) {
+		case 0:
+			return gridDim.x * blockDim.x;
+		case 1:
+			return gridDim.y * blockDim.y;
+		case 2:
+			return gridDim.z * blockDim.z;
+		default:
+			return 0;
+	}
+}
+
+//------------------------------------------------------------------------------
 // get_local_id()
 //------------------------------------------------------------------------------
 

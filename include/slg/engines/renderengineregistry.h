@@ -23,6 +23,7 @@
 
 #include "slg/core/objectstaticregistry.h"
 #include "slg/engines/pathocl/pathocl.h"
+#include "slg/engines/respirpathocl/respirpathocl.h"
 #include "slg/engines/rtpathocl/rtpathocl.h"
 #include "slg/engines/lightcpu/lightcpu.h"
 #include "slg/engines/pathcpu/pathcpu.h"
@@ -64,6 +65,7 @@ protected:
 
 #if !defined(LUXRAYS_DISABLE_OPENCL)
 	OBJECTSTATICREGISTRY_DECLARE_REGISTRATION(RenderEngineRegistry, PathOCLRenderEngine);
+	OBJECTSTATICREGISTRY_DECLARE_REGISTRATION(RenderEngineRegistry, RespirPathOCLRenderEngine);
 #endif
 	OBJECTSTATICREGISTRY_DECLARE_REGISTRATION(RenderEngineRegistry, LightCPURenderEngine);
 	OBJECTSTATICREGISTRY_DECLARE_REGISTRATION(RenderEngineRegistry, PathCPURenderEngine);

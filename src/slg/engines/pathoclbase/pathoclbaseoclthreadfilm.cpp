@@ -551,14 +551,14 @@ u_int PathOCLBaseOCLRenderThread::ThreadFilm::SetFilmKernelArgs(HardwareIntersec
 	return argIndex;
 }
 
-void PathOCLBaseOCLRenderThread::ThreadFilm::RecvFilm(HardwareIntersectionDevice *intersectionDevice) {
-	// Async. transfer of the Film buffers
+void PathOCLBaseOCLRenderThread::ThreadFilm::RecvFilm(HardwareIntersectionDevice *intersectionDevice, bool blocking) {
+	// Sync/Async transfer of the Film buffers
 
 	for (u_int i = 0; i < channel_RADIANCE_PER_PIXEL_NORMALIZEDs_Buff.size(); ++i) {
 		if (channel_RADIANCE_PER_PIXEL_NORMALIZEDs_Buff[i]) {
 			intersectionDevice->EnqueueReadBuffer(
 				channel_RADIANCE_PER_PIXEL_NORMALIZEDs_Buff[i],
-				CL_FALSE,
+				blocking,
 				channel_RADIANCE_PER_PIXEL_NORMALIZEDs_Buff[i]->GetSize(),
 				film->channel_RADIANCE_PER_PIXEL_NORMALIZEDs[i]->GetPixels());
 		}
@@ -567,231 +567,231 @@ void PathOCLBaseOCLRenderThread::ThreadFilm::RecvFilm(HardwareIntersectionDevice
 	if (channel_ALPHA_Buff) {
 		intersectionDevice->EnqueueReadBuffer(
 			channel_ALPHA_Buff,
-			CL_FALSE,
+			blocking,
 			channel_ALPHA_Buff->GetSize(),
 			film->channel_ALPHA->GetPixels());
 	}
 	if (channel_DEPTH_Buff) {
 		intersectionDevice->EnqueueReadBuffer(
 			channel_DEPTH_Buff,
-			CL_FALSE,
+			blocking,
 			channel_DEPTH_Buff->GetSize(),
 			film->channel_DEPTH->GetPixels());
 	}
 	if (channel_POSITION_Buff) {
 		intersectionDevice->EnqueueReadBuffer(
 			channel_POSITION_Buff,
-			CL_FALSE,
+			blocking,
 			channel_POSITION_Buff->GetSize(),
 			film->channel_POSITION->GetPixels());
 	}
 	if (channel_GEOMETRY_NORMAL_Buff) {
 		intersectionDevice->EnqueueReadBuffer(
 			channel_GEOMETRY_NORMAL_Buff,
-			CL_FALSE,
+			blocking,
 			channel_GEOMETRY_NORMAL_Buff->GetSize(),
 			film->channel_GEOMETRY_NORMAL->GetPixels());
 	}
 	if (channel_SHADING_NORMAL_Buff) {
 		intersectionDevice->EnqueueReadBuffer(
 			channel_SHADING_NORMAL_Buff,
-			CL_FALSE,
+			blocking,
 			channel_SHADING_NORMAL_Buff->GetSize(),
 			film->channel_SHADING_NORMAL->GetPixels());
 	}
 	if (channel_MATERIAL_ID_Buff) {
 		intersectionDevice->EnqueueReadBuffer(
 			channel_MATERIAL_ID_Buff,
-			CL_FALSE,
+			blocking,
 			channel_MATERIAL_ID_Buff->GetSize(),
 			film->channel_MATERIAL_ID->GetPixels());
 	}
 	if (channel_DIRECT_DIFFUSE_Buff) {
 		intersectionDevice->EnqueueReadBuffer(
 			channel_DIRECT_DIFFUSE_Buff,
-			CL_FALSE,
+			blocking,
 			channel_DIRECT_DIFFUSE_Buff->GetSize(),
 			film->channel_DIRECT_DIFFUSE->GetPixels());
 	}
 	if (channel_DIRECT_DIFFUSE_REFLECT_Buff) {
 		intersectionDevice->EnqueueReadBuffer(
 			channel_DIRECT_DIFFUSE_REFLECT_Buff,
-			CL_FALSE,
+			blocking,
 			channel_DIRECT_DIFFUSE_REFLECT_Buff->GetSize(),
 			film->channel_DIRECT_DIFFUSE_REFLECT->GetPixels());
 	}
 	if (channel_DIRECT_DIFFUSE_TRANSMIT_Buff) {
 		intersectionDevice->EnqueueReadBuffer(
 			channel_DIRECT_DIFFUSE_TRANSMIT_Buff,
-			CL_FALSE,
+			blocking,
 			channel_DIRECT_DIFFUSE_TRANSMIT_Buff->GetSize(),
 			film->channel_DIRECT_DIFFUSE_TRANSMIT->GetPixels());
 	}
 	if (channel_DIRECT_GLOSSY_Buff) {
 		intersectionDevice->EnqueueReadBuffer(
 			channel_DIRECT_GLOSSY_Buff,
-			CL_FALSE,
+			blocking,
 			channel_DIRECT_GLOSSY_Buff->GetSize(),
 			film->channel_DIRECT_GLOSSY->GetPixels());
 	}
 	if (channel_DIRECT_GLOSSY_REFLECT_Buff) {
 		intersectionDevice->EnqueueReadBuffer(
 			channel_DIRECT_GLOSSY_REFLECT_Buff,
-			CL_FALSE,
+			blocking,
 			channel_DIRECT_GLOSSY_REFLECT_Buff->GetSize(),
 			film->channel_DIRECT_GLOSSY_REFLECT->GetPixels());
 	}
 	if (channel_DIRECT_GLOSSY_TRANSMIT_Buff) {
 		intersectionDevice->EnqueueReadBuffer(
 			channel_DIRECT_GLOSSY_TRANSMIT_Buff,
-			CL_FALSE,
+			blocking,
 			channel_DIRECT_GLOSSY_TRANSMIT_Buff->GetSize(),
 			film->channel_DIRECT_GLOSSY_TRANSMIT->GetPixels());
 	}
 	if (channel_EMISSION_Buff) {
 		intersectionDevice->EnqueueReadBuffer(
 			channel_EMISSION_Buff,
-			CL_FALSE,
+			blocking,
 			channel_EMISSION_Buff->GetSize(),
 			film->channel_EMISSION->GetPixels());
 	}
 	if (channel_INDIRECT_DIFFUSE_Buff) {
 		intersectionDevice->EnqueueReadBuffer(
 			channel_INDIRECT_DIFFUSE_Buff,
-			CL_FALSE,
+			blocking,
 			channel_INDIRECT_DIFFUSE_Buff->GetSize(),
 			film->channel_INDIRECT_DIFFUSE->GetPixels());
 	}
 	if (channel_INDIRECT_DIFFUSE_REFLECT_Buff) {
 		intersectionDevice->EnqueueReadBuffer(
 			channel_INDIRECT_DIFFUSE_REFLECT_Buff,
-			CL_FALSE,
+			blocking,
 			channel_INDIRECT_DIFFUSE_REFLECT_Buff->GetSize(),
 			film->channel_INDIRECT_DIFFUSE_REFLECT->GetPixels());
 	}
 	if (channel_INDIRECT_DIFFUSE_TRANSMIT_Buff) {
 		intersectionDevice->EnqueueReadBuffer(
 			channel_INDIRECT_DIFFUSE_TRANSMIT_Buff,
-			CL_FALSE,
+			blocking,
 			channel_INDIRECT_DIFFUSE_TRANSMIT_Buff->GetSize(),
 			film->channel_INDIRECT_DIFFUSE_TRANSMIT->GetPixels());
 	}
 	if (channel_INDIRECT_GLOSSY_Buff) {
 		intersectionDevice->EnqueueReadBuffer(
 			channel_INDIRECT_GLOSSY_Buff,
-			CL_FALSE,
+			blocking,
 			channel_INDIRECT_GLOSSY_Buff->GetSize(),
 			film->channel_INDIRECT_GLOSSY->GetPixels());
 	}
 	if (channel_INDIRECT_GLOSSY_REFLECT_Buff) {
 		intersectionDevice->EnqueueReadBuffer(
 			channel_INDIRECT_GLOSSY_REFLECT_Buff,
-			CL_FALSE,
+			blocking,
 			channel_INDIRECT_GLOSSY_REFLECT_Buff->GetSize(),
 			film->channel_INDIRECT_GLOSSY_REFLECT->GetPixels());
 	}
 	if (channel_INDIRECT_GLOSSY_TRANSMIT_Buff) {
 		intersectionDevice->EnqueueReadBuffer(
 			channel_INDIRECT_GLOSSY_TRANSMIT_Buff,
-			CL_FALSE,
+			blocking,
 			channel_INDIRECT_GLOSSY_TRANSMIT_Buff->GetSize(),
 			film->channel_INDIRECT_GLOSSY_TRANSMIT->GetPixels());
 	}
 	if (channel_INDIRECT_SPECULAR_Buff) {
 		intersectionDevice->EnqueueReadBuffer(
 			channel_INDIRECT_SPECULAR_Buff,
-			CL_FALSE,
+			blocking,
 			channel_INDIRECT_SPECULAR_Buff->GetSize(),
 			film->channel_INDIRECT_SPECULAR->GetPixels());
 	}
 	if (channel_INDIRECT_SPECULAR_REFLECT_Buff) {
 		intersectionDevice->EnqueueReadBuffer(
 			channel_INDIRECT_SPECULAR_REFLECT_Buff,
-			CL_FALSE,
+			blocking,
 			channel_INDIRECT_SPECULAR_REFLECT_Buff->GetSize(),
 			film->channel_INDIRECT_SPECULAR_REFLECT->GetPixels());
 	}
 	if (channel_INDIRECT_SPECULAR_TRANSMIT_Buff) {
 		intersectionDevice->EnqueueReadBuffer(
 			channel_INDIRECT_SPECULAR_TRANSMIT_Buff,
-			CL_FALSE,
+			blocking,
 			channel_INDIRECT_SPECULAR_TRANSMIT_Buff->GetSize(),
 			film->channel_INDIRECT_SPECULAR_TRANSMIT->GetPixels());
 	}
 	if (channel_MATERIAL_ID_MASK_Buff) {
 		intersectionDevice->EnqueueReadBuffer(
 			channel_MATERIAL_ID_MASK_Buff,
-			CL_FALSE,
+			blocking,
 			channel_MATERIAL_ID_MASK_Buff->GetSize(),
 			film->channel_MATERIAL_ID_MASKs[0]->GetPixels());
 	}
 	if (channel_DIRECT_SHADOW_MASK_Buff) {
 		intersectionDevice->EnqueueReadBuffer(
 			channel_DIRECT_SHADOW_MASK_Buff,
-			CL_FALSE,
+			blocking,
 			channel_DIRECT_SHADOW_MASK_Buff->GetSize(),
 			film->channel_DIRECT_SHADOW_MASK->GetPixels());
 	}
 	if (channel_INDIRECT_SHADOW_MASK_Buff) {
 		intersectionDevice->EnqueueReadBuffer(
 			channel_INDIRECT_SHADOW_MASK_Buff,
-			CL_FALSE,
+			blocking,
 			channel_INDIRECT_SHADOW_MASK_Buff->GetSize(),
 			film->channel_INDIRECT_SHADOW_MASK->GetPixels());
 	}
 	if (channel_UV_Buff) {
 		intersectionDevice->EnqueueReadBuffer(
 			channel_UV_Buff,
-			CL_FALSE,
+			blocking,
 			channel_UV_Buff->GetSize(),
 			film->channel_UV->GetPixels());
 	}
 	if (channel_RAYCOUNT_Buff) {
 		intersectionDevice->EnqueueReadBuffer(
 			channel_RAYCOUNT_Buff,
-			CL_FALSE,
+			blocking,
 			channel_RAYCOUNT_Buff->GetSize(),
 			film->channel_RAYCOUNT->GetPixels());
 	}
 	if (channel_BY_MATERIAL_ID_Buff) {
 		intersectionDevice->EnqueueReadBuffer(
 			channel_BY_MATERIAL_ID_Buff,
-			CL_FALSE,
+			blocking,
 			channel_BY_MATERIAL_ID_Buff->GetSize(),
 			film->channel_BY_MATERIAL_IDs[0]->GetPixels());
 	}
 	if (channel_IRRADIANCE_Buff) {
 		intersectionDevice->EnqueueReadBuffer(
 			channel_IRRADIANCE_Buff,
-			CL_FALSE,
+			blocking,
 			channel_IRRADIANCE_Buff->GetSize(),
 			film->channel_IRRADIANCE->GetPixels());
 	}
 	if (channel_OBJECT_ID_Buff) {
 		intersectionDevice->EnqueueReadBuffer(
 			channel_OBJECT_ID_Buff,
-			CL_FALSE,
+			blocking,
 			channel_OBJECT_ID_Buff->GetSize(),
 			film->channel_OBJECT_ID->GetPixels());
 	}
 	if (channel_OBJECT_ID_MASK_Buff) {
 		intersectionDevice->EnqueueReadBuffer(
 			channel_OBJECT_ID_MASK_Buff,
-			CL_FALSE,
+			blocking,
 			channel_OBJECT_ID_MASK_Buff->GetSize(),
 			film->channel_OBJECT_ID_MASKs[0]->GetPixels());
 	}
 	if (channel_BY_OBJECT_ID_Buff) {
 		intersectionDevice->EnqueueReadBuffer(
 			channel_BY_OBJECT_ID_Buff,
-			CL_FALSE,
+			blocking,
 			channel_BY_OBJECT_ID_Buff->GetSize(),
 			film->channel_BY_OBJECT_IDs[0]->GetPixels());
 	}
 	if (channel_SAMPLECOUNT_Buff) {
 		intersectionDevice->EnqueueReadBuffer(
 			channel_SAMPLECOUNT_Buff,
-			CL_FALSE,
+			blocking,
 			channel_SAMPLECOUNT_Buff->GetSize(),
 			film->channel_SAMPLECOUNT->GetPixels());
 	}
@@ -801,28 +801,28 @@ void PathOCLBaseOCLRenderThread::ThreadFilm::RecvFilm(HardwareIntersectionDevice
 		// synchronize the content).
 		intersectionDevice->EnqueueWriteBuffer(
 			channel_CONVERGENCE_Buff,
-			CL_FALSE,
+			blocking,
 			channel_CONVERGENCE_Buff->GetSize(),
 			engineFilm->channel_CONVERGENCE->GetPixels());
 	}
 	if (channel_MATERIAL_ID_COLOR_Buff) {
 		intersectionDevice->EnqueueReadBuffer(
 			channel_MATERIAL_ID_COLOR_Buff,
-			CL_FALSE,
+			blocking,
 			channel_MATERIAL_ID_COLOR_Buff->GetSize(),
 			film->channel_MATERIAL_ID_COLOR->GetPixels());
 	}
 	if (channel_ALBEDO_Buff) {
 		intersectionDevice->EnqueueReadBuffer(
 			channel_ALBEDO_Buff,
-			CL_FALSE,
+			blocking,
 			channel_ALBEDO_Buff->GetSize(),
 			film->channel_ALBEDO->GetPixels());
 	}
 	if (channel_AVG_SHADING_NORMAL_Buff) {
 		intersectionDevice->EnqueueReadBuffer(
 			channel_AVG_SHADING_NORMAL_Buff,
-			CL_FALSE,
+			blocking,
 			channel_AVG_SHADING_NORMAL_Buff->GetSize(),
 			film->channel_AVG_SHADING_NORMAL->GetPixels());
 	}
@@ -832,7 +832,7 @@ void PathOCLBaseOCLRenderThread::ThreadFilm::RecvFilm(HardwareIntersectionDevice
 		// synchronize the content).
 		intersectionDevice->EnqueueWriteBuffer(
 			channel_NOISE_Buff,
-			CL_FALSE,
+			blocking,
 			channel_NOISE_Buff->GetSize(),
 			engineFilm->channel_NOISE->GetPixels());
 	}
@@ -841,7 +841,7 @@ void PathOCLBaseOCLRenderThread::ThreadFilm::RecvFilm(HardwareIntersectionDevice
 		// so I write instead of read (to synchronize the content).
 		intersectionDevice->EnqueueWriteBuffer(
 			channel_USER_IMPORTANCE_Buff,
-			CL_FALSE,
+			blocking,
 			channel_USER_IMPORTANCE_Buff->GetSize(),
 			engineFilm->channel_USER_IMPORTANCE->GetPixels());
 	}
@@ -851,27 +851,27 @@ void PathOCLBaseOCLRenderThread::ThreadFilm::RecvFilm(HardwareIntersectionDevice
 	if (denoiser.IsEnabled() && denoiser.IsWarmUpDone()) {
 		intersectionDevice->EnqueueReadBuffer(
 			denoiser_NbOfSamplesImage_Buff,
-			CL_FALSE,
+			blocking,
 			denoiser_NbOfSamplesImage_Buff->GetSize(),
 			denoiser.GetNbOfSamplesImage());
 		intersectionDevice->EnqueueReadBuffer(
 			denoiser_SquaredWeightSumsImage_Buff,
-			CL_FALSE,
+			blocking,
 			denoiser_SquaredWeightSumsImage_Buff->GetSize(),
 			denoiser.GetSquaredWeightSumsImage());
 		intersectionDevice->EnqueueReadBuffer(
 			denoiser_MeanImage_Buff,
-			CL_FALSE,
+			blocking,
 			denoiser_MeanImage_Buff->GetSize(),
 			denoiser.GetMeanImage());
 		intersectionDevice->EnqueueReadBuffer(
 			denoiser_CovarImage_Buff,
-			CL_FALSE,
+			blocking,
 			denoiser_CovarImage_Buff->GetSize(),
 			denoiser.GetCovarImage());
 		intersectionDevice->EnqueueReadBuffer(
 			denoiser_HistoImage_Buff,
-			CL_FALSE,
+			blocking,
 			denoiser_HistoImage_Buff->GetSize(),
 			denoiser.GetHistoImage());
 	}
@@ -1206,6 +1206,10 @@ void PathOCLBaseOCLRenderThread::ThreadFilm::SendFilm(HardwareIntersectionDevice
 				denoiser_HistoImage_Buff->GetSize(),
 				denoiser.GetHistoImage());
 	}
+}
+
+void PathOCLBaseOCLRenderThread::ThreadFilm::RecvFilm(HardwareIntersectionDevice *intersectionDevice) {
+	RecvFilm(intersectionDevice, CL_TRUE);
 }
 
 void PathOCLBaseOCLRenderThread::ThreadFilm::ClearFilm(HardwareIntersectionDevice *intersectionDevice,

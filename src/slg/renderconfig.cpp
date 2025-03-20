@@ -124,7 +124,8 @@ bool RenderConfig::HasCachedKernels() {
 	const string type = cfg.Get(Property("renderengine.type")(PathCPURenderEngine::GetObjectTag())).Get<string>();
 	if ((type == "PATHOCL") ||
 			(type == "RTPATHOCL") ||
-			(type == "TILEPATHOCL")) {
+			(type == "TILEPATHOCL") || 
+			(type == "RESPIRPATHOCL")) {
 		return PathOCLBaseRenderEngine::HasCachedKernels(*this);
 	} else
 		return true;
@@ -308,7 +309,8 @@ RenderEngine *RenderConfig::AllocRenderEngine() const {
 	const string type = cfg.Get(Property("renderengine.type")(PathCPURenderEngine::GetObjectTag())).Get<string>();
 	if ((type == "PATHOCL") ||
 			(type == "RTPATHOCL") ||
-			(type == "TILEPATHOCL"))
+			(type == "TILEPATHOCL") ||
+			(type == "RESPIRPATHOCL"))
 		throw runtime_error(type + " render engine is not supported by OpenCL-less version of the binaries. Download the OpenCL-enabled version or change the render engine used.");
 #endif
 

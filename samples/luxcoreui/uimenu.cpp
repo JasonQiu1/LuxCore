@@ -190,6 +190,10 @@ void LuxCoreApp::MenuEngine() {
 		SetRenderingEngineType("PATHOCL");
 		CloseAllRenderConfigEditors();
 	}
+	if (isGPURenderingAvailable() && ImGui::MenuItem("RESPIRPATHOCL", "R", (currentEngineType == "RESPIRPATHOCL"))) {
+		SetRenderingEngineType("RESPIRPATHOCL");
+		CloseAllRenderConfigEditors();
+	}
 	if (ImGui::MenuItem("LIGHTCPU", "2", (currentEngineType == "LIGHTCPU"))) {
 		SetRenderingEngineType("LIGHTCPU");
 		CloseAllRenderConfigEditors();

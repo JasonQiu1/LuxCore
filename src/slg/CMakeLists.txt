@@ -471,6 +471,9 @@ set(SLG_KERNELS
 	${LuxRays_SOURCE_DIR}/include/slg/engines/pathoclbase/kernels/pathoclbase_datatypes.cl
 	${LuxRays_SOURCE_DIR}/include/slg/engines/pathoclbase/kernels/pathoclbase_funcs.cl
 	${LuxRays_SOURCE_DIR}/include/slg/engines/pathoclbase/kernels/pathoclbase_kernels_micro.cl
+	${LuxRays_SOURCE_DIR}/include/slg/engines/respirpathocl/kernels/respir_types.cl
+	${LuxRays_SOURCE_DIR}/include/slg/engines/respirpathocl/kernels/respir_funcs.cl
+	${LuxRays_SOURCE_DIR}/include/slg/engines/respirpathocl/kernels/respir_kernels_micro.cl
 	${LuxRays_SOURCE_DIR}/include/slg/engines/pathtracer_types.cl
 	${LuxRays_SOURCE_DIR}/include/slg/film/film_types.cl
 	${LuxRays_SOURCE_DIR}/include/slg/film/film_funcs.cl
@@ -661,6 +664,9 @@ set(SLG_CORE_SRCS
 	${LuxRays_SOURCE_DIR}/src/slg/engines/pathocl/pathocl.cpp
 	${LuxRays_SOURCE_DIR}/src/slg/engines/pathocl/pathoclrenderstate.cpp
 	${LuxRays_SOURCE_DIR}/src/slg/engines/pathocl/pathoclopenclthread.cpp
+	${LuxRays_SOURCE_DIR}/src/slg/engines/respirpathocl/respirpathocl.cpp
+	${LuxRays_SOURCE_DIR}/src/slg/engines/respirpathocl/respirpathoclthread.cpp
+	${LuxRays_SOURCE_DIR}/src/slg/engines/respirpathocl/respirpathoclthreadkernels.cpp
 	${LuxRays_SOURCE_DIR}/src/slg/engines/pathocl/pathoclnativethread.cpp
 	${LuxRays_SOURCE_DIR}/src/slg/engines/rtpathocl/rtpathocl.cpp
 	${LuxRays_SOURCE_DIR}/src/slg/engines/rtpathocl/rtpathoclthread.cpp
@@ -993,6 +999,9 @@ set(SLG_KERNEL_SRCS
 	${generated_kernels_dir}/pathoclbase_datatypes_kernel.cpp
 	${generated_kernels_dir}/pathoclbase_funcs_kernel.cpp
 	${generated_kernels_dir}/pathoclbase_kernels_micro_kernel.cpp
+	${generated_kernels_dir}/respir_types_kernel.cpp
+	${generated_kernels_dir}/respir_funcs_kernel.cpp
+	${generated_kernels_dir}/respir_kernels_micro_kernel.cpp
 	${generated_kernels_dir}/pathtracer_types_kernel.cpp
 )
 
