@@ -398,3 +398,29 @@ OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(SpatialReuseData* restrict
 	
 	return false;
 }
+
+OPENCL_FORCE_INLINE void Respir_InitSpatialReuseIteration(SpatialReuseData* restrict spatialReuseData, const uint numSpatialNeighbors, 
+	RespirReservoir* srReservoir, const RespirReservoir* central, 
+	int* pixelIndexMap, const uint filmWidth, const uint pixelX, const uint pixelY, 
+	PathState* pathState) 
+{
+	// add one to account for the current neigihbor generation always using one to skip self
+    spatialReuseData->numNeighborsLeft = numSpatialNeighbors + 1;
+    spatialReuseData->neighborGid = -1;
+    spatialReuseData->numValidNeighbors = 0;
+
+    // Init resampling reservoir and canonical MIS weight
+    RespirReservoir_Init(srReservoir);
+    spatialReuseData->canonicalMisWeight = 1.f;
+
+    // Skip reuse if this pixel does not have a valid rc vertex
+    if (central->sample.rc.rcPathDepth <= -1 || central->sample.rc.rcPathDepth > central->sample.rc.pathDepth) {
+        return;
+    }
+
+    PixelIndexMap_Set(pixelIndexMap, filmWidth, 
+            pixelX, pixelY, 
+            get_global_id(0));
+
+    pathStates[gid] = (PathState) SR_MK_NEXT_NEIGHBOR;
+}
