@@ -129,7 +129,7 @@ __kernel void SpatialReuse_MK_NEXT_NEIGHBOR(
             spatialRadius, 1 + (spatialRadius * 2), pixelIndexMap, filmWidth, filmHeight))
         {
             // Found valid neighbor
-			srData->numValidNeighbors++;
+			spatialReuseData->numValidNeighbors++;
             break;
         }
     }
