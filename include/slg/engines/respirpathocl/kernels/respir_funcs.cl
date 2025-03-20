@@ -422,5 +422,5 @@ OPENCL_FORCE_INLINE void Respir_InitSpatialReuseIteration(SpatialReuseData* rest
             pixelX, pixelY, 
             get_global_id(0));
 
-    *pathStates = (PathState) SR_MK_NEXT_NEIGHBOR;
+    *pathState = (PathState) SR_MK_NEXT_NEIGHBOR;
 }
