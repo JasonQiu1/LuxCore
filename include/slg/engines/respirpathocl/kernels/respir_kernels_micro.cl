@@ -288,7 +288,7 @@ __kernel void SpatialReuse_MK_SHIFT(
     }
 
     if (get_global_id(0) == DEBUG_GID) {
-        printf("Correct difference in prefix scatter pdfs, jacobian: %f\n", out->sample.rc.jacobian);
+        printf("Correct difference in prefix scatter pdfs, new jacobian: %f\n", out->sample.rc.jacobian);
     }
 
     // Correct jacobian for bsdf scattering value from prefix vertex to reconnection to incident dir
@@ -303,13 +303,13 @@ __kernel void SpatialReuse_MK_SHIFT(
         // DEBUG: Just reevaluate for correctness
         srcRcIncidentPdf = rc->incidentPdf;
         BSDF_EvaluateWithEyeDir(rcBsdf,
-            -srcToRc,
+            srcToRc,
             VLOAD3F(&rc->incidentDir.x), // should this be negative?
             &event, &srcRcIncidentPdf
             MATERIALS_PARAM);
 
         dstRcIncidentBsdfValue = BSDF_EvaluateWithEyeDir(rcBsdf,
-            -dstToRc,
+            dstToRc,
             VLOAD3F(&rc->incidentDir.x), 
             &event, &dstRcIncidentPdf
             MATERIALS_PARAM);
@@ -336,7 +336,7 @@ __kernel void SpatialReuse_MK_SHIFT(
     );
 
     if (get_global_id(0) == DEBUG_GID) {
-        printf("Correct difference in rc scatter bsdfs, jacobian: %f\n", out->sample.rc.jacobian);
+        printf("Correct difference in rc scatter bsdfs, factor: %f\n", (dstBsdfValue / dstPdf) * (dstRcIncidentBsdfValue / dstPdf2));
     }
 
     // TODO: might not need this if we're not using multi-lobed materials
@@ -345,7 +345,7 @@ __kernel void SpatialReuse_MK_SHIFT(
             PowerHeuristic(dstPdf, src->sample.rc.lightPdf), // supposed to be dstPdf evaluated on all lobes at dst prefix vertex
             out->sample.integrand);
         if (get_global_id(0) == DEBUG_GID) {
-            printf("Correct mis weights for NEE paths ending with rc vertex, jacobian: %f\n", out->sample.rc.jacobian);
+            printf("Correct mis weights for NEE paths ending with rc vertex, factor: %f\n", PowerHeuristic(dstPdf, src->sample.rc.lightPdf));
         }
     }
 
@@ -362,14 +362,14 @@ __kernel void SpatialReuse_MK_SHIFT(
             out->sample.integrand);
 
         if (get_global_id(0) == DEBUG_GID) {
-            printf("Correct mis weights for paths ending with rc vertex, jacobian: %f\n", out->sample.rc.jacobian);
+            printf("Correct mis weights for paths ending with rc vertex, factor: %f\n", misWeight);
         }
     }
 
     if ((isRcVertexFinal && !isRcVertexNEE) || (!isRcVertexFinal && !isRcVertexEscapedVertex)) {
         out->sample.rc.jacobian *= dstRcIncidentPdf / srcRcIncidentPdf;
         if (get_global_id(0) == DEBUG_GID) {
-            printf("Correct difference in rc scatter pdfs for paths, jacobian: %f\n", out->sample.rc.jacobian);
+            printf("Correct difference in rc scatter pdfs for paths, new jacobian: %f\n", out->sample.rc.jacobian);
         }
     }
 
