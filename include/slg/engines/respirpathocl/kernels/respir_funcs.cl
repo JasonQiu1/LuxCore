@@ -373,14 +373,25 @@ OPENCL_FORCE_INLINE bool Respir_IsInvalidJacobian(const float jacobianDeterminan
 // PRECONDITION: numNeighborsLeft > 0
 // TODO: upgrade to n-rooks sampling around pixel and customizable spatial radius and number of spatial neighbors
 OPENCL_FORCE_INLINE bool Respir_UpdateNextNeighborGid(SpatialReuseData* restrict srData, 
-		const int pixelX, const int pixelY, const int i, const int spatialRadius, const int spatialDiameter,
-		const int* restrict pixelIndexMap, const uint filmWidth, const uint filmHeight)
-{	
+		const int pixelX, const int pixelY, const int spatialRadius,
+		const int* restrict pixelIndexMap, const uint filmWidth, const uint filmHeight,
+#if defined(RESPIRPATHOCL_DENSE_NEIGHBORS)
+		const int i, const int spatialDiameter
+#else
+		Seed* seed
+#endif
+) {	
 	srData->neighborGid = -1;
 
+	
+#if defined(RESPIRPATHOCL_DENSE_NEIGHBORS)
 	// search in a small window starting from top left
 	int searchX = pixelX + (-spatialRadius + i % spatialDiameter);
 	int searchY = pixelY + (-spatialRadius + i / spatialDiameter);
+#else
+	int searchX = pixelX + (int) copysign(floor(Rnd_FloatValue(seed) * spatialRadius) + 1.0f, Rnd_FloatValue(seed) - 0.5f);
+	int searchY = pixelY + (int) copysign(floor(Rnd_FloatValue(seed) * spatialRadius) + 1.0f, Rnd_FloatValue(seed) - 0.5f);
+#endif
 	srData->numNeighborsLeft--;
 
 	if (searchX >= 0 && searchX < filmWidth && searchY >= 0 && searchY < filmHeight // check in bounds
@@ -405,8 +416,7 @@ OPENCL_FORCE_INLINE void Respir_InitSpatialReuseIteration(SpatialReuseData* rest
 	int* pixelIndexMap, const uint filmWidth, const uint pixelX, const uint pixelY, 
 	PathState* pathState) 
 {
-	// add one to account for the current neigihbor generation always using one to skip self
-    spatialReuseData->numNeighborsLeft = numSpatialNeighbors + 1;
+    spatialReuseData->numNeighborsLeft = numSpatialNeighbors;
     spatialReuseData->neighborGid = -1;
     spatialReuseData->numValidNeighbors = 0;
 

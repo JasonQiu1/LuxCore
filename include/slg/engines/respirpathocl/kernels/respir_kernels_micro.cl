@@ -124,10 +124,14 @@ __kernel void SpatialReuse_MK_NEXT_NEIGHBOR(
 
         // Generate a candidate neighbor gid
         if (Respir_UpdateNextNeighborGid(
-            spatialReuseData, sampleResult->pixelX, sampleResult->pixelY, 
-            numSpatialNeighbors + 1 - spatialReuseData->numNeighborsLeft,
-            spatialRadius, 1 + (spatialRadius * 2), pixelIndexMap, filmWidth, filmHeight))
-        {
+            spatialReuseData, sampleResult->pixelX, sampleResult->pixelY,
+            pixelIndexMap, filmWidth, filmHeight,
+#if defined(RESPIRPATHOCL_DENSE_NEIGHBORS)
+            numSpatialNeighbors - spatialReuseData->numNeighborsLeft, spatialRadius, 1 + (spatialRadius * 2)
+#else
+            tasks[gid]->seed
+#endif
+        )) {
             // Found valid neighbor
 			spatialReuseData->numValidNeighbors++;
             break;
