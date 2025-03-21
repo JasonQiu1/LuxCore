@@ -343,17 +343,17 @@ OPENCL_FORCE_INLINE bool RespirReservoir_SetRcVertex(
 	// check roughness and distance connectability requirements
 	// assume glossiness range is [0.f,1.f], and 1-glossiness is the roughness
 	// distance threshold of 2-5% world size recommended by GRIS paper
-	const float maxGlossiness = 0.2;
-	const float minDistance = worldRadius * 2.0f * 0.025f;
-	if (sqrt(distanceSquared) >= minDistance
-		&& BSDF_GetGlossiness(&reservoir->sample.prefixBsdf MATERIALS_PARAM) <= maxGlossiness
-		&& BSDF_GetGlossiness(bsdf MATERIALS_PARAM) <= maxGlossiness) {
+	// const float maxGlossiness = 0.2;
+	// const float minDistance = worldRadius * 2.0f * 0.025f;
+	// if (sqrt(distanceSquared) >= minDistance
+	// 	&& BSDF_GetGlossiness(&reservoir->sample.prefixBsdf MATERIALS_PARAM) <= maxGlossiness
+	// 	&& BSDF_GetGlossiness(bsdf MATERIALS_PARAM) <= maxGlossiness) {
 		// cache partial jacobian here (squared distance / cos angle from rc norm)
 		reservoir->sample.rc.jacobian = distanceSquared / cosAngle;
 		reservoir->sample.rc.rcPathDepth = pathDepth;
 		reservoir->sample.rc.bsdf = *bsdf;
 		return true;
-	} 
+	// } 
 #if defined(DEBUG_RESPIRPATHOCL)
 	if (get_global_id(0) == DEBUG_GID) {
 		printf("Initial path resampling: Rejected reconnection vertex based on glossiness or distance.\n");

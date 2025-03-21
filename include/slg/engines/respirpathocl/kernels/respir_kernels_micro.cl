@@ -258,15 +258,15 @@ __kernel void SpatialReuse_MK_SHIFT(
 
     // distance threshold of 2-5% world size recommended by GRIS paper
     // TODO: make distance threshold configurable as percent world size
-    const float3 srcToDstRc = VLOAD3F(&dst->sample.rc.bsdf.hitPoint.p.x) 
-            - VLOAD3F(&src->sample.prefixBsdf.hitPoint.p.x);
-    const float srcToDstRcDistance = sqrt(dot(srcToDstRc, srcToDstRc));
-    const float minDistance = worldRadius * 2 * 0.025; 
-    if (srcToDstRcDistance < minDistance || dstDistance < minDistance) {
-        // Shift failed or noninvertible
-        Respir_HandleInvalidShift(shiftInOutData, out, &pathStates[gid]);
-        return;
-    }
+    // const float3 srcToDstRc = VLOAD3F(&dst->sample.rc.bsdf.hitPoint.p.x) 
+    //         - VLOAD3F(&src->sample.prefixBsdf.hitPoint.p.x);
+    // const float srcToDstRcDistance = sqrt(dot(srcToDstRc, srcToDstRc));
+    // const float minDistance = worldRadius * 2 * 0.025; 
+    // if (srcToDstRcDistance < minDistance || dstDistance < minDistance) {
+    //     // Shift failed or noninvertible
+    //     Respir_HandleInvalidShift(shiftInOutData, out, &pathStates[gid]);
+    //     return;
+    // }
 
     /*
     /	Calculate and verify valid, nonblack shifted integrand.
